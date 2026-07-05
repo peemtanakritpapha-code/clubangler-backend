@@ -22,12 +22,8 @@ export default function MarketClient({ products, loggedIn }) {
       {/* header */}
       <div style={{ background: "#fff", borderBottom: `1px solid ${C.line}`, padding: "12px 16px", position: "sticky", top: 0, zIndex: 5 }}>
         <div style={{ maxWidth: 960, margin: "0 auto", display: "flex", gap: 10, alignItems: "center" }}>
-          <Link href="/" style={{ fontWeight: 800, color: C.brand, textDecoration: "none", whiteSpace: "nowrap" }}>🎣 ClubAngler</Link>
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="ค้นหาสินค้า แบรนด์ จังหวัด..."
-            style={{ flex: 1, height: 38, border: `1.5px solid ${C.line}`, borderRadius: 999, padding: "0 16px", fontSize: 13, outline: "none", background: C.bg, color: C.ink }} />
-          <Link href="/sell" style={{ background: C.brand, color: "#fff", padding: "9px 16px", borderRadius: 999, fontWeight: 800, fontSize: 12.5, textDecoration: "none", whiteSpace: "nowrap" }}>
-            + ลงขาย
-          </Link>
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="ค้นหาคันเบ็ด, รอก, เหยื่อ..."
+            style={{ flex: 1, height: 40, border: `1.5px solid ${C.line}`, borderRadius: 999, padding: "0 16px", fontSize: 13, outline: "none", background: C.bg, color: C.ink }} />
         </div>
         {/* แถบหมวดหลัก */}
         <div style={{ maxWidth: 960, margin: "10px auto 0", display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>

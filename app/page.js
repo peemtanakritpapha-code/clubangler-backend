@@ -1,50 +1,60 @@
+// app/page.js — หน้าแรกชั่วคราวใต้เปลือกใหม่ (A2 จะกลายเป็นฟีดชุมชนเต็มรูป)
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import LogoutButton from "@/components/LogoutButton";
-import NotiBell from "@/components/NotiBell";
 
-const C = { brand: "#0E7E8C", ink: "#101314", muted: "#6B7678", bg: "#F4F7F7" };
+const C = { brand: "#0E7E8C", brandTint: "#E7F2F3", ink: "#17181A", muted: "#80868D", line: "#E4E2DC" };
 
 export default async function Home() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  let profile = null;
+  let name = null;
   if (user) {
-    const { data } = await supabase.from("profiles").select("name, kyc_status, is_admin").eq("id", user.id).single();
-    profile = data;
+    const { data } = await supabase.from("profiles").select("name").eq("id", user.id).single();
+    name = data?.name;
   }
-  const btn = { display: "inline-block", background: C.brand, color: "#fff", padding: "12px 30px", borderRadius: 10, fontWeight: 800, fontSize: 14, textDecoration: "none" };
-  const btnGhost = { ...btn, background: "#fff", color: C.brand, border: `1.5px solid ${C.brand}` };
+  const { data: latest } = await supabase.from("products")
+    .select("id, name, price, images").eq("status", "active")
+    .order("created_at", { ascending: false }).limit(6);
+
+  const tile = { background: "#fff", border: `1px solid ${C.line}`, borderRadius: 14, padding: "16px 14px", textDecoration: "none", display: "grid", gap: 4 };
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, display: "grid", placeItems: "center", padding: 20, fontFamily: "system-ui, sans-serif" }}>
-      <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px 40px", maxWidth: 460, width: "100%", boxShadow: "0 8px 30px rgba(0,0,0,.06)" }}>
-        {user && (
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <NotiBell userId={user.id} />
-          </div>
-        )}
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 40 }}>🎣</div>
-          <h1 style={{ fontSize: 26, fontWeight: 800, color: C.brand, margin: "8px 0 4px" }}>ClubAngler</h1>
-          <p style={{ color: C.muted, fontSize: 13, margin: "6px 0 22px" }}>ตลาดซื้อขายอุปกรณ์ตกปลา แบบมีคนกลางถือเงิน</p>
-          {user ? (
-            <div style={{ display: "grid", gap: 10, justifyItems: "center" }}>
-              <div style={{ fontSize: 14, color: C.ink, marginBottom: 4 }}>สวัสดี <b>{profile?.name || user.email}</b> 👋</div>
-              <Link href="/market" style={btn}>🛒 เข้าตลาดสินค้า</Link>
-              <Link href="/orders" style={btnGhost}>📦 คำสั่งซื้อของฉัน</Link>
-              <Link href="/sell" style={btnGhost}>+ ลงขายสินค้า</Link>
-              <Link href="/profile" style={{ ...btnGhost, border: "none", fontSize: 13 }}>โปรไฟล์ & สมุดที่อยู่</Link>
-              {profile?.is_admin && <Link href="/admin" style={{ ...btnGhost, border: "none", fontSize: 13 }}>🛠 หลังบ้านแอดมิน</Link>}
-              <LogoutButton />
-            </div>
-          ) : (
-            <div style={{ display: "grid", gap: 10, justifyItems: "center" }}>
-              <Link href="/market" style={btn}>🛒 ดูตลาดสินค้า</Link>
-              <Link href="/login" style={btnGhost}>เข้าสู่ระบบ / สมัครสมาชิก</Link>
-            </div>
-          )}
+    <div style={{ maxWidth: 960, margin: "0 auto", padding: 16 }}>
+      <div style={{ fontSize: 13, color: C.muted, margin: "4px 0 2px" }}>สวัสดี{name ? `, ${name}` : ""} 👋</div>
+      <h1 style={{ fontSize: 22, fontWeight: 800, color: C.ink, margin: "0 0 14px" }}>ตลาดอุปกรณ์ตกปลา</h1>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 20 }}>
+        <Link href="/market" style={tile}><span style={{ fontSize: 22 }}>🛒</span><b style={{ fontSize: 13.5, color: C.ink }}>เข้าตลาดสินค้า</b><span style={{ fontSize: 11.5, color: C.muted }}>ค้นหาคัน รอก เหยื่อ</span></Link>
+        <Link href="/sell" style={tile}><span style={{ fontSize: 22 }}>🏷️</span><b style={{ fontSize: 13.5, color: C.ink }}>ลงขายสินค้า</b><span style={{ fontSize: 11.5, color: C.muted }}>เห็นยอดรับสุทธิทันที</span></Link>
+        <Link href="/orders" style={tile}><span style={{ fontSize: 22 }}>📦</span><b style={{ fontSize: 13.5, color: C.ink }}>คำสั่งซื้อของฉัน</b><span style={{ fontSize: 11.5, color: C.muted }}>ติดตามทุกสถานะ escrow</span></Link>
+        <Link href="/profile" style={tile}><span style={{ fontSize: 22 }}>👤</span><b style={{ fontSize: 13.5, color: C.ink }}>โปรไฟล์ & KYC</b><span style={{ fontSize: 11.5, color: C.muted }}>บัญชีรับเงิน สมุดที่อยู่</span></Link>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+        <b style={{ fontSize: 15.5, color: C.ink }}>สินค้ามาใหม่</b>
+        <Link href="/market" style={{ fontSize: 12.5, fontWeight: 700, color: C.brand, textDecoration: "none" }}>ดูทั้งหมด ›</Link>
+      </div>
+      {(!latest || latest.length === 0) ? (
+        <div style={{ textAlign: "center", color: C.muted, fontSize: 13, padding: "30px 0" }}>
+          ยังไม่มีสินค้า — <Link href="/sell" style={{ color: C.brand, fontWeight: 800 }}>เป็นคนแรกที่ลงขายเลย</Link>
         </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
+          {latest.map(p => (
+            <Link key={p.id} href={`/product/${p.id}`} style={{ textDecoration: "none", background: "#fff", borderRadius: 12, overflow: "hidden", border: `1px solid ${C.line}` }}>
+              <div style={{ aspectRatio: "1/1", background: "#EDF2F2" }}>
+                {p.images?.[0] && <img src={p.images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
+              </div>
+              <div style={{ padding: "8px 10px" }}>
+                <div style={{ fontSize: 12, color: C.ink, fontWeight: 600, height: 32, overflow: "hidden" }}>{p.name}</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: C.brand }}>฿{Number(p.price).toLocaleString()}</div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+      <div style={{ marginTop: 22, fontSize: 11.5, color: C.muted, textAlign: "center" }}>
+        🛡 ทุกออเดอร์ผ่านระบบเงินฝากปลอดภัย (escrow) — ผู้ขายได้เงินเมื่อผู้ซื้อยืนยันรับสินค้า
       </div>
     </div>
   );
