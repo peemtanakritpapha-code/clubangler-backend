@@ -1,0 +1,78 @@
+"use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+
+const C = { brand: "#0E7E8C", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7", danger: "#C0392B" };
+
+export default function LoginPage() {
+  const router = useRouter();
+  const supabase = createClient();
+  const [mode, setMode] = useState("login"); // 'login' | 'signup'
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    setErr("");
+    if (!email.trim() || !password) { setErr("กรอกอีเมลและรหัสผ่านให้ครบ"); return; }
+    if (mode === "signup" && !name.trim()) { setErr("กรอกชื่อที่ใช้แสดง"); return; }
+    if (password.length < 6) { setErr("รหัสผ่านอย่างน้อย 6 ตัวอักษร"); return; }
+    setBusy(true);
+    const { error } = mode === "signup"
+      ? await supabase.auth.signUp({ email: email.trim(), password, options: { data: { name: name.trim() } } })
+      : await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    setBusy(false);
+    if (error) {
+      const map = {
+        "Invalid login credentials": "อีเมลหรือรหัสผ่านไม่ถูกต้อง",
+        "User already registered": "อีเมลนี้สมัครไว้แล้ว — ลองเข้าสู่ระบบแทน",
+      };
+      setErr(map[error.message] || error.message);
+      return;
+    }
+    router.push("/");
+    router.refresh();
+  };
+
+  const input = { width: "100%", height: 44, border: `1px solid ${C.line}`, borderRadius: 10, padding: "0 14px", fontSize: 14, boxSizing: "border-box", outline: "none" };
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "grid", placeItems: "center", padding: 20, fontFamily: "system-ui, sans-serif" }}>
+      <div style={{ width: "100%", maxWidth: 400, background: "#fff", borderRadius: 16, padding: 28, boxShadow: "0 8px 30px rgba(0,0,0,.06)" }}>
+        <div style={{ textAlign: "center", marginBottom: 20 }}>
+          <div style={{ fontSize: 34 }}>🎣</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: C.brand }}>ClubAngler</div>
+          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4 }}>ตลาดอุปกรณ์ตกปลา ซื้อขายผ่านระบบเงินฝากปลอดภัย</div>
+        </div>
+
+        <div style={{ display: "flex", background: C.bg, borderRadius: 10, padding: 4, marginBottom: 18 }}>
+          {[["login", "เข้าสู่ระบบ"], ["signup", "สมัครสมาชิก"]].map(([k, label]) => (
+            <button key={k} onClick={() => { setMode(k); setErr(""); }}
+              style={{ flex: 1, height: 36, border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13,
+                background: mode === k ? "#fff" : "transparent", color: mode === k ? C.brand : C.muted,
+                boxShadow: mode === k ? "0 1px 4px rgba(0,0,0,.08)" : "none" }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: "grid", gap: 12 }}>
+          {mode === "signup" && (
+            <input style={input} placeholder="ชื่อที่ใช้แสดง เช่น ภีม นักตกปลา" value={name} onChange={e => setName(e.target.value)} />
+          )}
+          <input style={input} type="email" placeholder="อีเมล" value={email} onChange={e => setEmail(e.target.value)} />
+          <input style={input} type="password" placeholder="รหัสผ่าน (6 ตัวขึ้นไป)" value={password}
+            onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} />
+          {err && <div style={{ fontSize: 12.5, color: C.danger, background: "#FBEAE8", borderRadius: 8, padding: "8px 12px" }}>{err}</div>}
+          <button onClick={submit} disabled={busy}
+            style={{ height: 46, border: "none", borderRadius: 10, background: C.brand, color: "#fff", fontWeight: 800, fontSize: 14.5, cursor: "pointer", opacity: busy ? .6 : 1 }}>
+            {busy ? "กำลังดำเนินการ..." : mode === "signup" ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
