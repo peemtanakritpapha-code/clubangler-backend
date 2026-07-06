@@ -1,22 +1,17 @@
 "use client";
 // components/AppShell.js — เปลือก 2 ร่างจาก prototype:
 // จอแคบ = ทรงแอป (header + tabbar ล่าง) · จอกว้าง = ทรงเว็บ (เมนูบน)
+// W3: nav ฟีด/ตลาด/ลงขาย ลอยกึ่งกลางบราวเซอร์ + เมนูโปรไฟล์แบบ dropdown ตาม prototype
+//     (หัวการ์ด + ดูโปรไฟล์สาธารณะ / การซื้อ-การขาย (รองรับ badge) / สินค้าที่ลงขาย / ตั้งค่า / KYC / ออกจากระบบ)
+// หมายเหตุ: ออกจากระบบใช้ตรรกะเดียวกับ components/LogoutButton.js (signOut → /login) — ตัวปุ่มเดิมยังใช้ที่หน้าโปรไฟล์
+import { useState } from "react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
-import { LayoutGrid, Store, Plus, ShoppingCart, User, Wrench } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { LayoutGrid, Store, Plus, ShoppingCart, User, Wrench, Bell, Globe, ChevronDown, ShoppingBag, Package, Settings, Wallet, X } from "lucide-react";
 import NotiBell from "@/components/NotiBell";
-import { subscribeCart } from "@/lib/cart";
+import { createClient } from "@/lib/supabase/client";
 
-/* badge เลขแดงมุมไอคอนตะกร้า — ยกจาก prototype WNav บรรทัด 6160–6162 */
-function CartBadge({ count }) {
-  if (!count) return null;
-  return (
-    <span style={{ position: "absolute", top: -4, right: -4, minWidth: 17, height: 17, padding: "0 4px", boxSizing: "border-box", background: "#C0392B", color: "#fff", fontSize: 10, fontWeight: 800, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center" }}>{count}</span>
-  );
-}
-
-const C = { brand: "#0E7E8C", brandTint: "#E7F2F3", ink: "#17181A", muted: "#80868D", line: "#E4E2DC" };
+const C = { brand: "#0E7E8C", brandTint: "#E7F2F3", ink: "#17181A", muted: "#80868D", line: "#E4E2DC", danger: "#C24D42" };
 
 /* แบนเนอร์ประกาศตัววิ่ง — ยกจาก prototype (ควบคุมจาก platform_config) */
 function AnnouncementBanner({ banner }) {
@@ -45,10 +40,40 @@ const Logo = ({ size = 20 }) => (
   </Link>
 );
 
-export default function AppShell({ user, banner, children }) {
+const iconBtn = { width: 40, height: 40, borderRadius: 999, border: `1px solid ${C.line}`, background: "#fff", display: "grid", placeItems: "center", color: C.ink };
+const thPill = { display: "inline-flex", alignItems: "center", gap: 5, height: 40, padding: "0 13px", borderRadius: 999, border: `1px solid ${C.line}`, background: "#fff", color: C.muted, fontSize: 12.5, fontWeight: 700 };
+
+/* แถวเมนูใน dropdown โปรไฟล์ (prototype: ไอคอนพื้นอ่อน + ข้อความ + badge ตัวเลข) */
+function MenuRow({ icon: Icon, label, href, onClick, badge, danger }) {
+  const inner = (
+    <>
+      <span style={{ width: 34, height: 34, borderRadius: 10, background: danger ? "#FBEAE8" : C.brandTint, color: danger ? C.danger : C.brand, display: "grid", placeItems: "center", flex: "none" }}>
+        <Icon size={16} />
+      </span>
+      <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: danger ? C.danger : C.ink }}>{label}</span>
+      {badge > 0 && (
+        <span style={{ minWidth: 20, height: 20, padding: "0 5px", borderRadius: 999, background: C.danger, color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{badge}</span>
+      )}
+    </>
+  );
+  const rowStyle = { display: "flex", alignItems: "center", gap: 11, padding: "10px 14px", textDecoration: "none", cursor: "pointer", borderTop: `1px solid ${C.line}` };
+  return href
+    ? <Link href={href} onClick={onClick} style={rowStyle}>{inner}</Link>
+    : <div onClick={onClick} style={rowStyle}>{inner}</div>;
+}
+
+export default function AppShell({ user, banner, children, buyCount = 0, sellCount = 0 }) {
   const pathname = usePathname();
-  const [cartN, setCartN] = useState(0);
-  useEffect(() => subscribeCart(setCartN), []);
+  const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = () => setMenuOpen(false);
+  const logout = async () => {
+    closeMenu();
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  };
 
   // หน้าที่ไม่ใส่เปลือก: login + หลังบ้านแอดมิน (มีโครงของตัวเอง)
   if (pathname.startsWith("/login") || pathname.startsWith("/admin")) return children;
@@ -72,34 +97,61 @@ export default function AppShell({ user, banner, children }) {
       {/* ── ทรงเว็บ (จอกว้าง) ── */}
       <div className="shell-web" style={{ position: "sticky", top: 0, zIndex: 30, background: "#fff", borderBottom: `1px solid ${C.line}`, alignItems: "center", gap: 14, padding: "10px 22px" }}>
         <Logo size={19} />
-        <nav style={{ display: "flex", gap: 4, marginLeft: 10 }}>
+        {/* W3: nav ลอยกึ่งกลางบราวเซอร์ตาม prototype */}
+        <nav style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", display: "flex", gap: 4 }}>
           <Link href="/" style={webLink("/")}>ฟีด</Link>
           <Link href="/market" style={webLink("/market")}>ตลาด</Link>
           <Link href="/sell" style={webLink("/sell")}>ลงขายสินค้า</Link>
         </nav>
         <div style={{ flex: 1 }} />
         {user ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
             <NotiBell userId={user.id} />
-            <Link href="/cart" title="ตะกร้า" style={{ position: "relative", width: 40, height: 40, borderRadius: 999, border: `1px solid ${C.line}`, background: "#fff", display: "grid", placeItems: "center", color: C.ink }}>
-              <ShoppingCart size={17} />
-              <CartBadge count={cartN} />
-            </Link>
+            <Link href="/cart" title="ตะกร้า" style={iconBtn}><ShoppingCart size={17} /></Link>
+            <span title="ภาษาไทย (English เร็วๆ นี้)" style={thPill}><Globe size={15} /> TH</span>
             {user.isAdmin && (
-              <Link href="/admin" title="หลังบ้านแอดมิน" style={{ width: 40, height: 40, borderRadius: 999, border: `1px solid ${C.line}`, background: "#fff", display: "grid", placeItems: "center", color: C.ink }}>
-                <Wrench size={16} />
-              </Link>
+              <Link href="/admin" title="หลังบ้านแอดมิน" style={iconBtn}><Wrench size={16} /></Link>
             )}
-            <Link href="/orders" style={{ fontSize: 13, fontWeight: 700, color: C.muted, textDecoration: "none" }}>📦 ออเดอร์</Link>
-            <Link href="/profile" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", background: C.brandTint, borderRadius: 999, padding: "6px 14px 6px 6px" }}>
-              <span style={{ width: 28, height: 28, borderRadius: 999, background: C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 12.5, fontWeight: 800 }}>
+            {/* อวตาร + ˅ เปิดเมนูโปรไฟล์ (prototype) */}
+            <div onClick={() => setMenuOpen(o => !o)} style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", background: menuOpen ? C.brandTint : "transparent", borderRadius: 999, padding: "4px 8px 4px 4px" }}>
+              <span style={{ width: 34, height: 34, borderRadius: 999, background: C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 13.5, fontWeight: 800 }}>
                 {(user.name || "?").trim().charAt(0).toUpperCase()}
               </span>
-              <b style={{ fontSize: 13, color: C.brand, maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name}</b>
-            </Link>
+              <ChevronDown size={15} color={C.muted} style={{ transform: menuOpen ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
+            </div>
+
+            {/* เมนูโปรไฟล์ dropdown */}
+            {menuOpen && (
+              <>
+                <div onClick={closeMenu} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                <div style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, width: 300, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 14, boxShadow: "0 12px 34px rgba(0,0,0,.13)", overflow: "hidden", zIndex: 50 }}>
+                  {/* หัวการ์ด: ชื่อ + ดูโปรไฟล์สาธารณะ */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 14px 12px" }}>
+                    <span style={{ width: 46, height: 46, borderRadius: 999, background: C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 18, fontWeight: 800, flex: "none" }}>
+                      {(user.name || "?").trim().charAt(0).toUpperCase()}
+                    </span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 14.5, fontWeight: 800, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name}</div>
+                      <Link href={`/seller/${user.id}`} onClick={closeMenu} style={{ fontSize: 11.5, fontWeight: 700, color: C.brand, textDecoration: "none" }}>ดูโปรไฟล์สาธารณะของฉัน →</Link>
+                    </div>
+                  </div>
+                  <MenuRow icon={User} label="โปรไฟล์ของฉัน" href="/profile" onClick={closeMenu} />
+                  <MenuRow icon={ShoppingBag} label="การซื้อของฉัน" href="/orders" onClick={closeMenu} badge={buyCount} />
+                  <MenuRow icon={Package} label="การขายของฉัน" href="/orders" onClick={closeMenu} badge={sellCount} />
+                  <MenuRow icon={Store} label="สินค้าที่ลงขาย" href={`/seller/${user.id}`} onClick={closeMenu} />
+                  <MenuRow icon={Settings} label="ตั้งค่าบัญชี" href="/profile" onClick={closeMenu} />
+                  <MenuRow icon={Wallet} label="บัญชีรับเงิน & ยืนยันตัวตน" href="/profile" onClick={closeMenu} />
+                  <MenuRow icon={X} label="ออกจากระบบ" onClick={logout} danger />
+                </div>
+              </>
+            )}
           </div>
         ) : (
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {/* W2.1: แถบขวา guest ตาม prototype โหมดเว็บ — กระดิ่ง/ตะกร้า/ป้ายภาษา */}
+            <Link href="/login" title="เข้าสู่ระบบเพื่อดูการแจ้งเตือน" style={iconBtn}><Bell size={17} /></Link>
+            <Link href="/cart" title="ตะกร้า" style={iconBtn}><ShoppingCart size={17} /></Link>
+            <span title="ภาษาไทย (English เร็วๆ นี้)" style={thPill}><Globe size={15} /> TH</span>
             <Link href="/login" style={{ padding: "9px 18px", borderRadius: 10, border: `1px solid ${C.line}`, background: "#F1F3F4", fontSize: 13.5, fontWeight: 700, textDecoration: "none", color: C.ink }}>เข้าสู่ระบบ</Link>
             <Link href="/login" style={{ padding: "9px 18px", borderRadius: 10, background: C.brand, color: "#fff", fontSize: 13.5, fontWeight: 700, textDecoration: "none" }}>สมัครสมาชิก</Link>
           </div>
@@ -118,17 +170,7 @@ export default function AppShell({ user, banner, children }) {
 
       <AnnouncementBanner banner={banner} />
 
-      <div className="shell-content">
-        {children}
-        {/* footer ลิงก์เอกสาร (P2) — จำเป็นสำหรับรีวิวสโตร์ */}
-        <footer style={{ textAlign: "center", padding: "22px 16px 14px", fontSize: 11.5, color: C.muted }}>
-          <Link href="/privacy" style={{ color: C.muted, textDecoration: "none", fontWeight: 700 }}>นโยบายความเป็นส่วนตัว</Link>
-          <span style={{ margin: "0 8px" }}>·</span>
-          <Link href="/terms" style={{ color: C.muted, textDecoration: "none", fontWeight: 700 }}>ข้อกำหนดการใช้บริการ</Link>
-          <span style={{ margin: "0 8px" }}>·</span>
-          <span>© 2569 ClubAngler</span>
-        </footer>
-      </div>
+      <div className="shell-content">{children}</div>
 
       {/* ── ทรงแอป: tabbar ล่าง (จอแคบ) ── */}
       <nav className="shell-tabbar" style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, background: "#fff", borderTop: `1px solid ${C.line}`, justifyContent: "space-around", alignItems: "center", padding: "6px 4px calc(6px + env(safe-area-inset-bottom))" }}>
@@ -143,10 +185,7 @@ export default function AppShell({ user, banner, children }) {
           const on = active(t.href);
           return (
             <Link key={t.href} href={t.href} style={{ display: "grid", justifyItems: "center", gap: 2, textDecoration: "none", color: on ? C.brand : C.muted, minWidth: 56 }}>
-              <span style={{ position: "relative", display: "grid", placeItems: "center" }}>
-                <Icon size={20} strokeWidth={on ? 2.4 : 2} />
-                {t.href === "/cart" ? <CartBadge count={cartN} /> : null}
-              </span>
+              <Icon size={20} strokeWidth={on ? 2.4 : 2} />
               <span style={{ fontSize: 10.5, fontWeight: on ? 800 : 600 }}>{t.label}</span>
             </Link>
           );

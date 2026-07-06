@@ -7,10 +7,8 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); }
 a { color: inherit; }
-
 /* แบนเนอร์ตัววิ่ง (marqueeX จาก prototype) */
 @keyframes marqueeX { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-
 /* สลับเปลือกตามขนาดจอ: <900px = ทรงแอป / ≥900px = ทรงเว็บ */
 .shell-web { display: none; }
 .shell-mobile-top { display: flex; }
@@ -21,4 +19,12 @@ a { color: inherit; }
   .shell-mobile-top { display: none; }
   .shell-tabbar { display: none; }
   .shell-content { padding-bottom: 0; }
+}
+/* W2: ตลาด 2 โหมด — <900px = ชีตฟิลเตอร์ (เดิม) / ≥900px = sidebar ตาม prototype WMarketplace */
+.mkt-side { display: none; }
+.mkt-desk { display: none; }
+@media (min-width: 900px) {
+  .mkt-side { display: block; }
+  .mkt-desk { display: flex; }
+  .mkt-mobile { display: none !important; }
 }

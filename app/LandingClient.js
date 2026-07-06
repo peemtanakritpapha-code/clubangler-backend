@@ -70,14 +70,22 @@ export default function LandingClient({ products = [] }) {
 
   return (
     <div>
-      {/* Hero */}
-      <section style={{ padding: "44px 24px", textAlign: "center", background: C.bg }}>
+      {/* Hero — วิดีโอพื้นหลังวนซ้ำ (public/hero.mp4): autoPlay ต้องคู่กับ muted + playsInline (กติกาเบราว์เซอร์/iOS) */}
+      <section style={{ position: "relative", padding: "44px 24px", textAlign: "center", background: C.bg, overflow: "hidden" }}>
+        <video autoPlay muted loop playsInline preload="auto" aria-hidden="true"
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: 0, pointerEvents: "none" }}>
+          <source src="/hero.mp4" type="video/mp4" />
+        </video>
+        {/* ฟิล์มเข้มจางให้ตัวหนังสือขาวเด้ง — วิดีโอยังเห็นชัด (ปรับที่เลข .38) */}
+        <div style={{ position: "absolute", inset: 0, background: "rgba(10,26,32,.38)", zIndex: 0 }} />
+        <div style={{ position: "relative", zIndex: 1 }}>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.white, border: `1px solid ${C.line}`, borderRadius: 999, padding: "5px 13px", fontSize: 12, color: C.brand, marginBottom: 16 }}><ShieldCheck size={15} /> ซื้อขายปลอดภัย มีคนกลางถือเงิน</div>
-        <div style={{ fontSize: 25, fontWeight: 800, color: C.ink, lineHeight: 1.4, maxWidth: 520, margin: "0 auto 12px" }}>ตลาดอุปกรณ์ตกปลามือสอง ที่ไม่ต้องกลัวโดนโกง</div>
-        <p style={{ fontSize: 15, color: C.muted, lineHeight: 1.6, maxWidth: 440, margin: "0 auto 22px" }}>โอนเงินเข้าบัญชีกลางก่อน ได้ของครบค่อยปล่อยให้ผู้ขาย — ปลอดภัยกว่าซื้อในกลุ่ม</p>
+        <div style={{ fontSize: 25, fontWeight: 800, color: "#fff", textShadow: "0 2px 14px rgba(0,0,0,.45)", lineHeight: 1.4, maxWidth: 520, margin: "0 auto 12px" }}>ตลาดอุปกรณ์ตกปลามือสอง ที่ไม่ต้องกลัวโดนโกง</div>
+        <p style={{ fontSize: 15, color: "rgba(255,255,255,.94)", textShadow: "0 1px 10px rgba(0,0,0,.45)", lineHeight: 1.6, maxWidth: 440, margin: "0 auto 22px" }}>โอนเงินเข้าบัญชีกลางก่อน ได้ของครบค่อยปล่อยให้ผู้ขาย — ปลอดภัยกว่าซื้อในกลุ่ม</p>
         <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
           <LBtn size="lg" href="/market">เริ่มเลือกซื้อ</LBtn>
-          <LBtn size="lg" variant="outline" href="/login">ลงขายสินค้า</LBtn>
+          <LBtn size="lg" variant="outline" href="/login" style={{ borderColor: "#fff", color: "#fff" }}>ลงขายสินค้า</LBtn>
+        </div>
         </div>
       </section>
 
