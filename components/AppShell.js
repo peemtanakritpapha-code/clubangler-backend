@@ -118,7 +118,17 @@ export default function AppShell({ user, banner, children }) {
 
       <AnnouncementBanner banner={banner} />
 
-      <div className="shell-content">{children}</div>
+      <div className="shell-content">
+        {children}
+        {/* footer ลิงก์เอกสาร (P2) — จำเป็นสำหรับรีวิวสโตร์ */}
+        <footer style={{ textAlign: "center", padding: "22px 16px 14px", fontSize: 11.5, color: C.muted }}>
+          <Link href="/privacy" style={{ color: C.muted, textDecoration: "none", fontWeight: 700 }}>นโยบายความเป็นส่วนตัว</Link>
+          <span style={{ margin: "0 8px" }}>·</span>
+          <Link href="/terms" style={{ color: C.muted, textDecoration: "none", fontWeight: 700 }}>ข้อกำหนดการใช้บริการ</Link>
+          <span style={{ margin: "0 8px" }}>·</span>
+          <span>© 2569 ClubAngler</span>
+        </footer>
+      </div>
 
       {/* ── ทรงแอป: tabbar ล่าง (จอแคบ) ── */}
       <nav className="shell-tabbar" style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, background: "#fff", borderTop: `1px solid ${C.line}`, justifyContent: "space-around", alignItems: "center", padding: "6px 4px calc(6px + env(safe-area-inset-bottom))" }}>

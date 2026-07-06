@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -71,6 +72,13 @@ export default function LoginPage() {
             style={{ height: 46, border: "none", borderRadius: 10, background: C.brand, color: "#fff", fontWeight: 800, fontSize: 14.5, cursor: "pointer", opacity: busy ? .6 : 1 }}>
             {busy ? "กำลังดำเนินการ..." : mode === "signup" ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}
           </button>
+          {/* P2: การยอมรับข้อกำหนด — จำเป็นสำหรับสโตร์ */}
+          <div style={{ fontSize: 11.5, color: C.muted, textAlign: "center", lineHeight: 1.8 }}>
+            การสมัครสมาชิกหรือเข้าสู่ระบบ ถือว่าคุณยอมรับ<br />
+            <Link href="/terms" style={{ color: C.brand, fontWeight: 700 }}>ข้อกำหนดการใช้บริการ</Link>
+            {" และ "}
+            <Link href="/privacy" style={{ color: C.brand, fontWeight: 700 }}>นโยบายความเป็นส่วนตัว</Link>
+          </div>
         </div>
       </div>
     </div>
