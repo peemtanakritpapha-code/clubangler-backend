@@ -6,6 +6,8 @@ import AddToCartBar from "@/components/AddToCartBar";
 const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7" };
 const baht = n => "฿" + Number(n || 0).toLocaleString();
 
+export const dynamic = "force-dynamic";
+
 export default async function ProductPage({ params }) {
   const { id } = await params;
   const supabase = await createClient();
@@ -15,6 +17,10 @@ export default async function ProductPage({ params }) {
   const { data: { user } } = await supabase.auth.getUser();
   const isOwner = user && user.id === p.seller_id;
   const canBuy = p.status === "active" && !isOwner;
+
+  // A4: ตัวนับวิว — นับเมื่อคนอื่นเปิดดู (เจ้าของดูเองไม่นับ) ผ่านฟังก์ชัน DB จากก้าว 0
+  if (!isOwner) await supabase.rpc("increment_product_views", { pid: Number(id) });
+  const views = (p.views || 0) + (isOwner ? 0 : 1);
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "system-ui, sans-serif", padding: "20px 16px" }}>
@@ -52,8 +58,8 @@ export default async function ProductPage({ params }) {
             </div>
             <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
               <div style={{ fontSize: 12.5, color: C.muted }}>
-                ผู้ขาย: <b style={{ color: C.ink }}>{seller?.name || "-"}</b>
-                {p.location ? ` · ส่งจาก ${p.location}` : ""} · {p.shipping?.label || ""}
+                ผู้ขาย: <Link href={`/seller/${p.seller_id}`} style={{ color: C.brand, fontWeight: 800, textDecoration: "none" }}>{seller?.name || "-"} ›</Link>
+                {p.location ? ` · ส่งจาก ${p.location}` : ""} · {p.shipping?.label || ""} · เข้าชม {views.toLocaleString()} ครั้ง
               </div>
               {canBuy ? (
                 <AddToCartBar product={{ id: p.id, name: p.name, price: p.price, img: p.images?.[0] || null }} />
