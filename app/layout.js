@@ -3,6 +3,7 @@ import { IBM_Plex_Sans_Thai } from "next/font/google";
 import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "@/components/AppShell";
+import SwRegister from "@/components/SwRegister";
 
 const plexThai = IBM_Plex_Sans_Thai({
   subsets: ["thai", "latin"],
@@ -13,6 +14,11 @@ const plexThai = IBM_Plex_Sans_Thai({
 export const metadata = {
   title: "ClubAngler — ตลาดอุปกรณ์ตกปลา ซื้อขายผ่านระบบเงินฝากปลอดภัย",
   description: "ตลาดซื้อขายอุปกรณ์ตกปลา แบบมีคนกลางถือเงิน (escrow)",
+};
+
+// สีแถบเบราว์เซอร์บนมือถือ = สีแบรนด์ (มาตรฐาน PWA)
+export const viewport = {
+  themeColor: "#0E7E8C",
 };
 
 export default async function RootLayout({ children }) {
@@ -30,6 +36,7 @@ export default async function RootLayout({ children }) {
   return (
     <html lang="th" className={plexThai.className}>
       <body>
+        <SwRegister />
         <AppShell
           user={user ? { id: user.id, name: profile?.name || user.email, isAdmin: !!profile?.is_admin } : null}
           banner={config || {}}
