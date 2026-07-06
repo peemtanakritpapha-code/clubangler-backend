@@ -137,10 +137,10 @@ export default function AppShell({ user, banner, children, buyCount = 0, sellCou
                       <Link href={`/seller/${user.id}`} onClick={closeMenu} style={{ fontSize: 11.5, fontWeight: 700, color: C.brand, textDecoration: "none" }}>ดูโปรไฟล์สาธารณะของฉัน →</Link>
                     </div>
                   </div>
-                  <MenuRow icon={User} label="โปรไฟล์ของฉัน" href="/profile" onClick={closeMenu} />
-                  <MenuRow icon={ShoppingBag} label="การซื้อของฉัน" href="/orders" onClick={closeMenu} badge={buyCount} />
-                  <MenuRow icon={Package} label="การขายของฉัน" href="/orders" onClick={closeMenu} badge={sellCount} />
-                  <MenuRow icon={Store} label="สินค้าที่ลงขาย" href={`/seller/${user.id}`} onClick={closeMenu} />
+                  <MenuRow icon={User} label="โปรไฟล์ของฉัน" href={`/seller/${user.id}`} onClick={closeMenu} />
+                  <MenuRow icon={ShoppingBag} label="การซื้อของฉัน" href="/orders?role=buy" onClick={closeMenu} badge={buyCount} />
+                  <MenuRow icon={Package} label="การขายของฉัน" href="/orders?role=sell" onClick={closeMenu} badge={sellCount} />
+                  <MenuRow icon={Store} label="สินค้าที่ลงขาย" href="/my-products" onClick={closeMenu} />
                   <MenuRow icon={Settings} label="ตั้งค่าบัญชี" href="/profile" onClick={closeMenu} />
                   <MenuRow icon={Wallet} label="บัญชีรับเงิน & ยืนยันตัวตน" href="/profile" onClick={closeMenu} />
                   <MenuRow icon={X} label="ออกจากระบบ" onClick={logout} danger />

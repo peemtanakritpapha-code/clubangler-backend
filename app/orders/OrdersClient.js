@@ -114,10 +114,12 @@ function DisputeModal({ order, userId, onClose, onDone }) {
   );
 }
 
-export default function OrdersClient({ orders, userId }) {
+// W5.1: หน้าโหมดเว็บตาม prototype WOrders — หัวเปลี่ยนตามบทบาท + ชิปกรองสถานะพร้อมตัวนับ + แถบ "ต้องทำอะไรต่อ"
+export default function OrdersClient({ orders, userId, initialRole = "buy" }) {
   const router = useRouter();
   const supabase = createClient();
-  const [tab, setTab] = useState("buy");
+  const tab = initialRole === "sell" ? "sell" : "buy"; // บทบาทล็อกจากเมนูที่กดมา (?role=) — ไม่มีปุ่มสลับ (feedback W5.1)
+  const [statusF, setStatusF] = useState("ทั้งหมด"); // ชิปกรองสถานะ (W5.1)
   const [shipForm, setShipForm] = useState({});
   const [retForm, setRetForm] = useState({});      // ส่งคืน: { [id]: {carrier, no, files} }
   const [recvFiles, setRecvFiles] = useState({});  // ผู้ขายรับของคืน: { [id]: File[] }
@@ -125,7 +127,31 @@ export default function OrdersClient({ orders, userId }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  const list = useMemo(() => orders.filter(o => tab === "buy" ? o.buyer_id === userId : o.seller_id === userId), [orders, tab, userId]);
+  // กลุ่มสถานะสำหรับชิปกรอง (มุมมองผู้ซื้อ/ผู้ขาย — ตาม prototype WOrders)
+  const RETURN_FLOW = ["disputed", "return_requested", "return_approved", "return_shipped", "return_received", "refunded"];
+  const GROUPS = {
+    buy: [
+      ["รอชำระเงิน", ["pending_payment"]],
+      ["รอตรวจสอบ", ["pending_verification"]],
+      ["ที่ต้องได้รับ", ["payment_verified", "shipped"]],
+      ["สำเร็จ", ["delivered", "completed"]],
+      ["ปัญหา/คืนเงิน", RETURN_FLOW],
+    ],
+    sell: [
+      ["รอผู้ซื้อชำระ", ["pending_payment", "pending_verification"]],
+      ["ต้องจัดส่ง", ["payment_verified"]],
+      ["ส่งแล้ว", ["shipped", "delivered"]],
+      ["สำเร็จ", ["completed"]],
+      ["ปัญหา/คืนเงิน", RETURN_FLOW],
+    ],
+  };
+  const groups = GROUPS[tab];
+  const roleList = useMemo(() => orders.filter(o => tab === "buy" ? o.buyer_id === userId : o.seller_id === userId), [orders, tab, userId]);
+  const list = useMemo(() => {
+    if (statusF === "ทั้งหมด") return roleList;
+    const g = groups.find(x => x[0] === statusF);
+    return g ? roleList.filter(o => g[1].includes(o.status)) : roleList;
+  }, [roleList, statusF, tab]);
 
   const call = async (url, body, confirmMsg) => {
     if (confirmMsg && !confirm(confirmMsg)) return;
@@ -185,19 +211,24 @@ export default function OrdersClient({ orders, userId }) {
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "system-ui, sans-serif", padding: "20px 16px" }}>
       <div style={{ maxWidth: 640, margin: "0 auto", display: "grid", gap: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Link href="/" style={{ color: C.brand, fontSize: 13, fontWeight: 700, textDecoration: "none" }}>‹ หน้าแรก</Link>
-          <div style={{ fontWeight: 800, color: C.brand }}>📦 คำสั่งซื้อของฉัน</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Link href="/" aria-label="กลับหน้าแรก" style={{ width: 40, height: 40, borderRadius: 999, background: "#fff", boxShadow: "0 2px 8px rgba(0,0,0,.06)", display: "grid", placeItems: "center", color: C.ink, textDecoration: "none", flex: "none", fontSize: 18 }}>‹</Link>
+          <div style={{ fontSize: 20, fontWeight: 800, color: C.ink }}>{tab === "buy" ? "การซื้อของฉัน" : "การขายของฉัน"}</div>
         </div>
 
-        <div style={{ display: "flex", background: "#fff", borderRadius: 12, padding: 4, boxShadow: "0 2px 8px rgba(0,0,0,.04)" }}>
-          {[["buy", "🛒 ที่ฉันซื้อ"], ["sell", "🏪 ที่ฉันขาย"]].map(([k, label]) => (
-            <button key={k} onClick={() => setTab(k)}
-              style={{ flex: 1, height: 38, border: "none", borderRadius: 9, cursor: "pointer", fontWeight: 800, fontSize: 13,
-                background: tab === k ? C.brandTint : "transparent", color: tab === k ? C.brand : C.muted }}>
-              {label} ({orders.filter(o => k === "buy" ? o.buyer_id === userId : o.seller_id === userId).length})
-            </button>
-          ))}
+        {/* ชิปกรองสถานะพร้อมตัวนับ (prototype WOrders / ภาพการซื้อของฉัน) */}
+        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+          {[...groups.map(g => g[0]), "ทั้งหมด"].map(k => {
+            const g = groups.find(x => x[0] === k);
+            const n = k === "ทั้งหมด" ? roleList.length : roleList.filter(o => g[1].includes(o.status)).length;
+            const on = statusF === k;
+            return (
+              <div key={k} onClick={() => setStatusF(k)} style={{ flex: "none", padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
+                background: on ? C.brand : "#fff", color: on ? "#fff" : C.muted, border: `1px solid ${on ? C.brand : C.line}` }}>
+                {k} ({n})
+              </div>
+            );
+          })}
         </div>
 
         {err && <div style={{ fontSize: 12.5, color: C.danger, background: "#FBEAE8", borderRadius: 8, padding: "8px 12px" }}>{err}</div>}
@@ -224,9 +255,33 @@ export default function OrdersClient({ orders, userId }) {
                     </span>
                   </div>
                   <div style={{ fontSize: 11.5, color: C.muted }}>{o.order_no} · {new Date(o.created_at).toLocaleDateString("th-TH")}</div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: C.brand }}>{isSeller ? baht(o.price) : baht(total)}</div>
+                  {isSeller ? (
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: C.brand }}>{baht(Number(o.price) - Number(o.seller_fee || 0))}</span>
+                      <span style={{ fontSize: 10.5, color: C.muted }}>ยอดที่จะได้รับ</span>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 14, fontWeight: 800, color: C.brand }}>{baht(total)}</div>
+                  )}
                 </div>
               </div>
+
+              {/* แถบ "ต้องทำอะไรต่อ" (prototype: บรรทัด ⚡ สีส้ม) — ข้อความตรงกับความจริงของระบบเท่านั้น */}
+              {!isSeller && o.status === "pending_payment" && (
+                <div style={{ fontSize: 12, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 9, padding: "8px 12px", marginTop: 8 }}>⚡ รอคุณชำระเงิน — โอนแล้วแนบสลิปเพื่อเริ่มการคุ้มครอง escrow</div>
+              )}
+              {!isSeller && o.status === "shipped" && (
+                <div style={{ fontSize: 12, color: "#1E5F8A", background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 9, padding: "8px 12px", marginTop: 8 }}>ℹ️ ของกำลังมา — เมื่อได้รับ กดยืนยันเพื่อปล่อยเงินให้ผู้ขาย</div>
+              )}
+              {!isSeller && o.status === "return_approved" && (
+                <div style={{ fontSize: 12, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 9, padding: "8px 12px", marginTop: 8 }}>⚡ อนุมัติคืนแล้ว — ส่งของกลับและกรอกเลขพัสดุด้านล่าง</div>
+              )}
+              {isSeller && o.status === "payment_verified" && (
+                <div style={{ fontSize: 12, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 9, padding: "8px 12px", marginTop: 8 }}>⚡ ถึงตาคุณแล้ว — แจ้งจัดส่ง + กรอกเลขพัสดุด้านล่าง</div>
+              )}
+              {isSeller && o.status === "return_shipped" && (
+                <div style={{ fontSize: 12, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 9, padding: "8px 12px", marginTop: 8 }}>⚡ ของคืนกำลังมา — รับแล้วถ่ายรูปสภาพและกดยืนยันด้านล่าง</div>
+              )}
 
               <Timeline status={o.status} />
               {o.tracking_no && !inReturnFlow(o.status) && <div style={{ fontSize: 12 }}>เลขพัสดุ: <TrackNo carrier={o.carrier} no={o.tracking_no} /></div>}

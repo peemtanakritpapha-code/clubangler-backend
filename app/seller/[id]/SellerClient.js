@@ -7,7 +7,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MapPin, Clock, ShieldCheck, Share2, Heart, MessageCircle, Package, Plus, Check, ChevronLeft } from "lucide-react";
+import { MapPin, Clock, ShieldCheck, Share2, Heart, MessageCircle, Package, Plus, Check, ChevronLeft, Camera } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7", shop: "#F0A500" };
@@ -21,6 +21,28 @@ export default function SellerClient({ seller: s, products, posts, followers: fo
   const [following, setFollowing] = useState(initiallyFollowing);
   const [followers, setFollowers] = useState(followers0);
   const [copied, setCopied] = useState(false);
+  // W5.2: รูปปก (ไทม์ไลน์) + รูปโปรไฟล์ — อัปโหลดเข้า bucket products โฟลเดอร์ {userId}/ (P1.2 ล้างให้ตอนลบบัญชีอยู่แล้ว)
+  const [coverUrl, setCoverUrl] = useState(s.cover_path || "");
+  const [avatarUrl, setAvatarUrl] = useState(s.avatar_path || "");
+  const [uploading, setUploading] = useState("");
+
+  const uploadImage = async (file, kind) => {
+    if (!file || !me) return;
+    setUploading(kind);
+    try {
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const path = `${me.id}/${kind}-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("products").upload(path, file);
+      if (upErr) throw upErr;
+      const url = supabase.storage.from("products").getPublicUrl(path).data.publicUrl;
+      const col = kind === "cover" ? "cover_path" : "avatar_path";
+      const { error: dbErr } = await supabase.from("profiles").update({ [col]: url }).eq("id", me.id);
+      if (dbErr) throw dbErr;
+      if (kind === "cover") setCoverUrl(url); else setAvatarUrl(url);
+      router.refresh();
+    } catch (e) { alert(e.message || "อัปโหลดไม่สำเร็จ"); }
+    setUploading("");
+  };
 
   const isOwner = me && me.id === s.id;
   const verified = s.kyc_status === "verified";
@@ -57,14 +79,34 @@ export default function SellerClient({ seller: s, products, posts, followers: fo
         </div>
 
         <div style={{ border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden", background: "#fff", margin: "0 20px" }}>
-          {/* ปกลายจุด (prototype บรรทัด 5991–5992) */}
-          <div style={{ height: 120, background: C.brand, position: "relative" }}>
-            <div style={{ position: "absolute", inset: 0, opacity: .12, backgroundImage: "radial-gradient(circle,#fff 1.5px,transparent 1.5px)", backgroundSize: "22px 22px" }} />
+          {/* ปก: รูปไทม์ไลน์จริงถ้ามี / ไม่มี = ลายจุดเดิม + เจ้าของกดเปลี่ยนปกได้ (prototype 5991–5993) */}
+          <div style={{ height: 140, background: C.brand, position: "relative" }}>
+            {coverUrl
+              ? <img src={coverUrl} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+              : <div style={{ position: "absolute", inset: 0, opacity: .12, backgroundImage: "radial-gradient(circle,#fff 1.5px,transparent 1.5px)", backgroundSize: "22px 22px" }} />}
+            {isOwner && (
+              <label style={{ position: "absolute", right: 12, bottom: 12, display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,.94)", color: C.ink, borderRadius: 9, padding: "7px 13px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                <Camera size={14} /> {uploading === "cover" ? "กำลังอัปโหลด..." : "เปลี่ยนปก"}
+                <input type="file" accept="image/*" style={{ display: "none" }} disabled={!!uploading}
+                  onChange={e => { uploadImage(e.target.files?.[0], "cover"); e.target.value = ""; }} />
+              </label>
+            )}
           </div>
 
           <div style={{ padding: "0 20px 16px" }}>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 14, marginTop: -38, position: "relative", zIndex: 1 }}>
-              <div style={{ width: 84, height: 84, borderRadius: "50%", background: s.is_shop ? C.shop : C.brand, border: "4px solid #fff", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 28, fontWeight: 700, flex: "none" }}>{avatar}</div>
+              <div style={{ position: "relative", flex: "none" }}>
+                <div style={{ width: 84, height: 84, borderRadius: "50%", background: s.is_shop ? C.shop : C.brand, border: "4px solid #fff", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 28, fontWeight: 700, overflow: "hidden" }}>
+                  {avatarUrl ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : avatar}
+                </div>
+                {isOwner && (
+                  <label title="เปลี่ยนรูปโปรไฟล์" style={{ position: "absolute", right: -2, bottom: 2, width: 30, height: 30, borderRadius: "50%", background: "#fff", border: `1px solid ${C.line}`, boxShadow: "0 2px 6px rgba(0,0,0,.12)", display: "grid", placeItems: "center", color: C.ink, cursor: "pointer" }}>
+                    <Camera size={14} />
+                    <input type="file" accept="image/*" style={{ display: "none" }} disabled={!!uploading}
+                      onChange={e => { uploadImage(e.target.files?.[0], "avatar"); e.target.value = ""; }} />
+                  </label>
+                )}
+              </div>
               <div style={{ flex: 1, paddingBottom: 6 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ fontSize: 19, fontWeight: 800, color: C.ink }}>{s.name || "ผู้ขาย"}</span>
@@ -122,7 +164,9 @@ export default function SellerClient({ seller: s, products, posts, followers: fo
             {tab === "โพสต์" && (posts.length ? posts.map(f => (
               <div key={f.id} style={{ ...card, padding: 15, marginBottom: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                  <span style={{ width: 36, height: 36, borderRadius: "50%", background: s.is_shop ? C.shop : C.brand, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flex: "none" }}>{avatar}</span>
+                  <span style={{ width: 36, height: 36, borderRadius: "50%", background: s.is_shop ? C.shop : C.brand, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flex: "none", overflow: "hidden" }}>
+                    {avatarUrl ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : avatar}
+                  </span>
                   <div>
                     <div style={{ fontSize: 13.5, fontWeight: 700, color: C.ink }}>{s.name}</div>
                     <div style={{ fontSize: 11.5, color: C.muted }}>{ago(f.created_at)}</div>
