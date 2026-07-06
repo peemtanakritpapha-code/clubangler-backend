@@ -32,9 +32,11 @@ function AnnouncementBanner({ banner }) {
   );
 }
 
+// W4: โลโก้ header = ไอคอนแอปตัวเดียวกัน (public/icon-192.png จาก P1) — เว็บกับแอปเข้าชุดกัน
 const Logo = ({ size = 20 }) => (
   <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
-    <span style={{ width: size + 12, height: size + 12, borderRadius: 10, background: C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: size - 4 }}>🎣</span>
+    <img src="/icon-192.png" alt="ClubAngler" width={size + 12} height={size + 12}
+      style={{ borderRadius: 10, display: "block", flex: "none" }} />
     <b style={{ fontSize: size, color: C.brand }}>ClubAngler</b>
     <span style={{ fontSize: 10, fontWeight: 700, color: C.muted, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 999, padding: "2px 8px" }}>Beta</span>
   </Link>
