@@ -11,7 +11,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, X, ShieldCheck, Fish, Filter, ChevronRight, Plus } from "lucide-react";
+import { Search, X, ShieldCheck, Fish, Filter, ChevronRight, ChevronLeft, Plus } from "lucide-react";
 import { CAT_MAINS, CATEGORY_TREE, catChildren, ALL_BRANDS, COND_GRADES } from "@/lib/catalog";
 
 const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7", bg2: "#F1F3F4" };
@@ -69,8 +69,11 @@ function MasonryCard({ p, idx, router }) {
 export default function MarketClient({ products, loggedIn }) {
   const router = useRouter();
   const [q, setQ] = useState("");
-  const [mainCat, setMainCat] = useState("ทั้งหมด");
-  const [subCat, setSubCat] = useState("ทั้งหมด");
+  // W5.9: หมวดหมู่แบบเส้นทาง (catPath = [] คือทั้งหมด) + modal ไล่ชั้นแบบ prototype — แทน mainCat/subCat 2 ชั้นเดิม
+  const [catPath, setCatPath] = useState([]);
+  const [catOpen, setCatOpen] = useState(false);
+  const [mPath, setMPath] = useState([]);
+  const [catModalQ, setCatModalQ] = useState("");
   const [nCols, setNCols] = useState(2);
   // ฟิลเตอร์ชีต (prototype MarketScreen บรรทัด 912–925, 1030–1090)
   const [filterOpen, setFilterOpen] = useState(false);
@@ -80,7 +83,6 @@ export default function MarketClient({ products, loggedIn }) {
   const [condGrade, setCondGrade] = useState("ทั้งหมด"); // สภาพโดยประมาณ (ใช้เมื่อ cond = มือสอง)
   const [brand, setBrand] = useState("ทั้งหมด");
   const [brandQ, setBrandQ] = useState("");
-  const [catQ, setCatQ] = useState("");   // ค้นหาหมวดหมู่ใน sidebar (W2.1)
   const [sortBy, setSortBy] = useState("ล่าสุด");
   const activeFilterCount =
     (priceMin || priceMax ? 1 : 0) + (cond !== "ทั้งหมด" ? 1 : 0) + (brand !== "ทั้งหมด" ? 1 : 0) + (sortBy !== "ล่าสุด" ? 1 : 0);
@@ -95,13 +97,25 @@ export default function MarketClient({ products, loggedIn }) {
   }, []);
 
   const mains = ["ทั้งหมด", ...CAT_MAINS];
-  const subs = mainCat === "ทั้งหมด" ? [] : ["ทั้งหมด", ...catChildren(CATEGORY_TREE[mainCat]).map(c => c.name)];
-  const selectMain = m => { setMainCat(m); setSubCat("ทั้งหมด"); };
+  const subs = catPath.length === 0 ? [] : ["ทั้งหมด", ...catChildren(CATEGORY_TREE[catPath[0]]).map(c => c.name)];
+  const selectMain = m => setCatPath(m === "ทั้งหมด" ? [] : [m]);
+  // modal ไล่ชั้น (แพทเทิร์นเดียวกับหน้าลงขาย)
+  const catNodeOf = path => path.reduce((node, name, i) => (i === 0 ? CATEGORY_TREE[name] : (catChildren(node).find(k => k.name === name))), null);
+  const levelOptions = (() => {
+    const opts = mPath.length === 0 ? CAT_MAINS : catChildren(catNodeOf(mPath)).map(k => k.name);
+    const qq = catModalQ.trim().toLowerCase();
+    return qq ? opts.filter(o => o.toLowerCase().includes(qq)) : opts;
+  })();
+  const hasKids = name => catChildren(catNodeOf([...mPath, name])).length > 0;
+  const openCatModal = () => { setMPath(catPath.length ? catPath.slice(0, -1) : []); setCatModalQ(""); setCatOpen(true); };
 
   const list = useMemo(() => {
     let l = products;
-    if (mainCat !== "ทั้งหมด") l = l.filter(p => p.cat_main === mainCat);
-    if (subCat !== "ทั้งหมด") l = l.filter(p => p.cat_sub === subCat);
+    if (catPath.length) {
+      l = l.filter(p => p.cat_main === catPath[0]);
+      const sub = catPath.slice(1).join(" › ");
+      if (sub) l = l.filter(p => (p.cat_sub || "") === sub || (p.cat_sub || "").startsWith(sub + " › "));
+    }
     const s = q.trim().toLowerCase();
     if (s) l = l.filter(p => `${p.name} ${p.brand || ""} ${p.location || ""} ${p.seller?.name || ""}`.toLowerCase().includes(s));
     // ฟิลเตอร์ชีต (prototype บรรทัด 934–942)
@@ -117,7 +131,7 @@ export default function MarketClient({ products, loggedIn }) {
     if (sortBy === "priceDesc") l = [...l].sort((a, b) => b.price - a.price);
     // ขายแล้วจมท้ายเสมอ (stable sort — prototype บรรทัด 944)
     return [...l].sort((a, b) => (a.status === "sold" ? 1 : 0) - (b.status === "sold" ? 1 : 0));
-  }, [products, q, mainCat, subCat, priceMin, priceMax, cond, condGrade, brand, sortBy]);
+  }, [products, q, catPath, priceMin, priceMax, cond, condGrade, brand, sortBy]);
 
   // แจกการ์ดเข้าคอลัมน์แบบ index % n (prototype บรรทัด 1015–1026)
   const cols = useMemo(() => {
@@ -185,52 +199,6 @@ export default function MarketClient({ products, loggedIn }) {
       </div>
     </>
   );
-  // หมวดหมู่แนวตั้งใน sidebar (แทน CategoryPicker ของ prototype) + ช่องค้นหาหมวด (W2.1)
-  // ค้นหาเจอทั้งหมวดหลักและหมวดย่อย — เจอหมวดย่อยจะกางให้เห็นและกดเลือกได้ทันที
-  const renderSideCats = () => {
-    const s = catQ.trim().toLowerCase();
-    const subsOf = m => (m === "ทั้งหมด" ? [] : catChildren(CATEGORY_TREE[m]).map(c => c.name));
-    const rows = mains.filter(m => {
-      if (!s) return true;
-      if (m === "ทั้งหมด") return false;
-      return m.toLowerCase().includes(s) || subsOf(m).some(su => su.toLowerCase().includes(s));
-    });
-    return (
-      <div style={{ marginBottom: 12 }}>
-        <input value={catQ} onChange={e => setCatQ(e.target.value)} placeholder="ค้นหาหมวดหมู่..."
-          style={{ width: "100%", height: 38, border: `1px solid ${C.line}`, borderRadius: 10, padding: "0 12px", fontSize: 12.5, fontFamily: "inherit", outline: "none", color: C.ink, boxSizing: "border-box", marginBottom: 8 }} />
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {rows.length === 0 && <div style={{ fontSize: 11.5, color: C.muted, padding: "6px 2px" }}>ไม่พบหมวดหมู่</div>}
-          {rows.map(m => {
-            const open = s ? true : mainCat === m; // ตอนค้นหา: กางหมวดย่อยที่เข้าเงื่อนไขให้เลย
-            const subList = m === "ทั้งหมด" ? [] : ["ทั้งหมด", ...subsOf(m).filter(su => !s || su.toLowerCase().includes(s) || m.toLowerCase().includes(s))];
-            return (
-              <div key={m}>
-                <div onClick={() => { selectMain(m); if (m === "ทั้งหมด") setCatQ(""); }} style={{
-                  padding: "7px 10px", borderRadius: 8, fontSize: 12.5, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between",
-                  background: mainCat === m ? C.brandTint : "transparent", color: mainCat === m ? C.brand : C.ink, fontWeight: mainCat === m ? 700 : 500,
-                }}>
-                  <span>{m}</span>
-                  {m !== "ทั้งหมด" && <ChevronRight size={13} color={mainCat === m ? C.brand : C.muted} style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }} />}
-                </div>
-                {open && m !== "ทั้งหมด" && subList.length > 0 && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 1, margin: "2px 0 4px 10px", borderLeft: `2px solid ${C.line}`, paddingLeft: 8 }}>
-                    {subList.map(su => (
-                      <div key={su} onClick={() => { setMainCat(m); setSubCat(su); }} style={{
-                        padding: "5px 8px", borderRadius: 7, fontSize: 11.5, cursor: "pointer",
-                        background: mainCat === m && subCat === su ? C.brandTint : "transparent", color: mainCat === m && subCat === su ? C.brand : C.muted, fontWeight: mainCat === m && subCat === su ? 700 : 500,
-                      }}>{su}</div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "system-ui, sans-serif", paddingBottom: 90 }}>
       <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", alignItems: "flex-start" }}>
@@ -238,7 +206,17 @@ export default function MarketClient({ products, loggedIn }) {
         {/* ── Sidebar ฟิลเตอร์ (จอกว้างเท่านั้น — prototype WMarketplace บรรทัด 6331–6360) ── */}
         <aside className="mkt-side" style={{ width: 252, flex: "none", background: "#fff", borderRight: `1px solid ${C.line}`, padding: "20px 16px", position: "sticky", top: 74, maxHeight: "calc(100vh - 90px)", overflowY: "auto" }}>
           <div style={lbl}>หมวดหมู่</div>
-          {renderSideCats()}
+          <div style={{ marginBottom: 4 }}>
+            <div onClick={openCatModal} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, minHeight: 42, border: `1.5px solid ${catPath.length ? C.brand : C.line}`, borderRadius: 12, padding: "8px 12px", cursor: "pointer", background: catPath.length ? C.brandTint : "#fff" }}>
+              <span style={{ fontSize: 12.5, color: catPath.length ? C.brand : C.ink, fontWeight: catPath.length ? 700 : 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {catPath.length ? catPath.join(" › ") : "ทั้งหมด"}
+              </span>
+              <ChevronRight size={15} color={catPath.length ? C.brand : C.muted} style={{ flex: "none" }} />
+            </div>
+            {catPath.length > 0 && (
+              <span onClick={() => setCatPath([])} style={{ display: "inline-block", marginTop: 7, fontSize: 12, color: C.muted, textDecoration: "underline", cursor: "pointer" }}>ล้างหมวดหมู่</span>
+            )}
+          </div>
           <div style={lbl}>ช่วงราคา (บาท)</div>
           {renderPrice()}
           <div style={lbl}>สภาพสินค้า</div>
@@ -292,19 +270,19 @@ export default function MarketClient({ products, loggedIn }) {
 
           {/* ชิปหมวดหลัก (มือถือเท่านั้น — desktop ใช้ sidebar) */}
           <div className="mkt-mobile" style={{ padding: "0 14px", display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
-            {mains.map(t => <div key={t} onClick={() => selectMain(t)} style={chip(mainCat === t, false)}>{t}</div>)}
+            {mains.map(t => <div key={t} onClick={() => selectMain(t)} style={chip(t === "ทั้งหมด" ? catPath.length === 0 : catPath[0] === t, false)}>{t}</div>)}
           </div>
 
           {/* ชิปหมวดย่อยชั้นสอง (มือถือเท่านั้น) */}
-          {mainCat !== "ทั้งหมด" && (
+          {catPath.length > 0 && (
             <div className="mkt-mobile" style={{ padding: "8px 14px 0", display: "flex", gap: 8, overflowX: "auto" }}>
-              {subs.map(t => <div key={t} onClick={() => setSubCat(t)} style={chip(subCat === t, true)}>{t}</div>)}
+              {subs.map(t => <div key={t} onClick={() => setCatPath(t === "ทั้งหมด" ? [catPath[0]] : [catPath[0], t])} style={chip(t === "ทั้งหมด" ? catPath.length === 1 : catPath[1] === t, true)}>{t}</div>)}
             </div>
           )}
 
           <div style={{ padding: "8px 14px 6px" }}>
             <span style={{ fontSize: 11.5, color: C.muted }}>
-              {mainCat !== "ทั้งหมด" && <span style={{ color: C.brand, fontWeight: 700 }}>{mainCat}{subCat !== "ทั้งหมด" ? ` › ${subCat}` : ""} · </span>}
+              {catPath.length > 0 && <span style={{ color: C.brand, fontWeight: 700 }}>{catPath.join(" › ")} · </span>}
               พบ {list.length} รายการ
             </span>
           </div>
@@ -336,12 +314,12 @@ export default function MarketClient({ products, loggedIn }) {
 
                 {/* หมวดหมู่ที่เลือก (เลือก/เปลี่ยนจากชิปด้านนอก) */}
                 <div style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, marginBottom: 8 }}>หมวดหมู่</div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 42, border: `1px solid ${mainCat !== "ทั้งหมด" ? C.brand : C.line}`, borderRadius: 10, padding: "8px 12px", marginBottom: 20, background: mainCat !== "ทั้งหมด" ? C.brandTint : "#fff" }}>
-                  <span style={{ fontSize: 12.5, color: mainCat !== "ทั้งหมด" ? C.brand : C.muted, fontWeight: mainCat !== "ทั้งหมด" ? 700 : 400 }}>
-                    {mainCat !== "ทั้งหมด" ? (mainCat + (subCat !== "ทั้งหมด" ? " › " + subCat : "")) : "ทุกหมวดหมู่ — เลือกจากแถบหมวดด้านบน"}
+                <div onClick={openCatModal} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 42, border: `1px solid ${catPath.length ? C.brand : C.line}`, borderRadius: 10, padding: "8px 12px", marginBottom: 20, background: catPath.length ? C.brandTint : "#fff", cursor: "pointer" }}>
+                  <span style={{ fontSize: 12.5, color: catPath.length ? C.brand : C.muted, fontWeight: catPath.length ? 700 : 400 }}>
+                    {catPath.length ? catPath.join(" › ") : "ทุกหมวดหมู่ — แตะเพื่อเลือก"}
                   </span>
-                  {mainCat !== "ทั้งหมด"
-                    ? <span onClick={() => { setMainCat("ทั้งหมด"); setSubCat("ทั้งหมด"); }} style={{ fontSize: 11.5, color: C.brand, textDecoration: "underline", cursor: "pointer" }}>ล้าง</span>
+                  {catPath.length
+                    ? <span onClick={e => { e.stopPropagation(); setCatPath([]); }} style={{ fontSize: 11.5, color: C.brand, textDecoration: "underline", cursor: "pointer" }}>ล้าง</span>
                     : <ChevronRight size={17} color={C.muted} />}
                 </div>
 
@@ -371,6 +349,54 @@ export default function MarketClient({ products, loggedIn }) {
                 <button onClick={() => setFilterOpen(false)} style={{ width: "100%", height: 48, border: "none", borderRadius: 12, background: C.brand, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
                   แสดงผลลัพธ์ ({list.length})
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Modal เลือกหมวดหมู่ (W5.9 — แพทเทิร์นเดียวกับหน้าลงขาย/prototype) ── */}
+          {catOpen && (
+            <div onClick={() => setCatOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(16,19,20,.5)", zIndex: 70, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+              <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 560, maxHeight: "86vh", background: "#fff", borderRadius: 18, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", borderBottom: `1px solid ${C.line}` }}>
+                  {mPath.length > 0 && (
+                    <button onClick={() => { setMPath(p => p.slice(0, -1)); setCatModalQ(""); }} aria-label="ย้อนกลับ"
+                      style={{ border: "none", background: "transparent", cursor: "pointer", color: C.ink, display: "flex", padding: 0 }}><ChevronLeft size={20} /></button>
+                  )}
+                  <div style={{ flex: 1, fontSize: 16, fontWeight: 800, color: C.ink }}>{mPath.length ? mPath[mPath.length - 1] : "เลือกหมวดหมู่สินค้า"}</div>
+                  <button onClick={() => setCatOpen(false)} aria-label="ปิด" style={{ border: "none", background: "transparent", cursor: "pointer", color: C.muted, display: "flex", padding: 0 }}><X size={20} /></button>
+                </div>
+                <div style={{ padding: "12px 18px 0" }}>
+                  <div style={{ position: "relative" }}>
+                    <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: C.muted, display: "flex" }}><Search size={15} /></div>
+                    <input value={catModalQ} onChange={e => setCatModalQ(e.target.value)} placeholder="ค้นหาหมวดหมู่..."
+                      style={{ width: "100%", height: 42, border: "none", borderRadius: 12, padding: "0 12px 0 36px", fontSize: 13.5, background: C.bg, outline: "none", boxSizing: "border-box", fontFamily: "inherit", color: C.ink }} />
+                  </div>
+                </div>
+                {mPath.length > 0 && (
+                  <div style={{ padding: "10px 18px", fontSize: 12, color: C.muted, background: "#FAFAF8", marginTop: 12 }}>{mPath.join(" › ")}</div>
+                )}
+                <div style={{ flex: 1, overflowY: "auto" }}>
+                  <div onClick={() => { setCatPath(mPath.length ? [...mPath] : []); setCatOpen(false); }}
+                    style={{ padding: "13px 18px", borderBottom: `1px solid ${C.line}`, fontSize: 13.5, fontWeight: 800, color: C.brand, cursor: "pointer" }}>
+                    {mPath.length ? `ทั้งหมดใน "${mPath[mPath.length - 1]}"` : "ทั้งหมด (ทุกหมวด)"}
+                  </div>
+                  {levelOptions.map(name => (
+                    <div key={name} onClick={() => (hasKids(name) ? (setMPath(p => [...p, name]), setCatModalQ("")) : (setCatPath([...mPath, name]), setCatOpen(false)))}
+                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "15px 18px", borderBottom: `1px solid ${C.line}`, fontSize: 14, color: C.ink, cursor: "pointer" }}>
+                      <span>{name}</span>
+                      {hasKids(name) ? <ChevronRight size={17} color={C.muted} /> : <span style={{ width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${C.line}` }} />}
+                    </div>
+                  ))}
+                  {levelOptions.length === 0 && <div style={{ padding: 24, fontSize: 12.5, color: C.muted, textAlign: "center" }}>ไม่พบหมวดหมู่</div>}
+                </div>
+                {mPath.length > 0 && (
+                  <div style={{ padding: "12px 18px 16px", borderTop: `1px solid ${C.line}` }}>
+                    <button onClick={() => { setCatPath([...mPath]); setCatOpen(false); }}
+                      style={{ width: "100%", height: 46, border: `1px solid ${C.brand}`, borderRadius: 12, background: C.brandTint, color: C.brand, fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
+                      เลือกเป็น “{mPath.join(" › ")}”
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
