@@ -41,7 +41,7 @@ function LandingCard({ p }) {
       <div style={{ padding: "8px 10px 9px" }}>
         <div style={{ fontSize: 12.5, color: C.ink, fontWeight: 500, lineHeight: 1.35, marginBottom: 7, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", minHeight: 34 }}>{p.name}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 7, borderTop: `1px solid ${C.line}`, paddingTop: 8 }}>
-          <span style={{ width: 22, height: 22, borderRadius: "50%", background: s?.is_shop ? "#F0A500" : C.brand, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, flex: "none" }}>{avatar}</span>
+          <span style={{ width: 22, height: 22, borderRadius: "50%", background: s?.is_shop ? "#F0A500" : C.brand, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, flex: "none", overflow: "hidden" }}>{s?.avatar_path ? <img src={s.avatar_path} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : avatar}</span>
           <span style={{ fontSize: 12, color: C.brand, flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 3, overflow: "hidden" }}>
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
             {verified && <ShieldCheck size={12} style={{ flex: "none" }} />}

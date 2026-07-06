@@ -116,8 +116,8 @@ export default function AppShell({ user, banner, children, buyCount = 0, sellCou
             )}
             {/* อวตาร + ˅ เปิดเมนูโปรไฟล์ (prototype) */}
             <div onClick={() => setMenuOpen(o => !o)} style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", background: menuOpen ? C.brandTint : "transparent", borderRadius: 999, padding: "4px 8px 4px 4px" }}>
-              <span style={{ width: 34, height: 34, borderRadius: 999, background: C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 13.5, fontWeight: 800 }}>
-                {(user.name || "?").trim().charAt(0).toUpperCase()}
+              <span style={{ width: 34, height: 34, borderRadius: 999, background: C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 13.5, fontWeight: 800, overflow: "hidden" }}>
+                {user.avatar ? <img src={user.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (user.name || "?").trim().charAt(0).toUpperCase()}
               </span>
               <ChevronDown size={15} color={C.muted} style={{ transform: menuOpen ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
             </div>
@@ -129,8 +129,8 @@ export default function AppShell({ user, banner, children, buyCount = 0, sellCou
                 <div style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, width: 300, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 14, boxShadow: "0 12px 34px rgba(0,0,0,.13)", overflow: "hidden", zIndex: 50 }}>
                   {/* หัวการ์ด: ชื่อ + ดูโปรไฟล์สาธารณะ */}
                   <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 14px 12px" }}>
-                    <span style={{ width: 46, height: 46, borderRadius: 999, background: C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 18, fontWeight: 800, flex: "none" }}>
-                      {(user.name || "?").trim().charAt(0).toUpperCase()}
+                    <span style={{ width: 46, height: 46, borderRadius: 999, background: C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 18, fontWeight: 800, flex: "none", overflow: "hidden" }}>
+                      {user.avatar ? <img src={user.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (user.name || "?").trim().charAt(0).toUpperCase()}
                     </span>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 14.5, fontWeight: 800, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name}</div>

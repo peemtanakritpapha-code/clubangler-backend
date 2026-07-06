@@ -19,7 +19,7 @@ export default async function FeedPage() {
       .limit(12);
     const sellerIds = [...new Set((products || []).map(p => p.seller_id).filter(Boolean))];
     const { data: sellers } = sellerIds.length
-      ? await supabase.from("profiles").select("id, name, is_shop, kyc_status").in("id", sellerIds)
+      ? await supabase.from("profiles").select("id, name, is_shop, kyc_status, avatar_path").in("id", sellerIds)
       : { data: [] };
     const sellerMap = Object.fromEntries((sellers || []).map(s => [s.id, s]));
     const rows = (products || []).map(p => ({ ...p, seller: sellerMap[p.seller_id] || null }));
@@ -27,9 +27,11 @@ export default async function FeedPage() {
   }
 
   // ── ล็อกอินแล้ว → ฟีดชุมชน (เดิม) ──
-  const { data: posts } = await supabase.from("posts")
-    .select("*, profiles(name, is_shop), products(id, name, price, images), post_likes(count), post_comments(count)")
+  // profiles!posts_author_id_fkey = ระบุเส้นทาง join ชัดๆ (posts→profiles มี 2 ทาง: author_id ตรง / อ้อมผ่าน post_likes → ไม่ระบุ = PGRST201)
+  const { data: posts, error: postsErr } = await supabase.from("posts")
+    .select("*, profiles!posts_author_id_fkey(name, is_shop, avatar_path), products(id, name, price, images), post_likes(count), post_comments(count)")
     .order("created_at", { ascending: false }).limit(40);
+  if (postsErr) console.error("FEED QUERY ERROR:", postsErr.code, "|", postsErr.message);
 
   let myLikes = [], myFollows = [], myProducts = [], me = null;
   {
@@ -38,7 +40,7 @@ export default async function FeedPage() {
       ids.length ? supabase.from("post_likes").select("post_id").eq("user_id", user.id).in("post_id", ids) : { data: [] },
       supabase.from("follows").select("followee_id").eq("follower_id", user.id),
       supabase.from("products").select("id, name, price").eq("seller_id", user.id).eq("status", "active").limit(20),
-      supabase.from("profiles").select("name, is_shop, is_admin").eq("id", user.id).single(),
+      supabase.from("profiles").select("name, is_shop, is_admin, avatar_path").eq("id", user.id).single(),
     ]);
     myLikes = (likes || []).map(x => x.post_id);
     myFollows = (follows || []).map(x => x.followee_id);
@@ -52,7 +54,7 @@ export default async function FeedPage() {
 
   return <FeedClient
     posts={posts || []} latest={latest || []}
-    user={{ id: user.id, name: me?.name, isShop: !!me?.is_shop, isAdmin: !!me?.is_admin }}
+    user={{ id: user.id, name: me?.name, isShop: !!me?.is_shop, isAdmin: !!me?.is_admin, avatar: me?.avatar_path || null }}
     myLikes={myLikes} myFollows={myFollows} myProducts={myProducts}
   />;
 }

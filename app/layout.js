@@ -31,7 +31,7 @@ export default async function RootLayout({ children }) {
     //   ผู้ซื้อ:  pending_payment (จ่าย/แนบสลิปใหม่) · shipped (รอกดยืนยันรับ) · return_approved (ต้องส่งของกลับ)
     //   ผู้ขาย: payment_verified (เงินเข้า escrow รอส่งของ) · return_shipped (ของตีกลับถึง รอกดยืนยัน)
     const [{ data }, { count: b }, { count: s }] = await Promise.all([
-      supabase.from("profiles").select("name, is_admin").eq("id", user.id).single(),
+      supabase.from("profiles").select("name, is_admin, avatar_path").eq("id", user.id).single(),
       supabase.from("orders").select("id", { count: "exact", head: true })
         .eq("buyer_id", user.id).in("status", ["pending_payment", "shipped", "return_approved"]),
       supabase.from("orders").select("id", { count: "exact", head: true })
@@ -49,7 +49,7 @@ export default async function RootLayout({ children }) {
       <body>
         <SwRegister />
         <AppShell
-          user={user ? { id: user.id, name: profile?.name || user.email, isAdmin: !!profile?.is_admin } : null}
+          user={user ? { id: user.id, name: profile?.name || user.email, isAdmin: !!profile?.is_admin, avatar: profile?.avatar_path || null } : null}
           banner={config || {}}
           buyCount={buyCount}
           sellCount={sellCount}

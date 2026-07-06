@@ -37,11 +37,23 @@ export default function SellClient({ userId, tiers }) {
   }, [catPath]);
   const pickCat = (level, val) => setCatPath(p => val ? [...p.slice(0, level), val] : p.slice(0, level));
 
+  // W5.6: เลือกเพิ่มต่อท้ายได้หลายรอบ สูงสุด 10 รูป + ลบรายรูป (รูปแรก = รูปปกในตลาด)
   const pickFiles = e => {
-    const list = Array.from(e.target.files || []).slice(0, 5);
+    const add = Array.from(e.target.files || []);
+    const list = [...files, ...add].slice(0, 10);
     setFiles(list);
-    setPreviews(list.map(x => URL.createObjectURL(x)));
+    setPreviews(p => { p.forEach(u => URL.revokeObjectURL(u)); return list.map(x => URL.createObjectURL(x)); });
+    e.target.value = "";
   };
+  const removeFile = i => {
+    const list = files.filter((_, x) => x !== i);
+    setFiles(list);
+    setPreviews(p => { p.forEach(u => URL.revokeObjectURL(u)); return list.map(x => URL.createObjectURL(x)); });
+  };
+
+  // W5.6: แบรนด์นอกรายชื่อ = แบรนด์ใหม่ → สินค้าเข้าสถานะ "รอตรวจ" จนแอดมินอนุมัติ (ซ่อนจากตลาดระหว่างนั้น)
+  const isNewBrand = !!f.brand.trim() && !ALL_BRANDS.some(b => b.toLowerCase() === f.brand.trim().toLowerCase());
+  const [brandOpen, setBrandOpen] = useState(false); // แผงเลือกแบรนด์ (W5.6 — แบบ prototype BrandPicker)
 
   const submit = async () => {
     setErr("");
@@ -79,10 +91,10 @@ export default function SellClient({ userId, tiers }) {
         stock: Number(f.stock) || 1,
         shipping: f.shipMode === "free" ? { mode: "free", label: "ส่งฟรี" } : { mode: "paid", fee: Number(f.shipFee) || 0, label: `ค่าส่ง ${baht(f.shipFee)}` },
         images: urls,
-        status: "active",   // สัปดาห์ 4 จะเปลี่ยนเป็น review + คิวแอดมิน
+        status: isNewBrand ? "review" : "active", // แบรนด์ใหม่ → รอแอดมินตรวจก่อนขึ้นตลาด
       });
       if (error) throw error;
-      router.push("/market");
+      router.push(isNewBrand ? "/my-products" : "/market");
       router.refresh();
     } catch (e) {
       setErr("บันทึกไม่สำเร็จ: " + (e.message || e));
@@ -103,12 +115,17 @@ export default function SellClient({ userId, tiers }) {
         </div>
 
         <div style={{ background: "#fff", borderRadius: 14, padding: 20, boxShadow: "0 4px 16px rgba(0,0,0,.05)" }}>
-          <div style={label}>รูปสินค้า (1–5 รูป) *</div>
-          <input type="file" accept="image/*" multiple onChange={pickFiles} style={{ fontSize: 12.5 }} />
+          <div style={label}>รูปสินค้า ({files.length}/10) * <span style={{ fontWeight: 500 }}>— รูปแรกคือรูปปกในตลาด</span></div>
+          <input type="file" accept="image/*" multiple onChange={pickFiles} disabled={files.length >= 10} style={{ fontSize: 12.5 }} />
           {previews.length > 0 && (
             <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
               {previews.map((src, i) => (
-                <img key={i} src={src} alt="" style={{ width: 84, height: 84, objectFit: "cover", borderRadius: 10, border: `1px solid ${C.line}` }} />
+                <div key={i} style={{ position: "relative" }}>
+                  <img src={src} alt="" style={{ width: 84, height: 84, objectFit: "cover", borderRadius: 10, border: `1px solid ${i === 0 ? C.brand : C.line}`, display: "block" }} />
+                  {i === 0 && <span style={{ position: "absolute", left: 4, bottom: 4, background: C.brand, color: "#fff", fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 999 }}>ปก</span>}
+                  <button type="button" onClick={() => removeFile(i)} aria-label="ลบรูปนี้"
+                    style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", border: "none", background: C.danger, color: "#fff", fontSize: 11, fontWeight: 800, cursor: "pointer", lineHeight: 1 }}>✕</button>
+                </div>
               ))}
             </div>
           )}
@@ -131,8 +148,37 @@ export default function SellClient({ userId, tiers }) {
           </div>
 
           <div style={label}>แบรนด์</div>
-          <input style={input} list="brands" value={f.brand} onChange={e => set("brand", e.target.value)} placeholder="พิมพ์หรือเลือก เช่น Shimano" />
-          <datalist id="brands">{ALL_BRANDS.map(b => <option key={b} value={b} />)}</datalist>
+          <div style={{ position: "relative" }}>
+            <input style={input} value={f.brand}
+              onChange={e => { set("brand", e.target.value); setBrandOpen(true); }}
+              onFocus={() => setBrandOpen(true)}
+              placeholder="พิมพ์ค้นหาแบรนด์ เช่น Shimano" />
+            {brandOpen && (
+              <>
+                <div onClick={() => setBrandOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 20 }} />
+                <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, zIndex: 21, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12, boxShadow: "0 8px 24px rgba(0,0,0,.12)", maxHeight: 240, overflowY: "auto" }}>
+                  <div onClick={() => { set("brand", ""); setBrandOpen(false); }}
+                    style={{ padding: "10px 14px", fontSize: 13, fontWeight: 800, color: C.brand, cursor: "pointer", borderBottom: `1px solid ${C.line}` }}>ทุกแบรนด์ (ไม่ระบุ)</div>
+                  {ALL_BRANDS.filter(b => !f.brand.trim() || b.toLowerCase().includes(f.brand.trim().toLowerCase())).map(b => (
+                    <div key={b} onClick={() => { set("brand", b); setBrandOpen(false); }}
+                      style={{ padding: "9px 14px", fontSize: 12.5, color: C.ink, cursor: "pointer" }}>{b}</div>
+                  ))}
+                  {ALL_BRANDS.filter(b => !f.brand.trim() || b.toLowerCase().includes(f.brand.trim().toLowerCase())).length === 0 && (
+                    <div style={{ padding: "12px 14px", fontSize: 12.5, color: C.muted, textAlign: "center" }}>ไม่พบแบรนด์ "{f.brand.trim()}"</div>
+                  )}
+                  {isNewBrand && (
+                    <div onClick={() => setBrandOpen(false)}
+                      style={{ padding: "11px 14px", fontSize: 12.5, fontWeight: 800, color: C.brand, cursor: "pointer", borderTop: `1px dashed ${C.line}` }}>＋ เพิ่มแบรนด์ "{f.brand.trim()}" · รอตรวจสอบ</div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+          {isNewBrand && (
+            <div style={{ marginTop: 6, fontSize: 12, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 9, padding: "8px 12px", lineHeight: 1.6 }}>
+              ＋ แบรนด์ใหม่ "{f.brand.trim()}" — ลงขายได้เลย แต่สินค้าจะอยู่สถานะ <b>รอตรวจ</b> (ยังไม่ขึ้นตลาด) จนกว่าทีมงานอนุมัติแบรนด์
+            </div>
+          )}
 
           <div style={label}>สภาพสินค้า *</div>
           <div style={{ display: "flex", gap: 8 }}>

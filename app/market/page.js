@@ -1,4 +1,4 @@
-// app/market/page.js — ตลาดสินค้า (A4 ก้าว 2: ข้อมูลครบสำหรับสกิน Masonry)
+// app/market/page.js — ตลาดสินค้า (A4 ก้าว 2: ข้อมูลครบสำหรับสกิน Masonry · W5.5 เพิ่ม avatar_path)
 import { createClient } from "@/lib/supabase/server";
 import MarketClient from "./MarketClient";
 
@@ -18,7 +18,7 @@ export default async function MarketPage() {
   // ข้อมูลผู้ขายสำหรับแถวล่างการ์ด (prototype MasonryCard บรรทัด 753–767)
   const sellerIds = [...new Set((products || []).map(p => p.seller_id).filter(Boolean))];
   const { data: sellers } = sellerIds.length
-    ? await supabase.from("profiles").select("id, name, is_shop, kyc_status").in("id", sellerIds)
+    ? await supabase.from("profiles").select("id, name, is_shop, kyc_status, avatar_path").in("id", sellerIds)
     : { data: [] };
   const sellerMap = Object.fromEntries((sellers || []).map(s => [s.id, s]));
 

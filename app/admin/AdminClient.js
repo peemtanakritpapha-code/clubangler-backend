@@ -943,6 +943,10 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
                     {p.suspend_reason && <div style={{ fontSize: 11, color: C.danger }}>เหตุผลระงับ: {p.suspend_reason}</div>}
                   </div>
                   <span style={{ fontSize: 10.5, fontWeight: 800, color: st[1], background: `${st[1]}18`, padding: "3px 9px", borderRadius: 999 }}>{st[0]}</span>
+                  {p.status === "review" && (
+                    <button onClick={() => call("/api/admin/product-status", { productId: p.id, action: "restore" })} disabled={busy}
+                      style={{ height: 34, padding: "0 12px", borderRadius: 8, border: "none", background: C.ok, color: "#fff", fontWeight: 800, fontSize: 11.5, cursor: "pointer" }}>✓ อนุมัติปล่อยขาย</button>
+                  )}
                   {p.status === "suspended"
                     ? <button onClick={() => call("/api/admin/product-status", { productId: p.id, action: "restore" })} disabled={busy}
                         style={{ height: 34, padding: "0 12px", borderRadius: 8, border: `1.5px solid ${C.ok}`, background: "#fff", color: C.ok, fontWeight: 800, fontSize: 11.5, cursor: "pointer" }}>เปิดขาย</button>

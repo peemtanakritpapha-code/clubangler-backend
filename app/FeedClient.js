@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Camera, Heart, MessageCircle, Plus, Check } from "lucide-react";
+import { Camera, Heart, MessageCircle, Plus, Check, RotateCcw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 const C = { brand: "#0E7E8C", brandTint: "#E7F2F3", ink: "#17181A", muted: "#80868D", line: "#E4E2DC", accent: "#D98A3D", danger: "#C24D42" };
@@ -18,16 +18,28 @@ const ago = t => {
   if (s < 172800) return "เมื่อวาน";
   return `${Math.floor(s / 86400)} วันที่แล้ว`;
 };
-const AV = ({ name, shop }) => (
-  <span style={{ width: 40, height: 40, borderRadius: 999, flex: "none", background: shop ? C.accent : C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 14, fontWeight: 800 }}>
-    {(name || "?").trim().charAt(0).toUpperCase()}
+const AV = ({ name, shop, src }) => (
+  <span style={{ width: 40, height: 40, borderRadius: 999, flex: "none", background: shop ? C.accent : C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 14, fontWeight: 800, overflow: "hidden" }}>
+    {src ? <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (name || "?").trim().charAt(0).toUpperCase()}
   </span>
 );
 
 function Composer({ user, myProducts, onPosted }) {
   const supabase = createClient();
   const [text, setText] = useState("");
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);           // W5.6b: แนบได้สูงสุด 4 รูป
+  const [previews, setPreviews] = useState([]);
+  const pickImgs = e => {
+    const list = [...files, ...Array.from(e.target.files || [])].slice(0, 4);
+    setFiles(list);
+    setPreviews(p => { p.forEach(u => URL.revokeObjectURL(u)); return list.map(x => URL.createObjectURL(x)); });
+    e.target.value = "";
+  };
+  const removeImg = i => {
+    const list = files.filter((_, x) => x !== i);
+    setFiles(list);
+    setPreviews(p => { p.forEach(u => URL.revokeObjectURL(u)); return list.map(x => URL.createObjectURL(x)); });
+  };
   const [prodId, setProdId] = useState("");
   const [announce, setAnnounce] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -40,20 +52,22 @@ function Composer({ user, myProducts, onPosted }) {
     setBusy(true);
     try {
       let image_url = null;
-      if (file) {
+      const imgUrls = [];
+      for (const file of files) {
         const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-        const path = `${user.id}/post-${Date.now()}.${ext}`;
+        const path = `${user.id}/post-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
         const { error } = await supabase.storage.from("products").upload(path, file);
         if (error) throw error;
-        image_url = supabase.storage.from("products").getPublicUrl(path).data.publicUrl;
+        imgUrls.push(supabase.storage.from("products").getPublicUrl(path).data.publicUrl);
       }
+      image_url = imgUrls[0] || null;
       const { error } = await supabase.from("posts").insert({
-        author_id: user.id, text: text.trim(), image_url,
+        author_id: user.id, text: text.trim(), image_url, images: imgUrls,
         product_id: prodId ? Number(prodId) : null,
         is_announcement: canAnnounce && announce,
       });
       if (error) throw error;
-      setText(""); setFile(null); setProdId(""); setAnnounce(false);
+      setText(""); setFiles([]); setPreviews(p => { p.forEach(u => URL.revokeObjectURL(u)); return []; }); setProdId(""); setAnnounce(false);
       onPosted();
     } catch (e) { setErr(e.message || String(e)); }
     setBusy(false);
@@ -69,16 +83,28 @@ function Composer({ user, myProducts, onPosted }) {
   return (
     <div style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 14, padding: 12 }}>
       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-        <AV name={user.name} shop={user.isShop} />
+        <AV name={user.name} shop={user.isShop} src={user.avatar} />
         <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()}
           placeholder="คุณกำลังคิดอะไรอยู่..."
           style={{ flex: 1, height: 42, border: `1.5px solid ${C.line}`, borderRadius: 999, padding: "0 16px", fontSize: 13.5, outline: "none", background: "#FAFAF8" }} />
-        <label title="แนบรูป" style={{ width: 42, height: 42, borderRadius: 999, border: `1px solid ${file ? C.brand : C.line}`, background: file ? C.brandTint : "#fff", display: "grid", placeItems: "center", cursor: "pointer", color: file ? C.brand : C.muted }}>
+        <label title="แนบรูป (สูงสุด 4)" style={{ width: 42, height: 42, borderRadius: 999, border: `1px solid ${files.length ? C.brand : C.line}`, background: files.length ? C.brandTint : "#fff", display: "grid", placeItems: "center", cursor: "pointer", color: files.length ? C.brand : C.muted, position: "relative" }}>
           <Camera size={18} />
-          <input type="file" accept="image/*" hidden onChange={e => setFile(e.target.files?.[0] || null)} />
+          {files.length > 0 && <span style={{ position: "absolute", top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 999, background: C.brand, color: "#fff", fontSize: 10, fontWeight: 800, display: "grid", placeItems: "center", padding: "0 3px" }}>{files.length}</span>}
+          <input type="file" accept="image/*" multiple hidden onChange={pickImgs} />
         </label>
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
+        {previews.length > 0 && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", width: "100%" }}>
+            {previews.map((src, i) => (
+              <div key={i} style={{ position: "relative" }}>
+                <img src={src} alt="" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 10, border: `1px solid ${C.line}`, display: "block" }} />
+                <button type="button" onClick={() => removeImg(i)} aria-label="ลบรูปนี้"
+                  style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", border: "none", background: C.danger, color: "#fff", fontSize: 11, fontWeight: 800, cursor: "pointer", lineHeight: 1 }}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
         {myProducts.length > 0 && (
           <select value={prodId} onChange={e => setProdId(e.target.value)}
             style={{ height: 32, border: `1px solid ${C.line}`, borderRadius: 999, padding: "0 10px", fontSize: 11.5, background: "#fff", color: C.muted, maxWidth: 220 }}>
@@ -129,7 +155,7 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
     setShowCm(s => !s);
     if (cms === null) {
       const { data } = await supabase.from("post_comments")
-        .select("*, profiles(name, is_shop)").eq("post_id", p.id).order("created_at");
+        .select("*, profiles(name, is_shop, avatar_path)").eq("post_id", p.id).order("created_at");
       setCms(data || []);
     }
   };
@@ -140,7 +166,7 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
     setCmText("");
     const { data } = await supabase.from("post_comments")
       .insert({ post_id: p.id, user_id: user.id, text: t })
-      .select("*, profiles(name, is_shop)").single();
+      .select("*, profiles(name, is_shop, avatar_path)").single();
     if (data) { setCms(c => [...(c || []), data]); setCmN(n => n + 1); }
   };
 
@@ -149,7 +175,7 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
   return (
     <div style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 }}>
       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-        <AV name={author.name} shop={isShop} />
+        <AV name={author.name} shop={isShop} src={author.avatar_path} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
             <b style={{ fontSize: 13.5, color: C.ink }}>{author.name || "ผู้ใช้"}</b>
@@ -168,7 +194,20 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
       </div>
 
       <div style={{ fontSize: 13.5, color: C.ink, lineHeight: 1.65, margin: "10px 0 0", whiteSpace: "pre-wrap" }}>{p.text}</div>
-      {p.image_url && <img src={p.image_url} alt="" style={{ width: "100%", borderRadius: 12, marginTop: 10, border: `1px solid ${C.line}` }} />}
+      {(() => { // W5.6b: โพสต์หลายรูป — โพสต์เก่ามีแต่ image_url ก็ยังแสดงได้
+        const pics = p.images?.length ? p.images : (p.image_url ? [p.image_url] : []);
+        if (!pics.length) return null;
+        if (pics.length === 1) return <img src={pics[0]} alt="" style={{ width: "100%", borderRadius: 12, marginTop: 10, border: `1px solid ${C.line}` }} />;
+        return (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 10 }}>
+            {pics.map((u, i) => (
+              <a key={i} href={u} target="_blank" rel="noreferrer" style={{ display: "block", aspectRatio: "1/1", borderRadius: 12, overflow: "hidden", border: `1px solid ${C.line}` }}>
+                <img src={u} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              </a>
+            ))}
+          </div>
+        );
+      })()}
 
       {p.products && (
         <Link href={`/product/${p.products.id}`} style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10, background: "#FAFAF8", border: `1px solid ${C.line}`, borderRadius: 12, padding: 10, textDecoration: "none" }}>
@@ -197,8 +236,8 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
           {cms === null && <div style={{ fontSize: 12, color: C.muted }}>กำลังโหลด...</div>}
           {(cms || []).map(c => (
             <div key={c.id} style={{ display: "flex", gap: 8 }}>
-              <span style={{ width: 28, height: 28, borderRadius: 999, flex: "none", background: c.profiles?.is_shop ? C.accent : C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 800 }}>
-                {(c.profiles?.name || "?").charAt(0).toUpperCase()}
+              <span style={{ width: 28, height: 28, borderRadius: 999, flex: "none", background: c.profiles?.is_shop ? C.accent : C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 800, overflow: "hidden" }}>
+                {c.profiles?.avatar_path ? <img src={c.profiles.avatar_path} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (c.profiles?.name || "?").charAt(0).toUpperCase()}
               </span>
               <div style={{ background: "#FAFAF8", borderRadius: 10, padding: "7px 11px", flex: 1 }}>
                 <b style={{ fontSize: 11.5, color: C.ink }}>{c.profiles?.name || "ผู้ใช้"}</b>
@@ -236,7 +275,7 @@ export default function FeedClient({ posts, latest, user, myLikes, myFollows, my
 
   return (
     <div style={{ maxWidth: 1060, margin: "0 auto", padding: 14, display: "grid", gap: 14, gridTemplateColumns: "minmax(0,1fr)", alignItems: "start" }} className="feed-grid">
-      <style>{`@media (min-width: 900px) { .feed-grid { grid-template-columns: minmax(0,1fr) 300px !important; } }`}</style>
+      <style>{`@media (min-width: 900px) { .feed-grid { grid-template-columns: minmax(0,1fr) 300px !important; } .feed-side { display: flex !important; } }`}</style>
 
       {/* คอลัมน์ฟีด */}
       <div style={{ display: "grid", gap: 12 }}>
@@ -256,11 +295,17 @@ export default function FeedClient({ posts, latest, user, myLikes, myFollows, my
         ))}
       </div>
 
-      {/* แถบข้าง: สินค้ามาใหม่ (โชว์เฉพาะจอกว้าง ผ่าน CSS shell-web ไม่ได้ — ใช้ media query ตรงนี้) */}
-      <div className="shell-web" style={{ display: "none", flexDirection: "column", gap: 10, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 14, padding: 14, position: "sticky", top: 76 }}>
+      {/* แถบข้าง: สินค้ามาใหม่ (จอกว้าง — prototype ฟีดเว็บ: หัวข้อ + ปุ่มรีเฟรชวงกลม + บรรทัดรอง) */}
+      {/* หมายเหตุ W3: inline display:none + .feed-side !important ใน <style> ด้านบน = ซ่อนมือถือ/โชว์จอกว้าง */}
+      <div className="feed-side" style={{ display: "none", flexDirection: "column", gap: 10, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 14, padding: 14, position: "sticky", top: 76 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <b style={{ fontSize: 14, color: C.ink }}>🕐 สินค้ามาใหม่</b>
-          <Link href="/market" style={{ fontSize: 11.5, fontWeight: 700, color: C.brand, textDecoration: "none" }}>ดูทั้งหมด ›</Link>
+          <button onClick={() => router.refresh()} title="รีเฟรชรายการ" style={{ width: 28, height: 28, borderRadius: 999, border: `1px solid ${C.line}`, background: "#fff", color: C.muted, display: "grid", placeItems: "center", cursor: "pointer" }}>
+            <RotateCcw size={13} />
+          </button>
+        </div>
+        <div style={{ fontSize: 11, color: C.muted, marginTop: -4 }}>
+          ลงขายล่าสุดในตลาด · <Link href="/market" style={{ color: C.brand, fontWeight: 700, textDecoration: "none" }}>ดูทั้งหมด ›</Link>
         </div>
         {latest.map(p => (
           <Link key={p.id} href={`/product/${p.id}`} style={{ display: "flex", gap: 10, alignItems: "center", textDecoration: "none" }}>

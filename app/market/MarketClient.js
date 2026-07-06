@@ -51,8 +51,8 @@ function MasonryCard({ p, idx, router }) {
         </div>
         {/* ผู้ขาย — กดเข้าหน้าร้าน (prototype บรรทัด 753–767) */}
         <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 5 }}>
-          <div style={{ width: 16, height: 16, borderRadius: "50%", background: s?.is_shop ? "#FBEEDD" : C.brandTint, color: s?.is_shop ? "#B8790A" : C.brand, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 800, flex: "none" }}>
-            {(s?.name || "?").charAt(0).toUpperCase()}
+          <div style={{ width: 16, height: 16, borderRadius: "50%", background: s?.is_shop ? "#FBEEDD" : C.brandTint, color: s?.is_shop ? "#B8790A" : C.brand, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 800, flex: "none", overflow: "hidden" }}>
+            {s?.avatar_path ? <img src={s.avatar_path} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (s?.name || "?").charAt(0).toUpperCase()}
           </div>
           <span onClick={(e) => { e.stopPropagation(); router.push(`/seller/${p.seller_id}`); }}
             style={{ fontSize: 9.5, color: C.brand, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
