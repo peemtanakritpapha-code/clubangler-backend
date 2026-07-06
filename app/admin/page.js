@@ -26,12 +26,17 @@ export default async function AdminPage() {
     ? await supabase.from("profiles").select("id, name, phone").in("id", [...new Set(orders.map(o => o.buyer_id))])
     : { data: [] };
 
+  // AD1: รายชื่อผู้ใช้ทั้งหมด (จัดการผู้ใช้ — spec แอดมิน §4)
+  const { data: users } = await supabase.from("profiles")
+    .select("id, name, email, phone, promptpay, bank, kyc_status, kyc_submitted_at, kyc_reject_reason, id_card_path, bank_book_path, is_admin, is_shop, avatar_path, created_at")
+    .order("created_at", { ascending: false }).limit(300);
+
   const { data: kycQueue } = await supabase.from("profiles")
     .select("id, name, email, phone, promptpay, bank, kyc_status, kyc_submitted_at, id_card_path, bank_book_path")
     .eq("kyc_status", "pending").order("kyc_submitted_at");
   const { data: products } = await supabase.from("products")
-    .select("id, name, price, brand, status, suspend_reason, images, seller_id")
-    .order("created_at", { ascending: false }).limit(100);
+    .select("id, name, price, brand, status, suspend_reason, images, seller_id, cat_main, cat_sub, created_at")
+    .order("created_at", { ascending: false }).limit(200);
 
   // A5: ภาพรวมระบบ (prototype AdminOverview บรรทัด 4415–4428) + platform_config สำหรับหน้าตั้งค่า
   const [{ count: ordersTotal }, { data: escrowRows }, { count: activeCount }, { count: soldCount }, { data: config }] = await Promise.all([
@@ -50,5 +55,5 @@ export default async function AdminPage() {
   };
 
   return <AdminClient orders={orders || []} sellers={sellers || []} buyers={buyers || []} userId={user.id}
-    kycQueue={kycQueue || []} products={products || []} stats={stats} config={config || null} tiers={tiers || []} />;
+    kycQueue={kycQueue || []} users={users || []} products={products || []} stats={stats} config={config || null} tiers={tiers || []} />;
 }

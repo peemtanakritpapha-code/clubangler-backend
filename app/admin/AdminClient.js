@@ -421,7 +421,7 @@ function SystemSettings({ config, onError }) {
   );
 }
 
-export default function AdminClient({ orders, sellers, buyers, userId, kycQueue = [], products = [], stats = {}, config = null, tiers = [] }) {
+export default function AdminClient({ orders, sellers, buyers, userId, kycQueue = [], users = [], products = [], stats = {}, config = null, tiers = [] }) {
   const router = useRouter();
   const supabase = createClient();
   const [tab, setTab] = useState("overview");
@@ -449,7 +449,18 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
   const refundQ = useMemo(() => orders.filter(o => o.status === "return_received"), [orders]);
   const [kycUrls, setKycUrls] = useState({});
   const [rejectKyc, setRejectKyc] = useState(null);
+  const [uq, setUq] = useState("");                 // AD1: ค้นหาผู้ใช้
+  const [selUser, setSelUser] = useState(null);     // AD1: modal โปรไฟล์เต็ม
+  const [selOrder, setSelOrder] = useState(null);   // AD2: modal ศูนย์ข้อมูลออเดอร์
   const [suspendP, setSuspendP] = useState(null);
+  // AD4: ตัวกรอง cascading + bulk (spec แอดมิน §4)
+  const [pStatus, setPStatus] = useState("ทั้งหมด");
+  const [pCat, setPCat] = useState("ทั้งหมด");
+  const [pSub, setPSub] = useState("ทั้งหมด");
+  const [pBrand, setPBrand] = useState("ทั้งหมด");
+  const [pSort, setPSort] = useState("ล่าสุด");
+  const [pSel, setPSel] = useState([]);          // id ที่ติ๊กเลือก (bulk)
+  const [bulkSuspend, setBulkSuspend] = useState(false);
   const [pq, setPq] = useState("");
   const payoutQ = useMemo(() => orders.filter(o => o.status === "delivered"), [orders]);
   const sellerOf = id => sellers.find(s => s.id === id);
@@ -476,8 +487,21 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
         }
       }
       if (Object.keys(kurls).length) setKycUrls(p => ({ ...p, ...kurls }));
+      // AD1: เอกสารของผู้ใช้ที่เปิด modal อยู่ (ถ้ายังไม่เคยโหลด)
+      if (selUser) {
+        const extra = {};
+        if (selUser.id_card_path && !kycUrls[selUser.id + "-id"]) {
+          const { data } = await supabase.storage.from("kyc").createSignedUrl(selUser.id_card_path, 3600);
+          if (data?.signedUrl) extra[selUser.id + "-id"] = data.signedUrl;
+        }
+        if (selUser.bank_book_path && !kycUrls[selUser.id + "-bank"]) {
+          const { data } = await supabase.storage.from("kyc").createSignedUrl(selUser.bank_book_path, 3600);
+          if (data?.signedUrl) extra[selUser.id + "-bank"] = data.signedUrl;
+        }
+        if (Object.keys(extra).length) setKycUrls(p => ({ ...p, ...extra }));
+      }
     })();
-  }, [orders, kycQueue]);   // eslint-disable-line
+  }, [orders, kycQueue, selUser]);   // eslint-disable-line
 
   const call = async (url, body) => {
     setErr(""); setBusy(true);
@@ -542,6 +566,7 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
   // เมนู sidebar (prototype AdminSidebar บรรทัด 4269–4327 — ตัดเมนูที่ยังไม่มีระบบ)
   const MENU = [
     { k: "overview", icon: BarChart3, label: "ภาพรวม" },
+    { k: "users", icon: Users, label: "จัดการผู้ใช้", n: kycQueue.length },
     { k: "verify", icon: ReceiptText, label: "ตรวจสลิป", n: verifyQ.length },
     { k: "returns", icon: RotateCcw, label: "คืนของ/พิพาท", n: returnQ.length },
     { k: "payout", icon: Wallet, label: "โอนเงิน/คืนเงิน", n: payoutQ.length + refundQ.length },
@@ -700,7 +725,7 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
                     {g.map(x => (
                       <div key={x.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, background: "#F6F9F9", borderRadius: 8, padding: "8px 11px", fontSize: 12 }}>
                         <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          <b style={{ color: C.ink }}>{x.item}</b> <span style={{ color: C.muted }}>· {x.order_no} · ผู้ขาย {sellerOf(x.seller_id)?.name || "-"}</span>
+                          <b style={{ color: C.ink }}>{x.item}</b> <span onClick={() => setSelOrder(x)} style={{ color: C.brand, fontWeight: 800, cursor: "pointer" }}>· {x.order_no} ›</span> <span style={{ color: C.muted }}>· ผู้ขาย {sellerOf(x.seller_id)?.name || "-"}</span>
                         </span>
                         <b style={{ color: C.ink, flex: "none" }}>{baht(Number(x.price) + Number(x.buyer_fee || 0) + Number(x.ship_fee || 0))}</b>
                       </div>
@@ -734,6 +759,7 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
                   <div>
                     <div style={{ fontSize: 13.5, fontWeight: 800, color: C.ink }}>{o.item}</div>
                     <div style={{ fontSize: 11.5, color: C.muted }}>{o.order_no} · ผู้ซื้อ {buyerOf(o.buyer_id)?.name || "-"}</div>
+                    <span onClick={() => setSelOrder(o)} style={{ display: "inline-block", marginTop: 2, fontSize: 11, color: C.brand, fontWeight: 800, cursor: "pointer" }}>ดูรายละเอียดทั้งหมด ›</span>
                   </div>
                   <b style={{ color: C.brand }}>{baht(Number(o.price) + Number(o.buyer_fee || 0) + Number(o.ship_fee || 0))}</b>
                 </div>
@@ -768,6 +794,7 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
                 <div>
                   <div style={{ fontSize: 13.5, fontWeight: 800, color: C.ink }}>{o.item}</div>
                   <div style={{ fontSize: 11.5, color: C.muted }}>{o.order_no} · ผู้ซื้อ {buyerOf(o.buyer_id)?.name || "-"} · ผู้ขาย {sellerOf(o.seller_id)?.name || "-"}</div>
+                    <span onClick={() => setSelOrder(o)} style={{ display: "inline-block", marginTop: 2, fontSize: 11, color: C.brand, fontWeight: 800, cursor: "pointer" }}>ดูรายละเอียดทั้งหมด ›</span>
                 </div>
                 <span style={{ fontSize: 10.5, fontWeight: 800, color: "#C2410C", background: "#C2410C18", padding: "3px 9px", borderRadius: 999, whiteSpace: "nowrap", alignSelf: "start" }}>
                   {o.status === "disputed" ? "พิพาท · ไกล่เกลี่ย" : o.status === "return_requested" ? "ขอคืน · รอพิจารณา" : "ส่งคืนแล้ว · รอผู้ขายรับ"}
@@ -785,16 +812,23 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
                   </div>
                 )}
               </div>
+              {/* AD3: ตัดสิน 3 ทาง (spec §3) — ทุกทางเขียน state กลางผ่าน return-decide ตัวเดียว */}
               {["return_requested", "disputed"].includes(o.status) && (
-                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                  <button onClick={() => setRejectReturn(o.id)} disabled={busy}
-                    style={{ flex: 1, height: 42, borderRadius: 9, border: `1.5px solid ${C.danger}`, background: "#fff", color: C.danger, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
-                    ✕ ปฏิเสธ
-                  </button>
+                <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
                   <button onClick={() => call("/api/admin/return-decide", { orderId: o.id, approve: true })} disabled={busy}
-                    style={{ flex: 2, height: 42, borderRadius: 9, border: "none", background: "#C2410C", color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
-                    ✓ อนุมัติการคืน
+                    style={{ height: 44, borderRadius: 9, border: "none", background: "#C2410C", color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
+                    📦 ให้ผู้ซื้อคืนของก่อน — อนุมัติการคืน
                   </button>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => setRejectReturn(o.id)} disabled={busy}
+                      style={{ flex: 1, height: 42, borderRadius: 9, border: `1.5px solid ${C.danger}`, background: "#fff", color: C.danger, fontWeight: 800, fontSize: 12.5, cursor: "pointer" }}>
+                      ⚖️ เข้าข้างผู้ขาย — ยกคำขอ
+                    </button>
+                    <button onClick={() => confirm(`คืนเงินผู้ซื้อทันทีโดยไม่ต้องส่งของคืน?\n\n${o.order_no} · ${o.item}\nเคสจะเข้าคิวคืนเงินให้โอนพร้อมแนบสลิป`) && call("/api/admin/return-decide", { orderId: o.id, decision: "refund_now" })} disabled={busy}
+                      style={{ flex: 1, height: 42, borderRadius: 9, border: `1.5px solid ${C.brand}`, background: C.brandTint, color: C.brand, fontWeight: 800, fontSize: 12.5, cursor: "pointer" }}>
+                      💸 คืนเงินเลย ไม่ต้องคืนของ
+                    </button>
+                  </div>
                 </div>
               )}
               {o.status === "return_shipped" && (
@@ -820,6 +854,7 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
                   <div>
                     <div style={{ fontSize: 13.5, fontWeight: 800, color: C.ink }}>{o.item}</div>
                     <div style={{ fontSize: 11.5, color: C.muted }}>{o.order_no} · ผู้ซื้อยืนยันรับแล้ว {o.delivered_at ? new Date(o.delivered_at).toLocaleDateString("th-TH") : ""}</div>
+                    <span onClick={() => setSelOrder(o)} style={{ display: "inline-block", marginTop: 2, fontSize: 11, color: C.brand, fontWeight: 800, cursor: "pointer" }}>ดูรายละเอียดทั้งหมด ›</span>
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontSize: 11, color: C.muted }}>ยอดโอนสุทธิ (หักเรท {baht(o.seller_fee)})</div>
@@ -864,7 +899,8 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
                     <div>
                       <div style={{ fontSize: 13.5, fontWeight: 800, color: C.ink }}>{o.item}</div>
-                      <div style={{ fontSize: 11.5, color: C.muted }}>{o.order_no} · รับของคืนแล้ว{o.auto_confirmed ? " (ระบบยืนยันแทน)" : ""}</div>
+                      <div style={{ fontSize: 11.5, color: C.muted }}>{o.order_no} · {o.require_return === false ? "คำตัดสิน: คืนเงินไม่ต้องคืนของ" : `รับของคืนแล้ว${o.auto_confirmed ? " (ระบบยืนยันแทน)" : ""}`}</div>
+                    <span onClick={() => setSelOrder(o)} style={{ display: "inline-block", marginTop: 2, fontSize: 11, color: C.brand, fontWeight: 800, cursor: "pointer" }}>ดูรายละเอียดทั้งหมด ›</span>
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: 11, color: C.muted }}>ยอดคืนผู้ซื้อ (เต็มจำนวน)</div>
@@ -886,6 +922,46 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
           </>
         )}
 
+
+        {/* ── AD1: จัดการผู้ใช้ (spec แอดมิน §4) ── */}
+        {tab === "users" && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: C.ink }}>จัดการผู้ใช้</div>
+                <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2 }}>ทั้งหมด {users.length} บัญชี (ล่าสุด 300) — คลิกแถวเพื่อดูโปรไฟล์เต็ม</div>
+              </div>
+            </div>
+            <input value={uq} onChange={e => setUq(e.target.value)} placeholder="ค้นหาชื่อ / อีเมล / เบอร์โทร..."
+              style={{ width: "100%", height: 42, border: `1.5px solid ${C.line}`, borderRadius: 10, padding: "0 14px", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+            <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+              {users.filter(u => {
+                const s = uq.trim().toLowerCase();
+                return !s || `${u.name || ""} ${u.email || ""} ${u.phone || ""}`.toLowerCase().includes(s);
+              }).map((u, i) => {
+                const kb = { verified: ["✓ KYC ผ่าน", C.ok, "#F0FDF4"], pending: ["🕐 รอตรวจ", "#B7791F", "#FEF6E7"], rejected: ["✕ ไม่ผ่าน", C.danger, "#FBEAE8"] }[u.kyc_status] || ["ยังไม่ยืนยัน", C.muted, "#F1F3F4"];
+                return (
+                  <div key={u.id} onClick={() => setSelUser(u)}
+                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderTop: i ? `1px solid ${C.line}` : "none", cursor: "pointer" }}>
+                    <span style={{ width: 36, height: 36, borderRadius: "50%", background: u.is_shop ? "#F0A500" : C.brand, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, overflow: "hidden", flex: "none" }}>
+                      {u.avatar_path ? <img src={u.avatar_path} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (u.name || "?").charAt(0).toUpperCase()}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: C.ink }}>
+                        {u.name || "(ไม่มีชื่อ)"}
+                        {u.is_admin && <span style={{ marginLeft: 6, fontSize: 9.5, fontWeight: 800, color: "#fff", background: C.ink, padding: "2px 7px", borderRadius: 999 }}>ADMIN</span>}
+                        {u.is_shop && <span style={{ marginLeft: 6, fontSize: 9.5, fontWeight: 800, color: "#92400E", background: "#FEF6E7", padding: "2px 7px", borderRadius: 999 }}>ร้านค้า</span>}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email || "-"}{u.phone ? ` · ${u.phone}` : ""} · สมัคร {u.created_at ? new Date(u.created_at).toLocaleDateString("th-TH") : "-"}</div>
+                    </div>
+                    <span style={{ fontSize: 10.5, fontWeight: 800, color: kb[1], background: kb[2], padding: "3px 10px", borderRadius: 999, flex: "none" }}>{kb[0]}</span>
+                  </div>
+                );
+              })}
+              {users.length === 0 && <div style={{ padding: 24, fontSize: 12.5, color: C.muted, textAlign: "center" }}>ยังไม่มีผู้ใช้</div>}
+            </div>
+          </>
+        )}
 
         {/* ── คิว KYC — การ์ดเทียบเอกสารคู่ ── */}
         {tab === "kyc" && (kycQueue.length === 0
@@ -926,20 +1002,89 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
           )))}
 
         {/* ── จัดการสินค้า ── */}
-        {tab === "products" && (
+        {tab === "products" && (() => {
+          // ตัวเลือก cascading: เฉพาะค่าที่มีสินค้าจริง (spec §4) — หมวดย่อยล็อกจนเลือกหมวดหลัก
+          const uniq = arr => [...new Set(arr.filter(Boolean))].sort((x, y) => x.localeCompare(y, "th"));
+          const catOpts = uniq(products.map(p => p.cat_main));
+          const inCat = products.filter(p => pCat === "ทั้งหมด" || p.cat_main === pCat);
+          const subOpts = pCat === "ทั้งหมด" ? [] : uniq(inCat.map(p => p.cat_sub));
+          const inSub = inCat.filter(p => pSub === "ทั้งหมด" || p.cat_sub === pSub);
+          const brandOpts = uniq(inSub.map(p => p.brand));
+
+          const counts = { "ทั้งหมด": products.length };
+          for (const [k] of [["active"], ["review"], ["suspended"], ["sold"]]) counts[k] = products.filter(p => p.status === k).length;
+
+          let list = inSub.filter(p => (pStatus === "ทั้งหมด" || p.status === pStatus)
+            && (pBrand === "ทั้งหมด" || (p.brand || "") === pBrand)
+            && (!pq.trim() || `${p.name} ${p.brand || ""}`.toLowerCase().includes(pq.toLowerCase())));
+          list = [...list].sort((x, y) => pSort === "ราคาสูง" ? y.price - x.price : pSort === "ราคาต่ำ" ? x.price - y.price : new Date(y.created_at) - new Date(x.created_at));
+
+          const visIds = list.map(p => p.id);
+          const allSel = visIds.length > 0 && visIds.every(id => pSel.includes(id));
+          const toggleAll = () => setPSel(allSel ? pSel.filter(id => !visIds.includes(id)) : [...new Set([...pSel, ...visIds])]);
+          const toggle = id => setPSel(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
+          const selectStyle = { height: 38, border: `1.5px solid ${C.line}`, borderRadius: 9, padding: "0 8px", fontSize: 12, background: "#fff", maxWidth: 170 };
+          const STATUS_TABS = [["ทั้งหมด", "ทั้งหมด"], ["active", "ขายอยู่"], ["review", "รอตรวจ"], ["suspended", "ระงับ"], ["sold", "ขายแล้ว"]];
+
+          return (
           <>
-            <input value={pq} onChange={e => setPq(e.target.value)} placeholder="ค้นหาชื่อสินค้า / แบรนด์..."
-              style={{ height: 40, border: `1.5px solid ${C.line}`, borderRadius: 9, padding: "0 12px", fontSize: 13, outline: "none", background: "#fff" }} />
-            {products.filter(p => !pq.trim() || `${p.name} ${p.brand || ""}`.toLowerCase().includes(pq.toLowerCase())).map(p => {
+            {/* แท็บสถานะนับสด */}
+            <div style={{ display: "flex", gap: 8, overflowX: "auto" }}>
+              {STATUS_TABS.map(([k, label]) => (
+                <div key={k} onClick={() => setPStatus(k)} style={{ flex: "none", padding: "7px 13px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer",
+                  background: pStatus === k ? C.ink : "#fff", color: pStatus === k ? "#fff" : C.muted, border: `1px solid ${pStatus === k ? C.ink : C.line}` }}>
+                  {label} ({counts[k] ?? 0})
+                </div>
+              ))}
+            </div>
+            {/* ค้นหา + ตัวกรอง 3 ชั้น + เรียง */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input value={pq} onChange={e => setPq(e.target.value)} placeholder="ค้นหาชื่อสินค้า / แบรนด์..."
+                style={{ flex: "1 1 180px", height: 38, border: `1.5px solid ${C.line}`, borderRadius: 9, padding: "0 12px", fontSize: 12.5, outline: "none", background: "#fff" }} />
+              <select value={pCat} onChange={e => { setPCat(e.target.value); setPSub("ทั้งหมด"); setPBrand("ทั้งหมด"); }} style={selectStyle}>
+                <option value="ทั้งหมด">ทุกหมวดหมู่</option>
+                {catOpts.map(c => <option key={c}>{c}</option>)}
+              </select>
+              <select value={pSub} onChange={e => { setPSub(e.target.value); setPBrand("ทั้งหมด"); }} disabled={pCat === "ทั้งหมด"} style={{ ...selectStyle, opacity: pCat === "ทั้งหมด" ? .5 : 1 }}>
+                <option value="ทั้งหมด">{pCat === "ทั้งหมด" ? "หมวดย่อย (เลือกหมวดหลักก่อน)" : "ทุกหมวดย่อย"}</option>
+                {subOpts.map(c => <option key={c}>{c}</option>)}
+              </select>
+              <select value={pBrand} onChange={e => setPBrand(e.target.value)} style={selectStyle}>
+                <option value="ทั้งหมด">ทุกแบรนด์</option>
+                {brandOpts.map(b => <option key={b}>{b}</option>)}
+              </select>
+              <select value={pSort} onChange={e => setPSort(e.target.value)} style={selectStyle}>
+                {["ล่าสุด", "ราคาสูง", "ราคาต่ำ"].map(s => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+            {/* แถบ bulk */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 12.5 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", color: C.ink, fontWeight: 700 }}>
+                <input type="checkbox" checked={allSel} onChange={toggleAll} /> เลือกทั้งหมดที่แสดง ({list.length})
+              </label>
+              {pSel.length > 0 && (
+                <>
+                  <span style={{ color: C.brand, fontWeight: 800 }}>เลือกแล้ว {pSel.length}</span>
+                  <button onClick={() => setBulkSuspend(true)} disabled={busy}
+                    style={{ height: 32, padding: "0 14px", borderRadius: 8, border: `1.5px solid ${C.danger}`, background: "#fff", color: C.danger, fontWeight: 800, fontSize: 11.5, cursor: "pointer" }}>
+                    🚫 ระงับที่เลือก
+                  </button>
+                  <span onClick={() => setPSel([])} style={{ color: C.muted, textDecoration: "underline", cursor: "pointer", fontSize: 11.5 }}>ล้าง</span>
+                </>
+              )}
+            </div>
+            {list.length === 0 && <div style={{ textAlign: "center", color: C.muted, fontSize: 13, padding: "30px 0" }}>ไม่พบสินค้าตามตัวกรอง</div>}
+            {list.map(p => {
               const st = { active: ["ขายอยู่", C.ok], review: ["รอตรวจ", C.warn], suspended: ["ระงับ", C.danger], sold: ["ขายแล้ว", C.muted] }[p.status] || [p.status, C.muted];
               return (
                 <div key={p.id} style={{ ...card, display: "flex", gap: 12, alignItems: "center" }}>
+                  <input type="checkbox" checked={pSel.includes(p.id)} onChange={() => toggle(p.id)} style={{ flexShrink: 0 }} />
                   <div style={{ width: 48, height: 48, borderRadius: 8, background: "#EDF2F2", overflow: "hidden", flexShrink: 0 }}>
                     {p.images?.[0] && <img src={p.images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                    <div style={{ fontSize: 11.5, color: C.muted }}>{baht(p.price)} · ผู้ขาย {sellerOf(p.seller_id)?.name || p.seller_name || "-"}</div>
+                    <div style={{ fontSize: 11.5, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{baht(p.price)} · {p.cat_main || "-"}{p.cat_sub ? ` › ${p.cat_sub}` : ""}{p.brand ? ` · ${p.brand}` : ""} · ผู้ขาย {sellerOf(p.seller_id)?.name || p.seller_name || "-"}</div>
                     {p.suspend_reason && <div style={{ fontSize: 11, color: C.danger }}>เหตุผลระงับ: {p.suspend_reason}</div>}
                   </div>
                   <span style={{ fontSize: 10.5, fontWeight: 800, color: st[1], background: `${st[1]}18`, padding: "3px 9px", borderRadius: 999 }}>{st[0]}</span>
@@ -956,7 +1101,8 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
               );
             })}
           </>
-        )}
+          );
+        })()}
 
       </div>{/* /main */}
 
@@ -966,8 +1112,183 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
         onSubmit={r => { setRejectGroup(null); call("/api/admin/verify", { payGroup: rejectGroup, approve: false, reason: r }); }} />}
       {rejectReturn && <ReasonModal title="เหตุผลปฏิเสธการคืนสินค้า (ผู้ซื้อจะเห็น)" onCancel={() => setRejectReturn(null)}
         onSubmit={r => { setRejectReturn(null); call("/api/admin/return-decide", { orderId: rejectReturn, approve: false, reason: r }); }} />}
+      {/* AD2: modal ศูนย์ข้อมูลออเดอร์ — spec แอดมิน §3 (อ่านอย่างเดียว: การตัดสินใช้ปุ่มบนการ์ดคิวเช่นเดิม) */}
+      {selOrder && (() => {
+        const o = selOrder;
+        const sl = sellerOf(o.seller_id), by = buyerOf(o.buyer_id);
+        const total = Number(o.price) + Number(o.buyer_fee || 0) + Number(o.ship_fee || 0);
+        const net = Number(o.price) + Number(o.ship_fee || 0) - Number(o.seller_fee || 0);
+        const RET = ["disputed", "return_requested", "return_approved", "return_shipped", "return_received", "refunded"];
+        const inRet = RET.includes(o.status);
+        const BSTEP = ["สั่งซื้อ", "ชำระเงิน", "ยืนยันชำระ", "จัดส่ง", "ยืนยันรับ", "เสร็จสิ้น"];
+        const bIdx = { pending_payment: 1, pending_verification: 2, payment_verified: 3, shipped: 4, delivered: 5, completed: 5 }[o.status] ?? 0;
+        const track = (c, no) => {
+          const s = c || "";
+          if (s.includes("Flash")) return `https://www.flashexpress.com/fle/tracking?se=${no}`;
+          if (s.includes("Kerry")) return `https://th.kerryexpress.com/th/track/?track=${no}`;
+          if (s.includes("J&T")) return `https://www.jtexpress.co.th/service/track?billcode=${no}`;
+          if (s.includes("ไปรษณีย์")) return `https://track.thailandpost.co.th/?trackNumber=${no}`;
+          if (s.includes("Ninja")) return `https://www.ninjavan.co/th-th/tracking?id=${no}`;
+          return null;
+        };
+        const TrackA = ({ c, no }) => no ? (track(c, no)
+          ? <a href={track(c, no)} target="_blank" rel="noreferrer" style={{ color: C.brand, fontWeight: 800, textDecoration: "underline" }}>{no} ↗</a>
+          : <b>{no}</b>) : <span style={{ color: C.muted }}>-</span>;
+        const row = (l, v) => <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "3px 0" }}><span style={{ color: C.muted }}>{l}</span><span style={{ color: C.ink, fontWeight: 700, textAlign: "right" }}>{v}</span></div>;
+        return (
+          <div onClick={() => setSelOrder(null)} style={{ position: "fixed", inset: 0, background: "rgba(16,19,20,.5)", zIndex: 90, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+            <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 620, maxHeight: "88vh", overflowY: "auto", background: "#fff", borderRadius: 16, padding: 20, boxSizing: "border-box" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                <div style={{ fontSize: 15.5, fontWeight: 800, color: C.ink }}>ศูนย์ข้อมูลออเดอร์ <span style={{ color: C.muted, fontWeight: 400 }}>{o.order_no}</span></div>
+                <button onClick={() => setSelOrder(null)} style={{ border: "none", background: "transparent", cursor: "pointer", color: C.muted, fontSize: 17, fontWeight: 800 }}>✕</button>
+              </div>
+              <div style={{ fontSize: 11.5, color: C.muted, marginBottom: 12 }}>สั่งเมื่อ {new Date(o.created_at).toLocaleString("th-TH")} · สถานะ: <b style={{ color: C.ink }}>{o.status}</b>{o.pay_group ? ` · กลุ่ม ${o.pay_group}` : ""}</div>
+
+              {inRet ? <div style={{ marginBottom: 12 }}><ReturnSteps status={o.status} /></div> : (
+                <div style={{ display: "flex", marginBottom: 14 }}>
+                  {BSTEP.map((s, i) => (
+                    <div key={i} style={{ flex: 1, textAlign: "center", position: "relative" }}>
+                      {i < BSTEP.length - 1 && <div style={{ position: "absolute", top: 11, left: "50%", width: "100%", height: 2.5, background: i < bIdx ? C.brand : C.line, zIndex: 0 }} />}
+                      <div style={{ width: 24, height: 24, borderRadius: "50%", background: i <= bIdx ? C.brand : "#fff", border: `2px solid ${i <= bIdx ? C.brand : C.line}`, color: i <= bIdx ? "#fff" : C.muted, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", position: "relative", zIndex: 1, fontSize: 10.5, fontWeight: 700 }}>{i + 1}</div>
+                      <div style={{ fontSize: 9.5, color: i <= bIdx ? C.ink : C.muted, marginTop: 4, fontWeight: i === bIdx ? 800 : 400 }}>{s}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 12, alignItems: "center", border: `1px solid ${C.line}`, borderRadius: 10, padding: 12, marginBottom: 10 }}>
+                <div style={{ width: 52, height: 52, borderRadius: 8, background: "#EDF2F2", overflow: "hidden", flex: "none" }}>
+                  {o.products?.images?.[0] && <img src={o.products.images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: C.ink }}>{o.item}</div>
+                  <div style={{ fontSize: 11.5, color: C.muted }}>ผู้ซื้อ: {by?.name || "บัญชีที่ถูกลบ"}{by?.phone ? ` (${by.phone})` : ""} · ผู้ขาย: {sl?.name || "บัญชีที่ถูกลบ"}{sl?.phone ? ` (${sl.phone})` : ""}</div>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                <div style={{ border: `1px solid ${C.line}`, borderRadius: 10, padding: 12 }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 800, color: C.ink, marginBottom: 5 }}>📍 ที่อยู่ผู้ซื้อ</div>
+                  {o.ship_to ? <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}><b style={{ color: C.ink }}>{o.ship_to.name}</b> · {o.ship_to.phone}<br />{o.ship_to.full}</div> : <div style={{ fontSize: 12, color: C.muted }}>-</div>}
+                </div>
+                <div style={{ border: `1px solid ${C.line}`, borderRadius: 10, padding: 12 }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 800, color: C.ink, marginBottom: 5 }}>🚚 การจัดส่ง</div>
+                  <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.8 }}>
+                    ไป: {o.carrier || "-"} · <TrackA c={o.carrier} no={o.tracking_no} /><br />
+                    คืน: {o.return_carrier || "-"} · <TrackA c={o.return_carrier} no={o.return_tracking_no} />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ background: C.brandTint, borderRadius: 10, padding: "10px 14px", marginBottom: 10 }}>
+                {row("ราคาสินค้า", baht(o.price))}
+                {row("ค่าส่ง (ผู้ซื้อจ่าย)", baht(o.ship_fee || 0))}
+                {row("ค่าธรรมเนียมผู้ซื้อ", "+" + baht(o.buyer_fee || 0))}
+                {row("ผู้ซื้อชำระรวม", baht(total))}
+                <div style={{ borderTop: "1px solid rgba(14,126,140,.25)", margin: "5px 0" }} />
+                {row("ค่าธรรมเนียมผู้ขาย (ฐานราคา+ค่าส่ง)", "−" + baht(o.seller_fee || 0))}
+                {row("ยอดโอนให้ผู้ขายสุทธิ", baht(net))}
+              </div>
+              {sl && <PayeeInfo seller={sl} />}
+
+              {(o.dispute_reason || (o.evidence_paths || []).length > 0 || (o.return_condition_paths || []).length > 0) && (
+                <div style={{ background: "#FFF7ED", borderRadius: 10, padding: "10px 12px", marginTop: 10 }}>
+                  {o.dispute_reason && <div style={{ fontSize: 12, fontWeight: 800, color: "#C2410C" }}>{o.require_return ? "เคสขอคืน" : "เคสพิพาท"} — {o.dispute_reason}</div>}
+                  {o.dispute_detail && <div style={{ fontSize: 12, color: C.ink, marginTop: 2 }}>"{o.dispute_detail}"</div>}
+                  {(o.evidence_paths || []).length > 0 && (
+                    <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+                      {o.evidence_paths.map((u, i) => <a key={i} href={u} target="_blank" rel="noreferrer"><img src={u} alt="" style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 8, border: `1px solid ${C.line}` }} /></a>)}
+                    </div>
+                  )}
+                  {(o.return_condition_paths || []).length > 0 && (
+                    <>
+                      <div style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>รูปสภาพของคืน (ผู้ขายถ่าย):</div>
+                      <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                        {o.return_condition_paths.map((u, i) => <a key={i} href={u} target="_blank" rel="noreferrer"><img src={u} alt="" style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 8, border: `1px solid ${C.line}` }} /></a>)}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+              {slipUrls[o.id] && (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 800, color: C.ink, marginBottom: 4 }}>สลิปโอนของผู้ซื้อ (ซูมได้)</div>
+                  <a href={slipUrls[o.id]} target="_blank" rel="noreferrer"><img src={slipUrls[o.id]} alt="สลิป" style={{ maxWidth: 200, borderRadius: 10, border: `1px solid ${C.line}`, display: "block" }} /></a>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* AD1: modal โปรไฟล์ผู้ใช้เต็ม — ตัดสิน KYC ที่นี่ได้ เขียน state เดียวกับคิว KYC (spec §5.5) */}
+      {selUser && (
+        <div onClick={() => setSelUser(null)} style={{ position: "fixed", inset: 0, background: "rgba(16,19,20,.5)", zIndex: 90, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 560, maxHeight: "88vh", overflowY: "auto", background: "#fff", borderRadius: 16, padding: 20, boxSizing: "border-box" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+              <span style={{ width: 46, height: 46, borderRadius: "50%", background: selUser.is_shop ? "#F0A500" : C.brand, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 800, overflow: "hidden", flex: "none" }}>
+                {selUser.avatar_path ? <img src={selUser.avatar_path} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (selUser.name || "?").charAt(0).toUpperCase()}
+              </span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 15.5, fontWeight: 800, color: C.ink }}>{selUser.name || "(ไม่มีชื่อ)"}</div>
+                <div style={{ fontSize: 11.5, color: C.muted }}>{selUser.email || "-"}{selUser.phone ? ` · ${selUser.phone}` : ""}</div>
+              </div>
+              <button onClick={() => setSelUser(null)} style={{ border: "none", background: "transparent", cursor: "pointer", color: C.muted, fontSize: 17, fontWeight: 800 }}>✕</button>
+            </div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+              {selUser.is_admin && <span style={{ fontSize: 10.5, fontWeight: 800, color: "#fff", background: C.ink, padding: "3px 10px", borderRadius: 999 }}>ADMIN</span>}
+              {selUser.is_shop && <span style={{ fontSize: 10.5, fontWeight: 800, color: "#92400E", background: "#FEF6E7", padding: "3px 10px", borderRadius: 999 }}>ร้านค้า</span>}
+              <span style={{ fontSize: 10.5, fontWeight: 800, padding: "3px 10px", borderRadius: 999,
+                color: ({ verified: C.ok, pending: "#B7791F", rejected: C.danger })[selUser.kyc_status] || C.muted,
+                background: ({ verified: "#F0FDF4", pending: "#FEF6E7", rejected: "#FBEAE8" })[selUser.kyc_status] || "#F1F3F4" }}>
+                {({ verified: "✓ KYC ผ่านแล้ว", pending: "🕐 KYC รอตรวจ", rejected: "✕ KYC ไม่ผ่าน" })[selUser.kyc_status] || "ยังไม่ยืนยันตัวตน"}
+              </span>
+              <span style={{ fontSize: 10.5, color: C.muted, padding: "3px 0" }}>สมัคร {selUser.created_at ? new Date(selUser.created_at).toLocaleDateString("th-TH") : "-"}</span>
+            </div>
+            {selUser.kyc_status === "rejected" && selUser.kyc_reject_reason && (
+              <div style={{ fontSize: 12, color: C.danger, background: "#FBEAE8", borderRadius: 8, padding: "8px 12px", marginBottom: 10 }}>เหตุผลที่ไม่ผ่านล่าสุด: {selUser.kyc_reject_reason}</div>
+            )}
+            <PayeeInfo seller={selUser} />
+            {(selUser.id_card_path || selUser.bank_book_path) ? (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 12 }}>
+                {[["id", "บัตรประชาชน"], ["bank", "หน้าสมุดบัญชี"]].map(([k, label]) => (
+                  <div key={k}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: C.muted, marginBottom: 4 }}>{label}</div>
+                    {kycUrls[selUser.id + "-" + k]
+                      ? <a href={kycUrls[selUser.id + "-" + k]} target="_blank" rel="noreferrer">
+                          <img src={kycUrls[selUser.id + "-" + k]} alt={label} style={{ width: "100%", borderRadius: 10, border: `1px solid ${C.line}`, display: "block" }} />
+                          <span style={{ fontSize: 10.5, color: C.brand }}>คลิกซูม ↗</span>
+                        </a>
+                      : <div style={{ fontSize: 12, color: C.muted }}>{(k === "id" ? selUser.id_card_path : selUser.bank_book_path) ? "กำลังโหลด..." : "— ไม่มีเอกสาร"}</div>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: 12, color: C.muted, marginTop: 12 }}>ยังไม่เคยยื่นเอกสารยืนยันตัวตน</div>
+            )}
+            {selUser.kyc_status === "pending" && (
+              <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                <button onClick={() => { setRejectKyc(selUser.id); setSelUser(null); }} disabled={busy}
+                  style={{ flex: 1, height: 42, borderRadius: 9, border: `1.5px solid ${C.danger}`, background: "#fff", color: C.danger, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>✕ ปฏิเสธ</button>
+                <button onClick={() => { call("/api/admin/kyc-decide", { userId: selUser.id, approve: true }); setSelUser(null); }} disabled={busy}
+                  style={{ flex: 2, height: 42, borderRadius: 9, border: "none", background: C.ok, color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>✓ ผ่าน — เปิดสิทธิ์ผู้ขาย</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {rejectKyc && <ReasonModal title="เหตุผลที่เอกสาร KYC ไม่ผ่าน (ผู้ใช้จะเห็น + ยื่นใหม่ได้)" onCancel={() => setRejectKyc(null)}
         onSubmit={r => { setRejectKyc(null); call("/api/admin/kyc-decide", { userId: rejectKyc, approve: false, reason: r }); }} />}
+      {bulkSuspend && <ReasonModal title={`เหตุผลการระงับสินค้า ${pSel.length} รายการ (ผู้ขายทุกคนจะเห็น)`} onCancel={() => setBulkSuspend(false)}
+        onSubmit={async r => {
+          setBulkSuspend(false); setBusy(true); setErr("");
+          for (const id of pSel) {
+            const res = await fetch("/api/admin/product-status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId: id, action: "suspend", reason: r }) });
+            if (!res.ok) { const d = await res.json(); setErr(d.error || "ระงับบางรายการไม่สำเร็จ"); break; }
+          }
+          setPSel([]); setBusy(false); router.refresh();
+        }} />}
       {suspendP && <ReasonModal title="เหตุผลการระงับสินค้า (ผู้ขายจะเห็น)" onCancel={() => setSuspendP(null)}
         onSubmit={r => { setSuspendP(null); call("/api/admin/product-status", { productId: suspendP, action: "suspend", reason: r }); }} />}
       {fail && <ReasonModal title="หมายเหตุโอนไม่สำเร็จ (ผู้ขายจะเห็น + ถูกแจ้งให้แก้บัญชี)" onCancel={() => setFail(null)}
