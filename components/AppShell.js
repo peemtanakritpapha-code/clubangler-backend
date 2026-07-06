@@ -153,7 +153,7 @@ export default function AppShell({ user, banner, children, buyCount = 0, sellCou
                   <MenuRow icon={Package} label="การขายของฉัน" href="/orders?role=sell" onClick={closeMenu} badge={sellCount} />
                   <MenuRow icon={Store} label="สินค้าที่ลงขาย" href="/my-products" onClick={closeMenu} />
                   <MenuRow icon={Settings} label="ตั้งค่าบัญชี" href="/profile" onClick={closeMenu} />
-                  <MenuRow icon={Wallet} label="บัญชีรับเงิน & ยืนยันตัวตน" href="/profile" onClick={closeMenu} />
+                  <MenuRow icon={Wallet} label="บัญชีรับเงิน & ยืนยันตัวตน" href="/kyc" onClick={closeMenu} />
                   <MenuRow icon={X} label="ออกจากระบบ" onClick={logout} danger />
                 </div>
               </>
