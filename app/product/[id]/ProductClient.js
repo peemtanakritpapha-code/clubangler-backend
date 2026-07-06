@@ -19,6 +19,7 @@ const baht = n => "฿" + Number(n || 0).toLocaleString();
 export default function ProductClient({ p, seller, views, canBuy, isOwner, similar }) {
   const imgs = p.images?.length ? p.images : [];
   const [imgIdx, setImgIdx] = useState(0);
+  const [zoom, setZoom] = useState(false); // lightbox ดูรูปขยายใหญ่
   const sold = p.status === "sold";
   const verified = seller?.kyc_status === "verified";
   const sAvatar = (seller?.name || "?").trim().charAt(0).toUpperCase();
@@ -47,7 +48,8 @@ export default function ProductClient({ p, seller, views, canBuy, isOwner, simil
           <div>
             <div style={{ aspectRatio: "1/1", background: C.brandTint, borderRadius: 16, position: "relative", overflow: "hidden", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
               {imgs[imgIdx]
-                ? <img src={imgs[imgIdx]} alt={p.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                ? <img src={imgs[imgIdx]} alt={p.name} onClick={() => setZoom(true)} title="คลิกเพื่อขยาย"
+                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", cursor: "zoom-in" }} />
                 : <Fish size={80} color={C.brand} strokeWidth={1} />}
               {sold && (
                 <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.38)", display: "grid", placeItems: "center" }}>
@@ -164,6 +166,25 @@ export default function ProductClient({ p, seller, views, canBuy, isOwner, simil
           </div>
         )}
       </div>
+      {/* lightbox ดูรูปขยาย: คลิกพื้นปิด · ‹ › เลื่อนรูป · ✕ ปิด */}
+      {zoom && imgs[imgIdx] && (
+        <div onClick={() => setZoom(false)} style={{ position: "fixed", inset: 0, background: "rgba(16,19,20,.92)", zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <img src={imgs[imgIdx]} alt={p.name} onClick={e => e.stopPropagation()}
+            style={{ maxWidth: "92vw", maxHeight: "88vh", objectFit: "contain", borderRadius: 10 }} />
+          <button onClick={() => setZoom(false)} aria-label="ปิด"
+            style={{ position: "fixed", top: 18, right: 18, width: 40, height: 40, borderRadius: 999, border: "none", background: "rgba(255,255,255,.14)", color: "#fff", fontSize: 17, fontWeight: 800, cursor: "pointer" }}>✕</button>
+          {imgs.length > 1 && (
+            <>
+              <button onClick={e => { e.stopPropagation(); setImgIdx(i => (i - 1 + imgs.length) % imgs.length); }} aria-label="รูปก่อนหน้า"
+                style={{ position: "fixed", left: 14, top: "50%", transform: "translateY(-50%)", width: 42, height: 42, borderRadius: 999, border: "none", background: "rgba(255,255,255,.14)", color: "#fff", fontSize: 19, cursor: "pointer" }}>‹</button>
+              <button onClick={e => { e.stopPropagation(); setImgIdx(i => (i + 1) % imgs.length); }} aria-label="รูปถัดไป"
+                style={{ position: "fixed", right: 14, top: "50%", transform: "translateY(-50%)", width: 42, height: 42, borderRadius: 999, border: "none", background: "rgba(255,255,255,.14)", color: "#fff", fontSize: 19, cursor: "pointer" }}>›</button>
+              <span style={{ position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)", color: "#fff", fontSize: 12.5, fontWeight: 700, background: "rgba(255,255,255,.14)", padding: "5px 14px", borderRadius: 999 }}>{imgIdx + 1} / {imgs.length}</span>
+            </>
+          )}
+        </div>
+      )}
+
     </div>
   );
 }

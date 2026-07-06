@@ -25,9 +25,33 @@ export default function PayClient({ order: o, groupOrders, config, userId }) {
 
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState("");
-  const [amount, setAmount] = useState(total);
+  const [qrFail, setQrFail] = useState(false); // โหลด QR ไม่ได้ → โชว์เลขพร้อมเพย์ตามเดิม
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // บันทึกรูป QR ลงเครื่อง (มือถือ: เซฟแล้วเปิดแอปธนาคาร → สแกนจากรูป)
+  const qrUrl = config?.promptpay_id
+    ? `https://promptpay.io/${encodeURIComponent(String(config.promptpay_id).replace(/[^0-9]/g, ""))}/${Number(total)}.png`
+    : null;
+  const [qrSaving, setQrSaving] = useState(false);
+  const saveQr = async () => {
+    if (!qrUrl || qrSaving) return;
+    setQrSaving(true);
+    try {
+      const res = await fetch(qrUrl);
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `ClubAngler-QR-${o.pay_group || o.order_no}-${Number(total)}บาท.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      window.open(qrUrl, "_blank"); // โหลด blob ไม่ได้ → เปิดรูปให้กดเซฟเอง
+    }
+    setQrSaving(false);
+  };
 
   const pick = e => {
     const f = e.target.files?.[0];
@@ -47,7 +71,8 @@ export default function PayClient({ order: o, groupOrders, config, userId }) {
       // API จะกระจายสลิปนี้ให้ทุกออเดอร์ใน pay_group เดียวกันเอง
       const res = await fetch(`/api/orders/${o.id}/slip`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slipPath: path, transferAmount: amount }),
+        // ยอดโอนส่งอัตโนมัติ = ยอดที่ต้องชำระ (เดิมให้ผู้ใช้พิมพ์เอง — แอดมินยังใช้เทียบยอดตอนตรวจสลิปเหมือนเดิม)
+        body: JSON.stringify({ slipPath: path, transferAmount: total }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "ส่งสลิปไม่สำเร็จ");
@@ -90,7 +115,7 @@ export default function PayClient({ order: o, groupOrders, config, userId }) {
             </>
           )}
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.line}`, fontSize: 15 }}>
-            <b>ยอดที่ต้องโอน{isGroup ? " (รวมทั้งกลุ่ม)" : ""}</b><b style={{ color: C.brand, fontSize: 20 }}>{baht(total)}</b>
+            <b>ยอดที่ต้องชำระ{isGroup ? " (รวมทั้งกลุ่ม)" : ""}</b><b style={{ color: C.brand, fontSize: 20 }}>{baht(total)}</b>
           </div>
         </div>
 
@@ -118,7 +143,26 @@ export default function PayClient({ order: o, groupOrders, config, userId }) {
             <div style={card}>
               <div style={{ fontWeight: 800, fontSize: 14.5, color: C.ink, marginBottom: 10 }}>โอนเข้าบัญชีแพลตฟอร์ม</div>
               {config?.promptpay_enabled && config?.promptpay_id ? (
-                <div style={{ background: C.brandTint, borderRadius: 10, padding: "12px 14px", marginBottom: 8 }}>
+                <div style={{ background: C.brandTint, borderRadius: 10, padding: "14px", marginBottom: 8, textAlign: "center" }}>
+                  {/* QR พร้อมเพย์ฝังยอดเงิน (มาตรฐาน EMVCo ผ่านบริการ promptpay.io) — โหลดไม่ได้ก็ยังโอนด้วยเลขได้ */}
+                  {!qrFail && (
+                    <img src={qrUrl}
+                      alt={`QR พร้อมเพย์ ยอด ${baht(total)}`} onError={() => setQrFail(true)}
+                      style={{ width: 190, height: 190, borderRadius: 12, background: "#fff", padding: 8, display: "block", margin: "0 auto 8px", boxSizing: "border-box" }} />
+                  )}
+                  {!qrFail && <div style={{ fontSize: 12.5, fontWeight: 800, color: C.brand, marginBottom: 8 }}>สแกนจ่ายยอด {baht(total)} ได้เลย — ยอดฝังใน QR แล้ว</div>}
+                  {!qrFail && (
+                    <button type="button" onClick={saveQr} disabled={qrSaving}
+                      style={{ height: 38, padding: "0 20px", border: `1.5px solid ${C.brand}`, borderRadius: 999, background: "#fff", color: C.brand, fontWeight: 800, fontSize: 12.5, cursor: "pointer", marginBottom: 10, opacity: qrSaving ? .6 : 1 }}>
+                      {qrSaving ? "กำลังบันทึก..." : "💾 บันทึกรูป QR"}
+                    </button>
+                  )}
+                  {qrFail && (
+                    <button type="button" onClick={() => setQrFail(false)}
+                      style={{ height: 34, padding: "0 16px", border: `1px solid ${C.line}`, borderRadius: 999, background: "#fff", color: C.muted, fontWeight: 700, fontSize: 12, cursor: "pointer", marginBottom: 8 }}>
+                      ↻ ลองโหลด QR อีกครั้ง
+                    </button>
+                  )}
                   <div style={{ fontSize: 12, color: C.muted }}>พร้อมเพย์</div>
                   <div style={{ fontSize: 17, fontWeight: 800, color: C.brand, letterSpacing: .5 }}>{config.promptpay_id}</div>
                   <div style={{ fontSize: 12, color: C.muted }}>{config.promptpay_name || ""}</div>
@@ -141,11 +185,21 @@ export default function PayClient({ order: o, groupOrders, config, userId }) {
 
             <div style={card}>
               <div style={{ fontWeight: 800, fontSize: 14.5, color: C.ink, marginBottom: 10 }}>แนบสลิปโอนเงิน *</div>
-              <input type="file" accept="image/*" onChange={pick} style={{ fontSize: 12.5 }} />
-              {preview && <img src={preview} alt="สลิป" style={{ width: 160, borderRadius: 10, border: `1px solid ${C.line}`, marginTop: 10, display: "block" }} />}
-              <div style={{ fontSize: 12, fontWeight: 800, color: C.muted, margin: "12px 0 6px" }}>ยอดที่โอน (บาท)</div>
-              <input type="number" value={amount} onChange={e => setAmount(e.target.value)}
-                style={{ width: 180, height: 40, border: `1.5px solid ${C.line}`, borderRadius: 9, padding: "0 12px", fontSize: 14, outline: "none" }} />
+              {preview ? (
+                <div style={{ position: "relative", width: 170 }}>
+                  <img src={preview} alt="สลิป" style={{ width: 170, borderRadius: 12, border: `1px solid ${C.line}`, display: "block" }} />
+                  <button type="button" onClick={() => { setFile(null); setPreview(""); }} aria-label="ลบสลิป"
+                    style={{ position: "absolute", top: -8, right: -8, width: 24, height: 24, borderRadius: "50%", border: "2px solid #fff", background: C.danger, color: "#fff", fontSize: 11, fontWeight: 800, cursor: "pointer", lineHeight: 1 }}>✕</button>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file?.name}</div>
+                </div>
+              ) : (
+                <label style={{ display: "grid", placeItems: "center", gap: 4, minHeight: 120, border: `1.5px dashed ${C.brand}`, borderRadius: 14, background: "#FAFDFD", cursor: "pointer", padding: 14 }}>
+                  <span style={{ fontSize: 26 }}>🧾</span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: C.brand }}>แตะเพื่อเลือกรูปสลิป</span>
+                  <span style={{ fontSize: 11, color: C.muted }}>รองรับรูปภาพจากแกลเลอรี่/ภาพหน้าจอแอปธนาคาร</span>
+                  <input type="file" accept="image/*" onChange={pick} hidden />
+                </label>
+              )}
               {err && <div style={{ marginTop: 10, fontSize: 12.5, color: C.danger, background: "#FBEAE8", borderRadius: 8, padding: "8px 12px" }}>{err}</div>}
               <button onClick={submit} disabled={busy}
                 style={{ marginTop: 12, width: "100%", height: 48, border: "none", borderRadius: 10, background: C.brand, color: "#fff", fontWeight: 800, fontSize: 15, cursor: "pointer", opacity: busy ? .6 : 1 }}>

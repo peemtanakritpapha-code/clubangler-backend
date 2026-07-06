@@ -244,6 +244,7 @@ function PaymentSettings({ config, onError }) {
   };
   const [draft, setDraft] = useState(base);
   const [nb, setNb] = useState({ bank: "", accountNo: "", accountName: "" });
+  const [qrTest, setQrTest] = useState(100); // ยอดทดสอบพรีวิว QR ไดนามิก
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const dirty = JSON.stringify(draft) !== JSON.stringify(base);
@@ -298,6 +299,31 @@ function PaymentSettings({ config, onError }) {
               <div style={{ fontSize: 11.5, fontWeight: 700, color: C.ink, marginBottom: 5 }}>ชื่อบัญชี</div>
               <input value={draft.promptpay_name} onChange={e => set({ promptpay_name: e.target.value })} placeholder="ชื่อที่ลูกค้าจะเห็น" style={inputS} />
             </div>
+
+            {/* พรีวิว QR ไดนามิก — สร้างสดจากเลขในร่าง (หน้าชำระเงินจริงฝังยอดของแต่ละออเดอร์อัตโนมัติ) */}
+            {(() => {
+              const digits = String(draft.promptpay_id || "").replace(/[^0-9]/g, "");
+              if (digits.length < 10) return (
+                <div style={{ fontSize: 11.5, color: C.muted, background: "#F6F9F9", borderRadius: 9, padding: "9px 12px" }}>
+                  ⓘ กรอกหมายเลขพร้อมเพย์ให้ครบ (เบอร์ 10 หลัก / บัตรประชาชน-ผู้เสียภาษี 13 หลัก) แล้วพรีวิว QR ไดนามิกจะแสดงตรงนี้
+                </div>
+              );
+              return (
+                <div style={{ background: "#F6F9F9", borderRadius: 10, padding: 14, textAlign: "center" }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 800, color: C.ink, marginBottom: 8 }}>พรีวิว QR ไดนามิก (ตัวอย่างยอด ฿{Number(qrTest || 0).toLocaleString()})</div>
+                  <img key={digits + "-" + qrTest} src={`https://promptpay.io/${digits}/${Number(qrTest) || 0}.png`} alt="พรีวิว QR"
+                    style={{ width: 150, height: 150, background: "#fff", borderRadius: 10, padding: 6, boxSizing: "border-box" }} />
+                  <div style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center", marginTop: 8 }}>
+                    <span style={{ fontSize: 11.5, color: C.muted }}>ลองเปลี่ยนยอดทดสอบ:</span>
+                    <input type="number" value={qrTest} onChange={e => setQrTest(e.target.value)}
+                      style={{ ...inputS, width: 90, height: 32 }} />
+                  </div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 8, lineHeight: 1.6 }}>
+                    หน้าชำระเงินจะสร้าง QR แบบนี้โดย<b>ฝังยอดจริงของแต่ละออเดอร์</b>อัตโนมัติ — สแกนด้วยแอปธนาคารเพื่อเช็คว่าเลขถูกก่อนกดบันทึก
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         ) : <div style={{ fontSize: 12, color: C.muted }}>ปิดอยู่ — ลูกค้าจะไม่เห็นตัวเลือก "QR PromptPay"</div>}
       </div>

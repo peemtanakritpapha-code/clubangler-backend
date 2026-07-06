@@ -34,9 +34,8 @@ export default function SellClient({ userId, tiers, editProduct = null }) {
   });
   const set = (k, v) => setF(p => ({ ...p, [k]: v }));
   const [catPath, setCatPath] = useState(isEdit && ep.cat_main ? [ep.cat_main, ...(ep.cat_sub ? ep.cat_sub.split(" › ") : [])] : []);
-  const [oldImgs, setOldImgs] = useState(isEdit ? (ep.images || []) : []);
-  const [files, setFiles] = useState([]);
-  const [previews, setPreviews] = useState([]);
+  // ระบบรูปแบบลิสต์เดียว (จัดเรียง+ตั้งปกได้ ทั้งรูปเดิมและรูปใหม่ปนกัน) — ลำดับในลิสต์ = ลำดับที่บันทึกจริง รูปแรก = ปก
+  const [imgs, setImgs] = useState(isEdit ? (ep.images || []).map(url => ({ k: "old", url })) : []);
   const [issueInput, setIssueInput] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -49,21 +48,20 @@ export default function SellClient({ userId, tiers, editProduct = null }) {
   const net = feeBase - fee; // คุณจะได้รับ = (ราคา+ค่าส่ง) − ค่าธรรมเนียม
   const range = useMemo(() => feeTierRange(feeBase, tiers), [feeBase, tiers]);
 
-  /* ── รูปภาพ: เลือกเพิ่มหลายรอบ รวมเก่า+ใหม่ ≤ 10 + ลบรายรูป ── */
+  /* ── รูปภาพ: เพิ่มหลายรอบ ≤10 · ลบรายรูป · ตั้งปก (ย้ายขึ้นหน้า) · เลื่อนซ้าย/ขวา ── */
   const pickFiles = e => {
-    const add = Array.from(e.target.files || []);
-    const list = [...files, ...add].slice(0, Math.max(0, 10 - oldImgs.length));
-    setFiles(list);
-    setPreviews(p => { p.forEach(u => URL.revokeObjectURL(u)); return list.map(x => URL.createObjectURL(x)); });
+    const add = Array.from(e.target.files || []).slice(0, Math.max(0, 10 - imgs.length));
+    if (add.length) setImgs(l => [...l, ...add.map(f => ({ k: "new", file: f, prev: URL.createObjectURL(f) }))]);
     e.target.value = "";
   };
-  const removeFile = i => {
-    const list = files.filter((_, x) => x !== i);
-    setFiles(list);
-    setPreviews(p => { p.forEach(u => URL.revokeObjectURL(u)); return list.map(x => URL.createObjectURL(x)); });
-  };
-  const removeOldImg = i => setOldImgs(l => l.filter((_, x) => x !== i));
-  const totalImgs = oldImgs.length + files.length;
+  const removeImg = i => setImgs(l => { if (l[i].k === "new") URL.revokeObjectURL(l[i].prev); return l.filter((_, x) => x !== i); });
+  const setCover = i => setImgs(l => [l[i], ...l.filter((_, x) => x !== i)]);
+  const moveImg = (i, d) => setImgs(l => {
+    const j = i + d;
+    if (j < 0 || j >= l.length) return l;
+    const n = [...l]; [n[i], n[j]] = [n[j], n[i]]; return n;
+  });
+  const totalImgs = imgs.length;
 
   /* ── แบรนด์: แผงจัดกลุ่มตามตัวอักษร + แบรนด์ใหม่ → รอตรวจ ── */
   const isNewBrand = !!f.brand.trim() && !ALL_BRANDS.some(b => b.toLowerCase() === f.brand.trim().toLowerCase());
@@ -112,16 +110,17 @@ export default function SellClient({ userId, tiers, editProduct = null }) {
     if (f.shipMode === "paid" && !(Number(f.shipFee) >= 0)) return setErr("กรอกค่าส่ง");
     setBusy(true);
     try {
-      const urls = [];
-      for (const file of files) {
-        const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      // อัปโหลดรูปใหม่ตามตำแหน่งจริงในลิสต์ — ลำดับที่ผู้ขายจัด = ลำดับที่บันทึก (รูปแรกคือปก)
+      const allImgs = [];
+      for (const it of imgs) {
+        if (it.k === "old") { allImgs.push(it.url); continue; }
+        const ext = (it.file.name.split(".").pop() || "jpg").toLowerCase();
         const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-        const { error } = await supabase.storage.from("products").upload(path, file, { cacheControl: "3600" });
+        const { error } = await supabase.storage.from("products").upload(path, it.file, { cacheControl: "3600" });
         if (error) throw error;
-        urls.push(supabase.storage.from("products").getPublicUrl(path).data.publicUrl);
+        allImgs.push(supabase.storage.from("products").getPublicUrl(path).data.publicUrl);
       }
       const cond = f.isNew ? "ของใหม่" : `มือสอง · ${f.grade}`;
-      const allImgs = [...oldImgs, ...urls];
       const row = {
         name: f.name.trim(),
         description: f.description.trim(),
@@ -231,21 +230,25 @@ export default function SellClient({ userId, tiers, editProduct = null }) {
 
           {/* ── รูปภาพ: ช่อง tile ทันสมัย (prototype ภาพ 2) ── */}
           <div style={label}>รูปภาพสินค้า ({totalImgs}/10) <span style={{ color: C.danger }}>*</span> <span style={{ fontWeight: 500, color: C.muted }}>— รูปแรกคือรูปปกในตลาด</span></div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 92px)", gap: 10 }}>
-            {oldImgs.map((src, i) => (
-              <div key={"old" + i} style={{ position: "relative", width: 92, height: 92 }}>
-                <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 12, border: `2px solid ${i === 0 ? C.brand : C.line}`, display: "block", boxSizing: "border-box" }} />
-                {i === 0 && <span style={{ position: "absolute", left: 5, bottom: 5, background: C.brand, color: "#fff", fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 999 }}>ปก</span>}
-                <button type="button" onClick={() => removeOldImg(i)} aria-label="ลบรูปนี้"
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 92px)", gap: 12, rowGap: 26 }}>
+            {imgs.map((it, i) => (
+              <div key={it.k === "old" ? it.url : it.prev} style={{ position: "relative", width: 92 }}>
+                <img src={it.k === "old" ? it.url : it.prev} alt=""
+                  style={{ width: 92, height: 92, objectFit: "cover", borderRadius: 12, border: `2px solid ${i === 0 ? C.brand : C.line}`, display: "block", boxSizing: "border-box" }} />
+                {i === 0 && <span style={{ position: "absolute", left: 5, top: 5, background: C.brand, color: "#fff", fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 999 }}>ปก</span>}
+                <button type="button" onClick={() => removeImg(i)} aria-label="ลบรูปนี้"
                   style={{ position: "absolute", top: -7, right: -7, width: 22, height: 22, borderRadius: "50%", border: "2px solid #fff", background: C.danger, color: "#fff", fontSize: 11, fontWeight: 800, cursor: "pointer", lineHeight: 1 }}>✕</button>
-              </div>
-            ))}
-            {previews.map((src, i) => (
-              <div key={"new" + i} style={{ position: "relative", width: 92, height: 92 }}>
-                <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 12, border: `2px solid ${i === 0 && oldImgs.length === 0 ? C.brand : C.line}`, display: "block", boxSizing: "border-box" }} />
-                {i === 0 && oldImgs.length === 0 && <span style={{ position: "absolute", left: 5, bottom: 5, background: C.brand, color: "#fff", fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 999 }}>ปก</span>}
-                <button type="button" onClick={() => removeFile(i)} aria-label="ลบรูปนี้"
-                  style={{ position: "absolute", top: -7, right: -7, width: 22, height: 22, borderRadius: "50%", border: "2px solid #fff", background: C.danger, color: "#fff", fontSize: 11, fontWeight: 800, cursor: "pointer", lineHeight: 1 }}>✕</button>
+                {/* แถวจัดเรียง: ◀ ตั้งปก ▶ */}
+                <div style={{ display: "flex", justifyContent: "center", gap: 4, marginTop: 4 }}>
+                  <button type="button" onClick={() => moveImg(i, -1)} disabled={i === 0} aria-label="เลื่อนซ้าย"
+                    style={{ width: 22, height: 20, border: `1px solid ${C.line}`, borderRadius: 6, background: "#fff", color: i === 0 ? C.line : C.muted, fontSize: 10, cursor: i === 0 ? "default" : "pointer", lineHeight: 1 }}>◀</button>
+                  {i > 0 && (
+                    <button type="button" onClick={() => setCover(i)}
+                      style={{ height: 20, padding: "0 8px", border: `1px solid ${C.brand}`, borderRadius: 6, background: C.brandTint, color: C.brand, fontSize: 9.5, fontWeight: 800, cursor: "pointer", lineHeight: 1 }}>ตั้งปก</button>
+                  )}
+                  <button type="button" onClick={() => moveImg(i, 1)} disabled={i === imgs.length - 1} aria-label="เลื่อนขวา"
+                    style={{ width: 22, height: 20, border: `1px solid ${C.line}`, borderRadius: 6, background: "#fff", color: i === imgs.length - 1 ? C.line : C.muted, fontSize: 10, cursor: i === imgs.length - 1 ? "default" : "pointer", lineHeight: 1 }}>▶</button>
+                </div>
               </div>
             ))}
             {totalImgs < 10 && (

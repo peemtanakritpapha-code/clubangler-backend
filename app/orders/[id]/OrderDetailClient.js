@@ -15,7 +15,8 @@ const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7
 const baht = n => "฿" + Number(n || 0).toLocaleString();
 const CARRIERS = ["Flash Express", "Kerry Express", "J&T Express", "ไปรษณีย์ไทย EMS", "Ninja Van", "อื่นๆ"];
 const RETURN_FLOW = ["disputed", "return_requested", "return_approved", "return_shipped", "return_received", "refunded"];
-const DISPUTE_REASONS = ["สินค้าไม่ตรงตามที่ลงขาย", "สินค้าชำรุด/เสียหาย", "ได้รับสินค้าไม่ครบ", "อื่นๆ"];
+const DISPUTE_REASONS = ["สินค้าไม่ตรงปก", "สินค้าชำรุด/เสียหาย", "ไม่ได้รับสินค้า", "อื่นๆ"];
+const DANGER = "#C24D42"; // โทนแดงของฟอร์มพิพาทตาม reference (ไม่ใช่ส้มอิฐ)
 
 // เลขพัสดุ = ลิงก์เปิดหน้า track ของขนส่งจริง (spec §7 ข้อ 5)
 const trackUrl = (carrier, no) => {
@@ -81,23 +82,33 @@ function StepTimeline({ status, steps }) {
   );
 }
 
-// modal เปิดพิพาท/ขอคืน (ย้ายจาก OrdersClient — เหตุผล+คำอธิบาย+รูปบังคับ ตาม spec §3 ข้อ 6)
+// ฟอร์มแจ้งปัญหา/ขอคืน — ดีไซน์+พฤติกรรมตาม ClubAngler_dispute_form.jsx (checklist 7 จุด)
+// pill เหตุผล · photo grid 62×62 ลบรายรูป + กล่อง "+" เส้นประ · ปุ่มล็อกจนครบ 3 อย่างและบอกสิ่งที่ขาด
 function DisputeModal({ order, userId, onClose, onDone }) {
   const supabase = createClient();
-  const [reason, setReason] = useState("");
-  const [detail, setDetail] = useState("");
-  const [wantReturn, setWantReturn] = useState(true);
-  const [files, setFiles] = useState([]);
+  const [dF, setDF] = useState({ reason: "", detail: "", returnWant: true, files: [], previews: [] });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const ok = reason && detail.trim() && files.length > 0;
+  const dOk = dF.reason && dF.detail.trim() && dF.files.length > 0;
+
+  const addFiles = e => {
+    const add = Array.from(e.target.files || []).slice(0, 5 - dF.files.length);
+    if (!add.length) return;
+    const files = [...dF.files, ...add];
+    setDF(f => { f.previews.forEach(u => URL.revokeObjectURL(u)); return { ...f, files, previews: files.map(x => URL.createObjectURL(x)) }; });
+    e.target.value = "";
+  };
+  const removePhoto = i => {
+    const files = dF.files.filter((_, j) => j !== i);
+    setDF(f => { f.previews.forEach(u => URL.revokeObjectURL(u)); return { ...f, files, previews: files.map(x => URL.createObjectURL(x)) }; });
+  };
 
   const submit = async () => {
-    if (!ok) return setErr("เลือกเหตุผล + อธิบาย + แนบรูปอย่างน้อย 1 รูป");
+    if (!dOk || busy) return;
     setErr(""); setBusy(true);
     try {
       const urls = [];
-      for (const f of files.slice(0, 5)) {
+      for (const f of dF.files) {
         const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
         const path = `${userId}/dispute-${order.order_no}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
         const { error } = await supabase.storage.from("products").upload(path, f);
@@ -106,40 +117,76 @@ function DisputeModal({ order, userId, onClose, onDone }) {
       }
       const res = await fetch(`/api/orders/${order.id}/dispute`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason, detail: detail.trim(), requireReturn: wantReturn, evidencePaths: urls }),
+        body: JSON.stringify({ reason: dF.reason, detail: dF.detail.trim(), requireReturn: dF.returnWant, evidencePaths: urls }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "ส่งเรื่องไม่สำเร็จ");
-      onDone();
+      // toast แยกข้อความสองโหมด (ข้อความตามจริง: SLA เป็นเป้าหมายทีมงาน)
+      onDone(dF.returnWant ? "ส่งคำขอคืนสินค้าแล้ว — แอดมินกำลังพิจารณา" : "เปิดข้อพิพาทแล้ว — แอดมินกำลังตรวจสอบ");
     } catch (e) { setErr(e.message); setBusy(false); }
   };
 
+  const label = { fontSize: 12, fontWeight: 700, color: C.ink, marginBottom: 6 };
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(16,19,20,.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, background: "#fff", borderRadius: 16, padding: 20, maxHeight: "88vh", overflowY: "auto", boxSizing: "border-box" }}>
-        <div style={{ fontSize: 15.5, fontWeight: 800, color: C.ink, marginBottom: 4 }}>แจ้งปัญหา / ขอคืนสินค้า</div>
-        <div style={{ fontSize: 12, color: C.muted, marginBottom: 14 }}>{order.order_no} · {order.item} — ผู้ขายและแอดมินจะเห็นข้อมูลชุดนี้</div>
-        <div style={{ display: "grid", gap: 6, marginBottom: 12 }}>
-          {DISPUTE_REASONS.map(r => (
-            <div key={r} onClick={() => setReason(r)} style={{ display: "flex", gap: 10, alignItems: "center", border: `1.5px solid ${reason === r ? C.ret : C.line}`, background: reason === r ? "#FFF7ED" : "#fff", borderRadius: 10, padding: "10px 12px", cursor: "pointer", fontSize: 13, color: C.ink, fontWeight: reason === r ? 700 : 400 }}>
-              <span style={{ width: 15, height: 15, borderRadius: "50%", border: `2px solid ${reason === r ? C.ret : C.line}`, background: reason === r ? C.ret : "#fff", flex: "none", boxShadow: reason === r ? "inset 0 0 0 3px #fff" : "none" }} />{r}
-            </div>
-          ))}
+      <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, background: "#fff", borderRadius: 14, border: `1.5px solid ${DANGER}`, padding: 16, maxHeight: "88vh", overflowY: "auto", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 13.5, fontWeight: 800, color: C.ink }}>แจ้งปัญหาสินค้า</div>
+          <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>{order.order_no} · {order.item} — ผู้ขายและแอดมินจะเห็นข้อมูลชุดนี้</div>
         </div>
-        <textarea value={detail} onChange={e => setDetail(e.target.value)} rows={3} placeholder="อธิบายปัญหาที่พบ (บังคับ) *"
-          style={{ width: "100%", border: `1.5px solid ${C.line}`, borderRadius: 10, padding: 10, fontSize: 13, boxSizing: "border-box", fontFamily: "inherit", outline: "none", marginBottom: 10 }} />
-        <div style={{ fontSize: 12, fontWeight: 700, color: C.ink, marginBottom: 4 }}>รูปหลักฐาน 1–5 รูป (บังคับ) *</div>
-        <input type="file" accept="image/*" multiple onChange={e => setFiles(Array.from(e.target.files || []))} style={{ fontSize: 12, marginBottom: 10 }} />
-        <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12.5, color: C.ink, cursor: "pointer", marginBottom: 12 }}>
-          <input type="checkbox" checked={wantReturn} onChange={e => setWantReturn(e.target.checked)} /> ต้องการคืนสินค้า-คืนเงิน (ไม่ติ๊ก = ขอให้แอดมินไกล่เกลี่ย)
+
+        {/* 1. เหตุผล — pill 4 ตัวเลือก */}
+        <div>
+          <div style={label}>เหตุผล <span style={{ color: DANGER }}>*</span></div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {DISPUTE_REASONS.map(r => (
+              <span key={r} onClick={() => setDF(f => ({ ...f, reason: r }))}
+                style={{ fontSize: 12.5, padding: "7px 14px", borderRadius: 999, cursor: "pointer", border: `1.5px solid ${dF.reason === r ? DANGER : C.line}`, background: dF.reason === r ? "#FBEAE8" : "#fff", color: dF.reason === r ? DANGER : C.ink, fontWeight: dF.reason === r ? 700 : 500 }}>{r}</span>
+            ))}
+          </div>
+        </div>
+
+        {/* 2. รายละเอียด — บังคับ */}
+        <div>
+          <div style={label}>รายละเอียด <span style={{ color: DANGER }}>*</span></div>
+          <textarea value={dF.detail} onChange={e => setDF(f => ({ ...f, detail: e.target.value }))} placeholder="อธิบายปัญหาที่พบ..." rows={3}
+            style={{ width: "100%", border: `1px solid ${C.line}`, borderRadius: 10, padding: "10px 12px", fontSize: 13, fontFamily: "inherit", resize: "vertical", outline: "none", boxSizing: "border-box" }} />
+        </div>
+
+        {/* 3. รูปหลักฐาน — photo grid 62×62 + ✕ + กล่อง "+" เส้นประ (ซ่อนเมื่อครบ 5) */}
+        <div>
+          <div style={label}>รูปหลักฐาน <span style={{ color: DANGER }}>*</span> <span style={{ fontWeight: 400, color: C.muted }}>(อย่างน้อย 1 สูงสุด 5 — แอดมินใช้เทียบกับรูปประกาศขาย)</span></div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {dF.previews.map((src, i) => (
+              <div key={i} style={{ position: "relative", width: 62, height: 62 }}>
+                <img src={src} alt="" style={{ width: 62, height: 62, objectFit: "cover", borderRadius: 8, border: `1px solid ${C.line}` }} />
+                <span onClick={() => removePhoto(i)}
+                  style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: DANGER, color: "#fff", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>✕</span>
+              </div>
+            ))}
+            {dF.files.length < 5 && (
+              <label style={{ width: 62, height: 62, border: `1.5px dashed ${C.line}`, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, cursor: "pointer", fontSize: 22 }}>
+                +
+                <input type="file" accept="image/*" multiple onChange={addFiles} style={{ display: "none" }} />
+              </label>
+            )}
+          </div>
+        </div>
+
+        {/* 4. โหมด: คืนของ (default) vs พิพาทไกล่เกลี่ย */}
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.ink, cursor: "pointer" }}>
+          <input type="checkbox" checked={dF.returnWant} onChange={e => setDF(f => ({ ...f, returnWant: e.target.checked }))} style={{ accentColor: C.brand }} />
+          ต้องการคืนสินค้าและรับเงินคืน (ไม่ติ๊ก = เปิดข้อพิพาทให้แอดมินไกล่เกลี่ย)
         </label>
-        {err && <div style={{ fontSize: 12.5, color: C.danger, background: "#FBEAE8", borderRadius: 8, padding: "8px 12px", marginBottom: 10 }}>{err}</div>}
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={onClose} style={{ flex: 1, height: 44, border: `1px solid ${C.line}`, borderRadius: 10, background: "#fff", color: C.ink, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>ยกเลิก</button>
-          <button onClick={submit} disabled={busy || !ok} style={{ flex: 2, height: 44, border: "none", borderRadius: 10, background: ok ? C.ret : "#C9D6D8", color: "#fff", fontWeight: 800, fontSize: 13.5, cursor: "pointer", opacity: busy ? .6 : 1 }}>
-            {busy ? "กำลังส่ง..." : "ส่งเรื่องให้แอดมิน"}
-          </button>
-        </div>
+
+        {err && <div style={{ fontSize: 12.5, color: DANGER, background: "#FBEAE8", borderRadius: 8, padding: "8px 12px" }}>{err}</div>}
+
+        {/* 5. ปุ่มส่ง — ล็อกจนครบ + บอกสิ่งที่ขาด */}
+        <button onClick={submit} disabled={!dOk || busy}
+          style={{ height: 44, border: "none", borderRadius: 10, background: DANGER, color: "#fff", fontWeight: 800, fontSize: 13.5, cursor: dOk ? "pointer" : "not-allowed", fontFamily: "inherit", opacity: dOk && !busy ? 1 : .4 }}>
+          {busy ? "กำลังส่ง..." : dOk ? (dF.returnWant ? "ส่งคำขอคืนสินค้า" : "ยืนยันเปิดข้อพิพาท") : "เลือกเหตุผล + กรอกรายละเอียด + แนบรูปอย่างน้อย 1"}
+        </button>
+        <button onClick={onClose} style={{ height: 38, border: `1px solid ${C.line}`, borderRadius: 10, background: "#fff", color: C.ink, fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>ยกเลิก</button>
       </div>
     </div>
   );
@@ -152,6 +199,7 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [dispute, setDispute] = useState(false);
+  const [toast, setToast] = useState("");
   const [labelOpen, setLabelOpen] = useState(false);
   const [ship, setShip] = useState({ carrier: CARRIERS[0], no: "" });
   const [ret, setRet] = useState({ carrier: CARRIERS[0], no: "", files: [] });
@@ -470,7 +518,13 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
         </div>
       </div>
 
-      {dispute && <DisputeModal order={o} userId={userId} onClose={() => setDispute(false)} onDone={() => { setDispute(false); router.refresh(); }} />}
+      {dispute && <DisputeModal order={o} userId={userId} onClose={() => setDispute(false)}
+        onDone={msg => { setDispute(false); setToast(msg); setTimeout(() => setToast(""), 4000); router.refresh(); }} />}
+      {toast && (
+        <div style={{ position: "fixed", left: "50%", bottom: 28, transform: "translateX(-50%)", background: C.ink, color: "#fff", fontSize: 12.5, fontWeight: 700, padding: "11px 18px", borderRadius: 999, boxShadow: "0 8px 24px rgba(0,0,0,.25)", zIndex: 200, whiteSpace: "nowrap" }}>
+          ✓ {toast}
+        </div>
+      )}
       {labelOpen && <ShippingLabel order={o} sender={sender} onClose={() => setLabelOpen(false)} />}
     </div>
   );
