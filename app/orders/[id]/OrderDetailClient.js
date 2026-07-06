@@ -74,7 +74,7 @@ function StepTimeline({ status, steps }) {
             <div style={{ width: 32, height: 32, borderRadius: "50%", background: passed ? C.brand : current ? C.brandTint : "#fff", border: `2px solid ${passed || current ? C.brand : C.line}`, color: passed ? "#fff" : current ? C.brand : C.muted, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", position: "relative", zIndex: 1, fontSize: 12.5, fontWeight: 700 }}>
               {passed ? <Check size={14} strokeWidth={3} /> : i + 1}
             </div>
-            <div style={{ fontSize: 10.5, color: passed || current ? C.ink : C.muted, marginTop: 5, fontWeight: current ? 800 : 400 }}>{s}</div>
+            <div style={{ fontSize: "clamp(8.5px, 2.6vw, 10.5px)", color: passed || current ? C.ink : C.muted, marginTop: 5, fontWeight: current ? 800 : 400, padding: "0 1px" }}>{s}</div>
           </div>
         );
       })}
@@ -262,7 +262,7 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
     navigator.clipboard?.writeText(`${st.name || ""} ${st.phone || ""}\n${st.full || ""}`.trim());
   };
 
-  const card = { background: "#fff", borderRadius: 14, padding: 18, boxShadow: "0 4px 16px rgba(0,0,0,.05)" };
+  const card = { background: "#fff", borderRadius: 14, padding: 18, boxShadow: "0 4px 16px rgba(0,0,0,.05)", minWidth: 0, overflow: "hidden" };
   const box = { border: `1px solid ${C.line}`, borderRadius: 10, padding: 14 };
   const cpName = counterpart?.name || "บัญชีที่ถูกลบ";
   const roleQ = isSeller ? "sell" : "buy";
@@ -279,9 +279,9 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
 
         <div style={card}>
           {/* หัว: เลขออเดอร์ + badge สถานะตามบทบาท */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 3 }}>
-            <span style={{ fontSize: 15, fontWeight: 800, color: C.ink }}>คำสั่งซื้อ <span style={{ color: C.muted, fontWeight: 400 }}>{o.order_no}</span></span>
-            <span style={{ fontSize: 12, fontWeight: 800, padding: "4px 12px", borderRadius: 999, background: `${badge[1]}1a`, color: badge[1], whiteSpace: "nowrap" }}>{badge[0]}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 3, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 15, fontWeight: 800, color: C.ink, overflowWrap: "anywhere" }}>คำสั่งซื้อ <span style={{ color: C.muted, fontWeight: 400 }}>{o.order_no}</span></span>
+            <span style={{ fontSize: 12, fontWeight: 800, padding: "4px 12px", borderRadius: 999, background: `${badge[1]}1a`, color: badge[1] }}>{badge[0]}</span>
           </div>
           <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 18 }}>สั่งเมื่อ {new Date(o.created_at).toLocaleString("th-TH", { day: "numeric", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" })}</div>
 
@@ -307,8 +307,11 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
             </div>
           )}
 
-          {/* ที่อยู่ | การจัดส่ง (spec §3 ข้อ 4 / §4 กติกาเปิดที่อยู่) */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+          {/* ที่อยู่ | การจัดส่ง (spec §3 ข้อ 4 / §4 กติกาเปิดที่อยู่) — จอแคบยุบคอลัมน์เดียว */}
+          <style>{`.od-2col { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 14px; }
+.od-2col > div { min-width: 0; overflow-wrap: anywhere; }
+@media (min-width: 560px) { .od-2col { grid-template-columns: 1fr 1fr; } }`}</style>
+          <div className="od-2col">
             <div style={box}>
               <div style={{ fontSize: 12, fontWeight: 800, color: C.ink, marginBottom: 7, display: "flex", alignItems: "center", gap: 5 }}><MapPin size={14} color={C.brand} /> ที่อยู่จัดส่ง</div>
               {isSeller && !escrowIn && !inReturn ? (
