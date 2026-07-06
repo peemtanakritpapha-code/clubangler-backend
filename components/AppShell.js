@@ -2,9 +2,19 @@
 // components/AppShell.js — เปลือก 2 ร่างจาก prototype:
 // จอแคบ = ทรงแอป (header + tabbar ล่าง) · จอกว้าง = ทรงเว็บ (เมนูบน)
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { LayoutGrid, Store, Plus, ShoppingCart, User, Wrench } from "lucide-react";
 import NotiBell from "@/components/NotiBell";
+import { subscribeCart } from "@/lib/cart";
+
+/* badge เลขแดงมุมไอคอนตะกร้า — ยกจาก prototype WNav บรรทัด 6160–6162 */
+function CartBadge({ count }) {
+  if (!count) return null;
+  return (
+    <span style={{ position: "absolute", top: -4, right: -4, minWidth: 17, height: 17, padding: "0 4px", boxSizing: "border-box", background: "#C0392B", color: "#fff", fontSize: 10, fontWeight: 800, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center" }}>{count}</span>
+  );
+}
 
 const C = { brand: "#0E7E8C", brandTint: "#E7F2F3", ink: "#17181A", muted: "#80868D", line: "#E4E2DC" };
 
@@ -37,6 +47,8 @@ const Logo = ({ size = 20 }) => (
 
 export default function AppShell({ user, banner, children }) {
   const pathname = usePathname();
+  const [cartN, setCartN] = useState(0);
+  useEffect(() => subscribeCart(setCartN), []);
 
   // หน้าที่ไม่ใส่เปลือก: login + หลังบ้านแอดมิน (มีโครงของตัวเอง)
   if (pathname.startsWith("/login") || pathname.startsWith("/admin")) return children;
@@ -69,8 +81,9 @@ export default function AppShell({ user, banner, children }) {
         {user ? (
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <NotiBell userId={user.id} />
-            <Link href="/cart" title="ตะกร้า" style={{ width: 40, height: 40, borderRadius: 999, border: `1px solid ${C.line}`, background: "#fff", display: "grid", placeItems: "center", color: C.ink }}>
+            <Link href="/cart" title="ตะกร้า" style={{ position: "relative", width: 40, height: 40, borderRadius: 999, border: `1px solid ${C.line}`, background: "#fff", display: "grid", placeItems: "center", color: C.ink }}>
               <ShoppingCart size={17} />
+              <CartBadge count={cartN} />
             </Link>
             {user.isAdmin && (
               <Link href="/admin" title="หลังบ้านแอดมิน" style={{ width: 40, height: 40, borderRadius: 999, border: `1px solid ${C.line}`, background: "#fff", display: "grid", placeItems: "center", color: C.ink }}>
@@ -120,7 +133,10 @@ export default function AppShell({ user, banner, children }) {
           const on = active(t.href);
           return (
             <Link key={t.href} href={t.href} style={{ display: "grid", justifyItems: "center", gap: 2, textDecoration: "none", color: on ? C.brand : C.muted, minWidth: 56 }}>
-              <Icon size={20} strokeWidth={on ? 2.4 : 2} />
+              <span style={{ position: "relative", display: "grid", placeItems: "center" }}>
+                <Icon size={20} strokeWidth={on ? 2.4 : 2} />
+                {t.href === "/cart" ? <CartBadge count={cartN} /> : null}
+              </span>
               <span style={{ fontSize: 10.5, fontWeight: on ? 800 : 600 }}>{t.label}</span>
             </Link>
           );

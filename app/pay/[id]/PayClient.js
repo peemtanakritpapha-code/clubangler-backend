@@ -1,4 +1,7 @@
 "use client";
+// app/pay/[id]/PayClient.js — จ่ายเงิน/แนบสลิป
+// A3 ก้าว 4: รองรับกลุ่มชำระ (pay_group) — โอนก้อนเดียว สลิปเดียว ติดทุกออเดอร์ในกลุ่ม
+// ข้อความ/พฤติกรรมยกจาก prototype PaymentScreen (บรรทัด 2180–2327): จอหลังส่งสลิป = "รอตรวจสอบ" ห้ามบอกจ่ายสำเร็จ
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -6,18 +9,25 @@ import { createClient } from "@/lib/supabase/client";
 
 const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7", danger: "#C0392B", warn: "#B7791F", warnBg: "#FEF6E7" };
 const baht = n => "฿" + Number(n || 0).toLocaleString();
+const payable = x => Number(x.price) + Number(x.buyer_fee || 0) + Number(x.ship_fee || 0);
 
-export default function PayClient({ order: o, config, userId }) {
+export default function PayClient({ order: o, groupOrders, config, userId }) {
   const router = useRouter();
   const supabase = createClient();
-  const total = Number(o.price) + Number(o.buyer_fee || 0) + Number(o.ship_fee || 0);
+  const orders = groupOrders && groupOrders.length > 1 ? groupOrders : [o];
+  const isGroup = orders.length > 1;
+  // ยอดที่ต้องโอน: กลุ่ม = group_total จาก DB (ยอดเดียวกันทุกออเดอร์) / เดี่ยว = ราคา+ค่าธรรมเนียม+ค่าส่ง
+  const total = isGroup ? Number(o.group_total || orders.reduce((s, x) => s + payable(x), 0)) : payable(o);
+
+  const pending = orders.filter(x => x.status === "pending_payment");
+  const submitted = pending.length === 0;                 // ทุกออเดอร์ในกลุ่มส่งสลิปแล้ว (รอตรวจ/เลยขั้นนี้)
+  const rejectedOrder = pending.find(x => x.slip_reject_reason);
+
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState("");
   const [amount, setAmount] = useState(total);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-  const submitted = o.status === "pending_verification";
-  const rejected = o.status === "pending_payment" && o.slip_reject_reason;
 
   const pick = e => {
     const f = e.target.files?.[0];
@@ -31,9 +41,10 @@ export default function PayClient({ order: o, config, userId }) {
     setBusy(true);
     try {
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-      const path = `${userId}/${o.order_no}-${Date.now()}.${ext}`;
+      const path = `${userId}/${o.pay_group || o.order_no}-${Date.now()}.${ext}`;
       const { error: upErr } = await supabase.storage.from("slips").upload(path, file);
       if (upErr) throw upErr;
+      // API จะกระจายสลิปนี้ให้ทุกออเดอร์ใน pay_group เดียวกันเอง
       const res = await fetch(`/api/orders/${o.id}/slip`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slipPath: path, transferAmount: amount }),
@@ -57,16 +68,35 @@ export default function PayClient({ order: o, config, userId }) {
         </div>
 
         <div style={card}>
-          <div style={{ fontSize: 12, color: C.muted }}>คำสั่งซื้อ {o.order_no}</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.ink, margin: "2px 0" }}>{o.item}</div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 15 }}>
-            <b>ยอดที่ต้องโอน</b><b style={{ color: C.brand, fontSize: 20 }}>{baht(total)}</b>
+          {isGroup ? (
+            <>
+              <div style={{ fontSize: 12, color: C.muted }}>กลุ่มชำระ {o.pay_group}</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: C.ink, margin: "2px 0 8px" }}>🧾 ชำระรวม {orders.length} รายการ — โอนก้อนเดียว สลิปเดียว</div>
+              <div style={{ display: "grid", gap: 6 }}>
+                {orders.map(x => (
+                  <div key={x.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, background: "#F6F9F9", borderRadius: 8, padding: "8px 11px", fontSize: 12.5 }}>
+                    <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <b style={{ color: C.ink }}>{x.item}</b> <span style={{ color: C.muted }}>· {x.order_no}</span>
+                    </span>
+                    <b style={{ color: C.ink, flex: "none" }}>{baht(payable(x))}</b>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 12, color: C.muted }}>คำสั่งซื้อ {o.order_no}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: C.ink, margin: "2px 0" }}>{o.item}</div>
+            </>
+          )}
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.line}`, fontSize: 15 }}>
+            <b>ยอดที่ต้องโอน{isGroup ? " (รวมทั้งกลุ่ม)" : ""}</b><b style={{ color: C.brand, fontSize: 20 }}>{baht(total)}</b>
           </div>
         </div>
 
-        {rejected && (
+        {rejectedOrder && (
           <div style={{ fontSize: 12.5, color: C.danger, background: "#FBEAE8", borderRadius: 10, padding: "10px 14px", fontWeight: 700 }}>
-            ⚠ สลิปก่อนหน้าไม่ผ่านการตรวจสอบ — เหตุผล: {o.slip_reject_reason}<br />
+            ⚠ สลิปก่อนหน้าไม่ผ่านการตรวจสอบ — เหตุผล: {rejectedOrder.slip_reject_reason}<br />
             <span style={{ fontWeight: 400 }}>กรุณาตรวจสอบและแนบสลิปที่ถูกต้องอีกครั้ง</span>
           </div>
         )}
@@ -76,7 +106,8 @@ export default function PayClient({ order: o, config, userId }) {
             <div style={{ fontSize: 34 }}>🕐</div>
             <div style={{ fontWeight: 800, fontSize: 16, color: C.warn, margin: "6px 0" }}>ส่งสลิปเรียบร้อย — รอตรวจสอบ</div>
             <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.6 }}>
-              ทีมงานจะตรวจสลิปภายใน 4 ชั่วโมง<br />เมื่อยืนยันแล้ว เงินจะเข้าระบบฝากปลอดภัย (escrow) และผู้ขายจะเริ่มจัดส่ง
+              ทีมงานจะตรวจสลิปภายใน 4 ชั่วโมง{isGroup ? ` (ตรวจครั้งเดียวครบทั้ง ${orders.length} รายการ)` : ""}<br />
+              เมื่อยืนยันแล้ว เงินจะเข้าระบบฝากปลอดภัย (escrow) และผู้ขายจะเริ่มจัดส่ง
             </div>
             <Link href="/orders" style={{ display: "inline-block", marginTop: 14, background: C.brand, color: "#fff", padding: "10px 24px", borderRadius: 10, fontWeight: 800, fontSize: 13, textDecoration: "none" }}>
               ดูคำสั่งซื้อของฉัน
@@ -103,6 +134,9 @@ export default function PayClient({ order: o, config, userId }) {
               {!config?.promptpay_id && !banks.length && (
                 <div style={{ fontSize: 12.5, color: C.danger }}>⚠ ยังไม่ได้ตั้งค่าช่องทางรับเงินของแพลตฟอร์ม (ตั้งได้ใน platform_config)</div>
               )}
+              <div style={{ fontSize: 11.5, color: C.muted, background: C.brandTint, borderRadius: 8, padding: "8px 12px", marginTop: 8 }}>
+                โอน <b style={{ color: C.brand }}>{baht(total)}</b> ครั้งเดียว{isGroup ? ` — ระบบคุ้มครองแยกรายออเดอร์ทั้ง ${orders.length} ชิ้น` : ""}
+              </div>
             </div>
 
             <div style={card}>

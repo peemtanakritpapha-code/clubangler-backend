@@ -70,6 +70,17 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
   const [err, setErr] = useState("");
 
   const verifyQ = useMemo(() => orders.filter(o => o.status === "pending_verification"), [orders]);
+  // A3: จัดกลุ่มคิวสลิปตาม pay_group (โอนก้อนเดียวหลายรายการ — ตรวจครั้งเดียว) ตาม prototype บรรทัด 4905–4949
+  const verifyGroups = useMemo(() => {
+    const m = {};
+    for (const o of verifyQ) if (o.pay_group) (m[o.pay_group] = m[o.pay_group] || []).push(o);
+    return Object.values(m).filter(g => g.length > 1);
+  }, [verifyQ]);
+  const verifySingles = useMemo(() => {
+    const grouped = new Set(verifyGroups.flat().map(o => o.id));
+    return verifyQ.filter(o => !grouped.has(o.id));
+  }, [verifyQ, verifyGroups]);
+  const [rejectGroup, setRejectGroup] = useState(null);   // pay_group ที่กำลังปฏิเสธทั้งกลุ่ม
   const returnQ = useMemo(() => orders.filter(o => ["return_requested", "disputed", "return_shipped"].includes(o.status)), [orders]);
   const refundQ = useMemo(() => orders.filter(o => o.status === "return_received"), [orders]);
   const [kycUrls, setKycUrls] = useState({});
@@ -181,7 +192,58 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
         {/* ── คิวตรวจสลิป ── */}
         {tab === "verify" && (verifyQ.length === 0
           ? <div style={{ textAlign: "center", color: C.muted, fontSize: 13, padding: "40px 0" }}>ไม่มีสลิปรอตรวจ 🎉</div>
-          : verifyQ.map(o => {
+          : <>
+            {/* กลุ่มโอนก้อนเดียวหลายรายการ — ตรวจครั้งเดียว อนุมัติ/ปฏิเสธทั้งชุด (prototype 4905–4949) */}
+            {verifyGroups.map(g => {
+              const gt = Number(g[0].group_total || g.reduce((s, x) => s + Number(x.price) + Number(x.buyer_fee || 0) + Number(x.ship_fee || 0), 0));
+              const ta = Number(g[0].transfer_amount || 0);
+              const [mt, mc] = !ta ? ["— ไม่ระบุยอดโอน", C.muted]
+                : ta === gt ? [`✓ ยอดตรงทั้งกลุ่ม ${baht(ta)}`, C.ok]
+                : [`⚠ ยอดไม่ตรง (โอน ${baht(ta)} / ต้องชำระทั้งกลุ่ม ${baht(gt)})`, C.danger];
+              return (
+                <div key={g[0].pay_group} style={{ ...card, border: `1.5px solid ${C.brand}` }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+                    <div>
+                      <div style={{ fontSize: 11, color: C.muted }}>{g[0].pay_group}</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 800, color: C.ink }}>🧾 ชำระรวม {g.length} รายการ — สลิปเดียว ตรวจครั้งเดียว</div>
+                      <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>ผู้ซื้อ {buyerOf(g[0].buyer_id)?.name || "-"}</div>
+                    </div>
+                    <div style={{ textAlign: "right", flex: "none" }}>
+                      <b style={{ color: C.brand, fontSize: 16 }}>{baht(gt)}</b>
+                      <div style={{ fontSize: 9.5, color: C.muted }}>ยอดที่ต้องชำระทั้งกลุ่ม</div>
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gap: 6, marginBottom: 8 }}>
+                    {g.map(x => (
+                      <div key={x.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, background: "#F6F9F9", borderRadius: 8, padding: "8px 11px", fontSize: 12 }}>
+                        <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <b style={{ color: C.ink }}>{x.item}</b> <span style={{ color: C.muted }}>· {x.order_no} · ผู้ขาย {sellerOf(x.seller_id)?.name || "-"}</span>
+                        </span>
+                        <b style={{ color: C.ink, flex: "none" }}>{baht(Number(x.price) + Number(x.buyer_fee || 0) + Number(x.ship_fee || 0))}</b>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 12.5, fontWeight: 800, color: mc, marginBottom: 8 }}>{mt}</div>
+                  {slipUrls[g[0].id]
+                    ? <a href={slipUrls[g[0].id]} target="_blank" rel="noreferrer">
+                        <img src={slipUrls[g[0].id]} alt="สลิป" style={{ width: 140, borderRadius: 10, border: `1px solid ${C.line}`, display: "block" }} />
+                        <span style={{ fontSize: 11, color: C.brand }}>คลิกเพื่อซูม ↗</span>
+                      </a>
+                    : <div style={{ fontSize: 12, color: C.muted }}>กำลังโหลดสลิป...</div>}
+                  <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                    <button onClick={() => setRejectGroup(g[0].pay_group)} disabled={busy}
+                      style={{ flex: 1, height: 42, borderRadius: 9, border: `1.5px solid ${C.danger}`, background: "#fff", color: C.danger, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
+                      ✕ ปฏิเสธทั้งหมด
+                    </button>
+                    <button onClick={() => call("/api/admin/verify", { payGroup: g[0].pay_group, approve: true })} disabled={busy}
+                      style={{ flex: 2, height: 42, borderRadius: 9, border: "none", background: C.ok, color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
+                      ✓ อนุมัติทั้งหมด ({g.length} รายการ)
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+            {verifySingles.map(o => {
             const [mt, mc] = matchTxt(o);
             return (
               <div key={o.id} style={card}>
@@ -211,7 +273,8 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
                 </div>
               </div>
             );
-          }))}
+          })}
+          </>)}
 
         {/* ── คิวคืนของ/พิพาท ── */}
         {tab === "returns" && (returnQ.length === 0
@@ -410,6 +473,8 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
 
       {reject && <ReasonModal title="เหตุผลการปฏิเสธสลิป (ผู้ซื้อจะเห็น)" onCancel={() => setReject(null)}
         onSubmit={r => { setReject(null); call("/api/admin/verify", { orderId: reject, approve: false, reason: r }); }} />}
+      {rejectGroup && <ReasonModal title="เหตุผลการปฏิเสธสลิปทั้งกลุ่ม (ผู้ซื้อจะเห็น + แนบใหม่ทั้งกลุ่ม)" onCancel={() => setRejectGroup(null)}
+        onSubmit={r => { setRejectGroup(null); call("/api/admin/verify", { payGroup: rejectGroup, approve: false, reason: r }); }} />}
       {rejectReturn && <ReasonModal title="เหตุผลปฏิเสธการคืนสินค้า (ผู้ซื้อจะเห็น)" onCancel={() => setRejectReturn(null)}
         onSubmit={r => { setRejectReturn(null); call("/api/admin/return-decide", { orderId: rejectReturn, approve: false, reason: r }); }} />}
       {rejectKyc && <ReasonModal title="เหตุผลที่เอกสาร KYC ไม่ผ่าน (ผู้ใช้จะเห็น + ยื่นใหม่ได้)" onCancel={() => setRejectKyc(null)}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import AddToCartBar from "@/components/AddToCartBar";
 
 const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7" };
 const baht = n => "฿" + Number(n || 0).toLocaleString();
@@ -55,10 +56,7 @@ export default async function ProductPage({ params }) {
                 {p.location ? ` · ส่งจาก ${p.location}` : ""} · {p.shipping?.label || ""}
               </div>
               {canBuy ? (
-                <Link href={`/checkout/${p.id}`}
-                  style={{ height: 44, lineHeight: "44px", padding: "0 26px", borderRadius: 10, background: C.brand, color: "#fff", fontWeight: 800, fontSize: 14, textDecoration: "none" }}>
-                  🛒 ซื้อเลย
-                </Link>
+                <AddToCartBar product={{ id: p.id, name: p.name, price: p.price, img: p.images?.[0] || null }} />
               ) : (
                 <span style={{ height: 44, lineHeight: "44px", padding: "0 26px", borderRadius: 10, background: "#C9D6D8", color: "#fff", fontWeight: 800, fontSize: 14 }}>
                   {isOwner ? "สินค้าของคุณ" : "ขายแล้ว"}
