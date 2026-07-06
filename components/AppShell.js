@@ -4,12 +4,13 @@
 // W3: nav ฟีด/ตลาด/ลงขาย ลอยกึ่งกลางบราวเซอร์ + เมนูโปรไฟล์แบบ dropdown ตาม prototype
 //     (หัวการ์ด + ดูโปรไฟล์สาธารณะ / การซื้อ-การขาย (รองรับ badge) / สินค้าที่ลงขาย / ตั้งค่า / KYC / ออกจากระบบ)
 // หมายเหตุ: ออกจากระบบใช้ตรรกะเดียวกับ components/LogoutButton.js (signOut → /login) — ตัวปุ่มเดิมยังใช้ที่หน้าโปรไฟล์
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LayoutGrid, Store, Plus, ShoppingCart, User, Wrench, Bell, Globe, ChevronDown, ShoppingBag, Package, Settings, Wallet, X } from "lucide-react";
 import NotiBell from "@/components/NotiBell";
 import { createClient } from "@/lib/supabase/client";
+import { getCart, subscribeCart } from "@/lib/cart";
 
 const C = { brand: "#0E7E8C", brandTint: "#E7F2F3", ink: "#17181A", muted: "#80868D", line: "#E4E2DC", danger: "#C24D42" };
 
@@ -68,6 +69,16 @@ export default function AppShell({ user, banner, children, buyCount = 0, sellCou
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  // badge ตะกร้า (A3 เดิม — คืนชีพใน W5.7): นับใน useEffect เพื่อให้ render แรก deterministic
+  const [cartCount, setCartCount] = useState(0);
+  useEffect(() => {
+    const update = () => setCartCount(getCart().length);
+    update();
+    return subscribeCart(update);
+  }, []);
+  const CartBadge = () => cartCount > 0 ? (
+    <span style={{ position: "absolute", top: -4, right: -4, minWidth: 17, height: 17, padding: "0 4px", borderRadius: 999, background: "#C24D42", color: "#fff", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #fff" }}>{cartCount}</span>
+  ) : null;
   const closeMenu = () => setMenuOpen(false);
   const logout = async () => {
     closeMenu();
@@ -109,15 +120,15 @@ export default function AppShell({ user, banner, children, buyCount = 0, sellCou
         {user ? (
           <div style={{ display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
             <NotiBell userId={user.id} />
-            <Link href="/cart" title="ตะกร้า" style={iconBtn}><ShoppingCart size={17} /></Link>
+            <Link href="/cart" title="ตะกร้า" style={{ ...iconBtn, position: "relative" }}><ShoppingCart size={17} /><CartBadge /></Link>
             <span title="ภาษาไทย (English เร็วๆ นี้)" style={thPill}><Globe size={15} /> TH</span>
             {user.isAdmin && (
               <Link href="/admin" title="หลังบ้านแอดมิน" style={iconBtn}><Wrench size={16} /></Link>
             )}
             {/* อวตาร + ˅ เปิดเมนูโปรไฟล์ (prototype) */}
             <div onClick={() => setMenuOpen(o => !o)} style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", background: menuOpen ? C.brandTint : "transparent", borderRadius: 999, padding: "4px 8px 4px 4px" }}>
-              <span style={{ width: 34, height: 34, borderRadius: 999, background: C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 13.5, fontWeight: 800, overflow: "hidden" }}>
-                {user.avatar ? <img src={user.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (user.name || "?").trim().charAt(0).toUpperCase()}
+              <span style={{ width: 34, height: 34, borderRadius: 999, background: C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 13.5, fontWeight: 800 }}>
+                {(user.name || "?").trim().charAt(0).toUpperCase()}
               </span>
               <ChevronDown size={15} color={C.muted} style={{ transform: menuOpen ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
             </div>
@@ -129,8 +140,8 @@ export default function AppShell({ user, banner, children, buyCount = 0, sellCou
                 <div style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, width: 300, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 14, boxShadow: "0 12px 34px rgba(0,0,0,.13)", overflow: "hidden", zIndex: 50 }}>
                   {/* หัวการ์ด: ชื่อ + ดูโปรไฟล์สาธารณะ */}
                   <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 14px 12px" }}>
-                    <span style={{ width: 46, height: 46, borderRadius: 999, background: C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 18, fontWeight: 800, flex: "none", overflow: "hidden" }}>
-                      {user.avatar ? <img src={user.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (user.name || "?").trim().charAt(0).toUpperCase()}
+                    <span style={{ width: 46, height: 46, borderRadius: 999, background: C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 18, fontWeight: 800, flex: "none" }}>
+                      {(user.name || "?").trim().charAt(0).toUpperCase()}
                     </span>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 14.5, fontWeight: 800, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name}</div>
@@ -152,7 +163,7 @@ export default function AppShell({ user, banner, children, buyCount = 0, sellCou
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {/* W2.1: แถบขวา guest ตาม prototype โหมดเว็บ — กระดิ่ง/ตะกร้า/ป้ายภาษา */}
             <Link href="/login" title="เข้าสู่ระบบเพื่อดูการแจ้งเตือน" style={iconBtn}><Bell size={17} /></Link>
-            <Link href="/cart" title="ตะกร้า" style={iconBtn}><ShoppingCart size={17} /></Link>
+            <Link href="/cart" title="ตะกร้า" style={{ ...iconBtn, position: "relative" }}><ShoppingCart size={17} /><CartBadge /></Link>
             <span title="ภาษาไทย (English เร็วๆ นี้)" style={thPill}><Globe size={15} /> TH</span>
             <Link href="/login" style={{ padding: "9px 18px", borderRadius: 10, border: `1px solid ${C.line}`, background: "#F1F3F4", fontSize: 13.5, fontWeight: 700, textDecoration: "none", color: C.ink }}>เข้าสู่ระบบ</Link>
             <Link href="/login" style={{ padding: "9px 18px", borderRadius: 10, background: C.brand, color: "#fff", fontSize: 13.5, fontWeight: 700, textDecoration: "none" }}>สมัครสมาชิก</Link>
@@ -187,7 +198,10 @@ export default function AppShell({ user, banner, children, buyCount = 0, sellCou
           const on = active(t.href);
           return (
             <Link key={t.href} href={t.href} style={{ display: "grid", justifyItems: "center", gap: 2, textDecoration: "none", color: on ? C.brand : C.muted, minWidth: 56 }}>
-              <Icon size={20} strokeWidth={on ? 2.4 : 2} />
+              <span style={{ position: "relative", display: "inline-flex" }}>
+                <Icon size={20} strokeWidth={on ? 2.4 : 2} />
+                {t.href === "/cart" && <CartBadge />}
+              </span>
               <span style={{ fontSize: 10.5, fontWeight: on ? 800 : 600 }}>{t.label}</span>
             </Link>
           );

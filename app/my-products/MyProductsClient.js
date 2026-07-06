@@ -67,9 +67,9 @@ export default function MyProductsClient({ products, userId }) {
               : tab === "review" ? "ไม่มีสินค้าที่รอตรวจสอบแบรนด์/หมวด" : "ยังไม่มีสินค้าที่ขายแล้ว"}
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(170px,1fr))", gap: 12 }}>
+          <div style={{ columns: "195px 4", columnGap: 12 }}>
             {list.map(p => (
-              <div key={p.id} style={{ position: "relative" }}>
+              <div key={p.id} style={{ position: "relative", breakInside: "avoid", marginBottom: 12 }}>
                 {/* ปุ่ม ⋯ (prototype 7545) */}
                 <div onClick={e => { e.stopPropagation(); setMenuFor(menuFor === p.id ? null : p.id); }}
                   style={{ position: "absolute", top: 8, right: 8, zIndex: 5, width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,.95)", boxShadow: "0 1px 5px rgba(0,0,0,.15)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
@@ -80,6 +80,7 @@ export default function MyProductsClient({ products, userId }) {
                     <div onClick={() => setMenuFor(null)} style={{ position: "fixed", inset: 0, zIndex: 5 }} />
                     <div style={{ position: "absolute", top: 40, right: 8, zIndex: 6, background: "#fff", borderRadius: 10, boxShadow: "0 6px 20px rgba(0,0,0,.15)", border: `1px solid ${C.line}`, overflow: "hidden", minWidth: 170 }}>
                       <Link href={`/product/${p.id}`} style={{ display: "block", padding: "10px 14px", fontSize: 12.5, color: C.ink, textDecoration: "none" }}>ดูหน้าสินค้า</Link>
+                      <Link href={`/sell?edit=${p.id}`} style={{ display: "block", padding: "10px 14px", fontSize: 12.5, color: C.ink, textDecoration: "none", borderTop: `1px solid ${C.line}` }}>แก้ไขประกาศ</Link>
                       {p.status === "active" && (
                         <div onClick={() => !busy && setStatus(p, "sold")} style={{ padding: "10px 14px", fontSize: 12.5, color: C.ink, cursor: "pointer", borderTop: `1px solid ${C.line}` }}>ทำเครื่องหมายว่าขายแล้ว</div>
                       )}
@@ -98,7 +99,7 @@ export default function MyProductsClient({ products, userId }) {
 
                 {/* การ์ดสินค้า */}
                 <div style={{ background: "#fff", borderRadius: 12, overflow: "hidden", border: `1px solid ${C.line}` }}>
-                  <div style={{ aspectRatio: "1/1", background: "#EDF2F2", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", color: C.brand }}>
+                  <div style={{ aspectRatio: p.image_ratio || "1/1", background: "#EDF2F2", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", color: C.brand }}>
                     {p.images?.[0]
                       ? <img src={p.images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", filter: p.status === "sold" ? "grayscale(.4)" : "none" }} />
                       : <Fish size={30} strokeWidth={1.5} />}

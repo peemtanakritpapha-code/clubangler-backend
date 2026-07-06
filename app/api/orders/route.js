@@ -46,9 +46,11 @@ export async function POST(req) {
   const lines = ids.map(id => {
     const p = byId[id];
     const price = Number(p.price);
-    const buyerFee = feeFor(price, tiers, "buyer");
-    const sellerFee = feeFor(price, tiers, "seller");
     const shipFee = p.shipping?.mode === "paid" ? Number(p.shipping.fee) || 0 : 0;
+    const buyerFee = feeFor(price, tiers, "buyer");
+    // S4 (แบบ B): ค่าธรรมเนียมผู้ขายคิดจากฐาน ราคา + ค่าส่งที่ผู้ซื้อจ่าย — ให้ตรงกับกล่องหน้าลงขาย
+    // (ผู้ขายได้รับ = price + shipFee − sellerFee ซึ่งคิวโอนเงินแอดมินใช้สูตรนี้อยู่แล้ว)
+    const sellerFee = feeFor(price + shipFee, tiers, "seller");
     return { p, price, buyerFee, sellerFee, shipFee, payable: price + buyerFee + shipFee };
   });
   const groupTotal = lines.reduce((s, l) => s + l.payable, 0);

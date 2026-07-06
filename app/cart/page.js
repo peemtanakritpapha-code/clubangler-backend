@@ -71,10 +71,13 @@ export default function CartPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "system-ui, sans-serif", padding: "20px 16px 140px" }}>
-      <div style={{ maxWidth: 640, margin: "0 auto", display: "grid", gap: 10 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-          <Link href="/market" style={{ color: C.brand, fontSize: 13, fontWeight: 700, textDecoration: "none" }}>‹ ตลาดสินค้า</Link>
-          <div style={{ fontWeight: 800, color: C.brand }}>🧺 ตะกร้าสินค้า</div>
+      {/* W5.7b: จอกว้าง = 2 คอลัมน์ (รายการ | การ์ดสรุป sticky) ตาม prototype WCart · จอแคบยุบคอลัมน์เดียว */}
+      <style>{`.cart-grid { display: grid; gap: 12px; } .cart-side { position: static; }
+@media (min-width: 900px) { .cart-grid { grid-template-columns: minmax(0,1fr) 340px; align-items: start; } .cart-side { position: sticky; top: 84px; } }`}</style>
+      <div style={{ maxWidth: 960, margin: "0 auto", display: "grid", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+          <Link href="/market" aria-label="กลับตลาด" style={{ width: 40, height: 40, borderRadius: 999, background: "#fff", boxShadow: "0 2px 8px rgba(0,0,0,.06)", display: "grid", placeItems: "center", color: C.ink, textDecoration: "none", flex: "none", fontSize: 18 }}>‹</Link>
+          <div style={{ fontSize: 20, fontWeight: 800, color: C.ink }}>ตะกร้าสินค้า</div>
         </div>
 
         {items === null ? (
@@ -88,7 +91,8 @@ export default function CartPage() {
             <Link href="/market" style={{ display: "inline-block", background: C.brand, color: "#fff", padding: "11px 22px", borderRadius: 10, fontWeight: 800, fontSize: 13.5, textDecoration: "none" }}>🛒 ไปตลาดสินค้า</Link>
           </div>
         ) : (
-          <>
+          <div className="cart-grid">
+            <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
             {items.map(p => (
               <div key={p.id} style={{ ...card, display: "flex", gap: 10, alignItems: "center", opacity: p.ok ? 1 : .75, border: p.ok ? "none" : `1.5px solid ${C.danger}` }}>
                 <Link href={`/product/${p.id}`} style={{ width: 52, height: 52, borderRadius: 10, background: C.brandTint, display: "flex", alignItems: "center", justifyContent: "center", color: C.brand, overflow: "hidden", flex: "none" }}>
@@ -110,9 +114,11 @@ export default function CartPage() {
                 </button>
               </div>
             ))}
+            </div>
 
-            {/* สรุปยอด — โครงจาก WCart: ราคาสินค้า / ค่าส่ง / ค่าธรรมเนียม / ยอดรวม */}
-            <div style={{ ...card, padding: 16 }}>
+            {/* สรุปยอด — การ์ดขวา sticky (prototype WCart): ราคาสินค้า / ค่าส่ง / ค่าธรรมเนียม / ยอดรวม */}
+            <div className="cart-side" style={{ ...card, padding: 16 }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: C.ink, marginBottom: 8 }}>สรุปคำสั่งซื้อ</div>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "4px 0", color: C.muted }}>
                 <span>ราคาสินค้า ({good.length})</span><b style={{ color: C.ink }}>{baht(subtotal)}</b>
               </div>
@@ -138,7 +144,7 @@ export default function CartPage() {
                 ไปชำระเงิน{good.length ? ` · ${baht(total)}` : ""}
               </button>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

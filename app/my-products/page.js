@@ -13,7 +13,7 @@ export default async function MyProductsPage() {
 
   // ดึงทุกสถานะของตัวเอง (active/sold/pending/review/suspended)
   const { data: products } = await supabase.from("products")
-    .select("id, name, price, cond, cond_label, images, status, suspend_reason, created_at")
+    .select("id, name, price, cond, cond_label, images, image_ratio, status, suspend_reason, created_at")
     .eq("seller_id", user.id)
     .order("created_at", { ascending: false });
 

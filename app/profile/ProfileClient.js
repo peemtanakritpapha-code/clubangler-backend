@@ -144,9 +144,9 @@ export default function ProfileClient({ initialProfile, initialAddresses, userId
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "system-ui, sans-serif", padding: "24px 16px" }}>
       <div style={{ maxWidth: 640, margin: "0 auto", display: "grid", gap: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Link href="/" style={{ color: C.brand, fontSize: 13, textDecoration: "none", fontWeight: 700 }}>‹ กลับหน้าแรก</Link>
-          <div style={{ fontWeight: 800, color: C.brand }}>🎣 โปรไฟล์ของฉัน</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Link href="/" aria-label="กลับหน้าแรก" style={{ width: 40, height: 40, borderRadius: 999, background: "#fff", boxShadow: "0 2px 8px rgba(0,0,0,.06)", display: "grid", placeItems: "center", color: C.ink, textDecoration: "none", flex: "none", fontSize: 18 }}>‹</Link>
+          <div style={{ fontSize: 20, fontWeight: 800, color: C.ink }}>ตั้งค่าบัญชี</div>
         </div>
 
         {/* ── โปรไฟล์ ── */}
@@ -164,6 +164,60 @@ export default function ProfileClient({ initialProfile, initialAddresses, userId
               <button onClick={saveProfile} disabled={busy} style={btn(C.brand, "#fff")}>บันทึกโปรไฟล์</button>
               {savedMsg && <span style={{ fontSize: 12.5, color: C.brand, fontWeight: 700 }}>{savedMsg}</span>}
             </div>
+          </div>
+        </div>
+
+        {/* ── สมุดที่อยู่ ── */}
+        <div style={card}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div style={{ fontWeight: 800, fontSize: 15, color: C.ink }}>สมุดที่อยู่ ({addresses.length})</div>
+            {!form && <button onClick={() => { setForm({ ...EMPTY }); setShowErr(false); }} style={btn(C.brand, "#fff")}>+ เพิ่มที่อยู่</button>}
+          </div>
+
+          {form && (
+            <div style={{ border: `1.5px solid ${C.brandTint}`, background: "#FAFDFD", borderRadius: 12, padding: 14, marginBottom: 14, display: "grid", gap: 8 }}>
+              <div style={{ fontWeight: 800, fontSize: 13, color: C.brand }}>{form.id ? "แก้ไขที่อยู่" : "เพิ่มที่อยู่ใหม่"}</div>
+              {input("label", "ชื่อเรียก เช่น บ้าน / ที่ทำงาน")}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {input("name", "ชื่อผู้รับ *")}{input("phone", "เบอร์โทร *")}
+              </div>
+              {input("addr", "บ้านเลขที่ / ถนน / หมู่ *")}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {input("sub", "ตำบล/แขวง *")}{input("district", "อำเภอ/เขต *")}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {input("province", "จังหวัด *")}{input("zip", "รหัสไปรษณีย์ 5 หลัก *")}
+              </div>
+              {showErr && invalid(form).length > 0 &&
+                <div style={{ fontSize: 12, color: C.danger }}>กรอกช่องที่มี * ให้ครบ (รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก)</div>}
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => { setForm(null); setShowErr(false); }} style={{ ...btn(C.ink, C.ink, false), flex: 1 }}>ยกเลิก</button>
+                <button onClick={saveAddress} disabled={busy} style={{ ...btn(C.brand, "#fff"), flex: 2 }}>บันทึกที่อยู่</button>
+              </div>
+            </div>
+          )}
+
+          {addresses.length === 0 && !form && (
+            <div style={{ fontSize: 13, color: C.muted, textAlign: "center", padding: "18px 0" }}>ยังไม่มีที่อยู่ — เพิ่มไว้ใช้ตอน checkout ได้เลย</div>
+          )}
+
+          <div style={{ display: "grid", gap: 10 }}>
+            {addresses.map(a => (
+              <div key={a.id} style={{ border: `1px solid ${a.is_default ? C.brand : C.line}`, borderRadius: 12, padding: "12px 14px", background: a.is_default ? C.brandTint : "#fff" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 8 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 800, color: C.ink, minWidth: 0 }}>
+                    {a.label}{" "}
+                    {a.is_default && <span style={{ fontSize: 10.5, fontWeight: 700, color: C.brand, border: `1px solid ${C.brand}`, borderRadius: 999, padding: "1px 9px", marginLeft: 4, background: "#fff" }}>ค่าเริ่มต้น</span>}
+                  </div>
+                  <div style={{ display: "flex", gap: 14, flex: "none" }}>
+                    {!a.is_default && <span onClick={() => setDefault(a.id)} style={{ fontSize: 12, color: C.brand, fontWeight: 700, cursor: "pointer" }}>ตั้งเริ่มต้น</span>}
+                    <span onClick={() => { setForm({ ...a }); setShowErr(false); }} style={{ fontSize: 12, color: C.brand, fontWeight: 700, cursor: "pointer" }}>แก้ไข</span>
+                    <span onClick={() => removeAddress(a)} style={{ fontSize: 12, color: C.danger, fontWeight: 700, cursor: "pointer" }}>ลบ</span>
+                  </div>
+                </div>
+                <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.ink }}>{a.name}</b> · {a.phone}<br />{fmtAddr(a)}</div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -229,61 +283,6 @@ export default function ProfileClient({ initialProfile, initialAddresses, userId
               🕐 เอกสารอยู่ระหว่างตรวจสอบ (ภายใน 24 ชม.)
             </div>
           )}
-        </div>
-
-        {/* ── สมุดที่อยู่ ── */}
-        <div style={card}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <div style={{ fontWeight: 800, fontSize: 15, color: C.ink }}>สมุดที่อยู่ ({addresses.length})</div>
-            {!form && <button onClick={() => { setForm({ ...EMPTY }); setShowErr(false); }} style={btn(C.brand, "#fff")}>+ เพิ่มที่อยู่</button>}
-          </div>
-
-          {form && (
-            <div style={{ border: `1.5px solid ${C.brandTint}`, background: "#FAFDFD", borderRadius: 12, padding: 14, marginBottom: 14, display: "grid", gap: 8 }}>
-              <div style={{ fontWeight: 800, fontSize: 13, color: C.brand }}>{form.id ? "แก้ไขที่อยู่" : "เพิ่มที่อยู่ใหม่"}</div>
-              {input("label", "ชื่อเรียก เช่น บ้าน / ที่ทำงาน")}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {input("name", "ชื่อผู้รับ *")}{input("phone", "เบอร์โทร *")}
-              </div>
-              {input("addr", "บ้านเลขที่ / ถนน / หมู่ *")}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {input("sub", "ตำบล/แขวง *")}{input("district", "อำเภอ/เขต *")}
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {input("province", "จังหวัด *")}{input("zip", "รหัสไปรษณีย์ 5 หลัก *")}
-              </div>
-              {showErr && invalid(form).length > 0 &&
-                <div style={{ fontSize: 12, color: C.danger }}>กรอกช่องที่มี * ให้ครบ (รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก)</div>}
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => { setForm(null); setShowErr(false); }} style={{ ...btn(C.ink, C.ink, false), flex: 1 }}>ยกเลิก</button>
-                <button onClick={saveAddress} disabled={busy} style={{ ...btn(C.brand, "#fff"), flex: 2 }}>บันทึกที่อยู่</button>
-              </div>
-            </div>
-          )}
-
-          {addresses.length === 0 && !form && (
-            <div style={{ fontSize: 13, color: C.muted, textAlign: "center", padding: "18px 0" }}>ยังไม่มีที่อยู่ — เพิ่มไว้ใช้ตอน checkout ได้เลย</div>
-          )}
-
-          <div style={{ display: "grid", gap: 10 }}>
-            {addresses.map(a => (
-              <div key={a.id} style={{ border: `1.5px solid ${a.is_default ? C.brand : C.line}`, borderRadius: 12, padding: 12 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                  <div style={{ fontWeight: 800, fontSize: 13.5, color: C.ink }}>
-                    {a.label}{" "}
-                    {a.is_default && <span style={{ background: C.brandTint, color: C.brand, fontSize: 10.5, fontWeight: 800, padding: "2px 8px", borderRadius: 6 }}>ค่าเริ่มต้น</span>}
-                  </div>
-                </div>
-                <div style={{ fontSize: 12.5, color: C.ink }}>{a.name} · {a.phone}</div>
-                <div style={{ fontSize: 12.5, color: C.muted, margin: "2px 0 8px" }}>{fmtAddr(a)}</div>
-                <div style={{ display: "flex", gap: 6 }}>
-                  {!a.is_default && <button onClick={() => setDefault(a.id)} style={btn(C.brand, C.brand, false)}>ตั้งเป็นค่าเริ่มต้น</button>}
-                  <button onClick={() => { setForm({ ...a }); setShowErr(false); }} style={btn(C.ink, C.ink, false)}>แก้ไข</button>
-                  <button onClick={() => removeAddress(a)} style={btn(C.danger, C.danger, false)}>ลบ</button>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* ── โซนอันตราย: ลบบัญชี (P1.2 — กติกา Apple 5.1.1) ── */}

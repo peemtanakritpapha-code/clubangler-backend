@@ -1,6 +1,7 @@
 "use client";
 // components/NotiBell.js — ระฆัง + จุดแดงนับเลข + รายการแจ้งเตือน + mark read
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 const C = { brand: "#0E7E8C", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", danger: "#C0392B" };
@@ -60,6 +61,11 @@ export default function NotiBell({ userId }) {
               <div style={{ fontSize: 10.5, color: C.muted, marginTop: 3 }}>{n.ref ? `${n.ref} · ` : ""}{ago(n.created_at)}</div>
             </div>
           ))}
+          {/* W5.7d: ทางเข้าหน้ารวมการแจ้งเตือน */}
+          <Link href="/notifications" onClick={() => setOpen(false)}
+            style={{ display: "block", padding: "11px 14px", textAlign: "center", fontSize: 12.5, fontWeight: 800, color: C.brand, textDecoration: "none", background: "#fff" }}>
+            ดูการแจ้งเตือนทั้งหมด →
+          </Link>
         </div>
       )}
     </div>

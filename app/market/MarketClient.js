@@ -18,7 +18,7 @@ const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7
 const RATIOS = ["1/1", "3/4", "4/3", "1/1", "3/4", "1/1", "4/3", "3/4"]; // ความสูงแปรผันแบบ prototype (MASONRY_RATIOS)
 
 function MasonryCard({ p, idx, router }) {
-  const ratio = RATIOS[idx % RATIOS.length];
+  const ratio = p.image_ratio || RATIOS[idx % RATIOS.length]; // W5.8: ใช้สัดส่วนที่ผู้ขายเลือก (ของเก่าไม่มีค่า → สุ่มแบบเดิม)
   const s = p.seller;
   const sold = p.status === "sold";
   return (

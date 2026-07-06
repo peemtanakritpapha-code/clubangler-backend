@@ -257,8 +257,8 @@ export default function OrdersClient({ orders, userId, initialRole = "buy" }) {
                   <div style={{ fontSize: 11.5, color: C.muted }}>{o.order_no} · {new Date(o.created_at).toLocaleDateString("th-TH")}</div>
                   {isSeller ? (
                     <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: C.brand }}>{baht(Number(o.price) - Number(o.seller_fee || 0))}</span>
-                      <span style={{ fontSize: 10.5, color: C.muted }}>ยอดที่จะได้รับ</span>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: C.brand }}>{baht(Number(o.price) + Number(o.ship_fee || 0) - Number(o.seller_fee || 0))}</span>
+                      <span style={{ fontSize: 10.5, color: C.muted }}>ยอดที่จะได้รับ (รวมค่าส่ง)</span>
                     </div>
                   ) : (
                     <div style={{ fontSize: 14, fontWeight: 800, color: C.brand }}>{baht(total)}</div>
