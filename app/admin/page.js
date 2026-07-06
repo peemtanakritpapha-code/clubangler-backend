@@ -1,3 +1,4 @@
+// app/admin/page.js — หลังบ้านแอดมิน (A5 ก้าว 1: เพิ่มข้อมูลหน้าภาพรวม + platform_config)
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import AdminClient from "./AdminClient";
@@ -32,6 +33,22 @@ export default async function AdminPage() {
     .select("id, name, price, brand, status, suspend_reason, images, seller_id")
     .order("created_at", { ascending: false }).limit(100);
 
+  // A5: ภาพรวมระบบ (prototype AdminOverview บรรทัด 4415–4428) + platform_config สำหรับหน้าตั้งค่า
+  const [{ count: ordersTotal }, { data: escrowRows }, { count: activeCount }, { count: soldCount }, { data: config }] = await Promise.all([
+    supabase.from("orders").select("*", { count: "exact", head: true }),
+    supabase.from("orders").select("price").in("status", ["payment_verified", "shipped", "delivered"]),
+    supabase.from("products").select("*", { count: "exact", head: true }).eq("status", "active"),
+    supabase.from("products").select("*", { count: "exact", head: true }).eq("status", "sold"),
+    supabase.from("platform_config").select("*").single(),
+  ]);
+  const { data: tiers } = await supabase.from("fee_tiers").select("*").order("min");
+  const stats = {
+    ordersTotal: ordersTotal || 0,
+    escrowSum: (escrowRows || []).reduce((s, o) => s + Number(o.price || 0), 0),
+    activeProducts: activeCount || 0,
+    soldProducts: soldCount || 0,
+  };
+
   return <AdminClient orders={orders || []} sellers={sellers || []} buyers={buyers || []} userId={user.id}
-    kycQueue={kycQueue || []} products={products || []} />;
+    kycQueue={kycQueue || []} products={products || []} stats={stats} config={config || null} tiers={tiers || []} />;
 }
