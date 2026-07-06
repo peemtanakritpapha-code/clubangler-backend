@@ -18,6 +18,25 @@ export default function ProfileClient({ initialProfile, initialAddresses, userId
   const [showErr, setShowErr] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  /* ── ลบบัญชีถาวร (P1.2 — กติกา Apple 5.1.1) ── */
+  const [showDelete, setShowDelete] = useState(false);
+  const [delConfirm, setDelConfirm] = useState("");
+  const [delErr, setDelErr] = useState("");
+  const [delBusy, setDelBusy] = useState(false);
+
+  const deleteAccount = async () => {
+    setDelErr("");
+    if (delConfirm.trim() !== "ลบบัญชี") return setDelErr('พิมพ์คำว่า "ลบบัญชี" ให้ตรงก่อนยืนยัน');
+    setDelBusy(true);
+    try {
+      const res = await fetch("/api/account/delete", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "ลบบัญชีไม่สำเร็จ");
+      await supabase.auth.signOut();
+      window.location.href = "/";
+    } catch (e) { setDelErr(e.message || String(e)); setDelBusy(false); }
+  };
+
   const reload = async () => {
     const { data } = await supabase.from("addresses").select("*")
       .eq("user_id", userId).order("is_default", { ascending: false }).order("id");
@@ -266,6 +285,43 @@ export default function ProfileClient({ initialProfile, initialAddresses, userId
             ))}
           </div>
         </div>
+
+        {/* ── โซนอันตราย: ลบบัญชี (P1.2 — กติกา Apple 5.1.1) ── */}
+        <div style={{ ...card, border: "1.5px solid #F3D6D2" }}>
+          <div style={{ fontWeight: 800, fontSize: 15, color: C.danger, marginBottom: 6 }}>โซนอันตราย</div>
+          <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.7, marginBottom: 12 }}>
+            ลบบัญชีถาวร — ข้อมูลส่วนตัว สินค้าที่ลงขาย โพสต์ และเอกสารยืนยันตัวตนจะถูกลบทั้งหมด กู้คืนไม่ได้
+            (ประวัติออเดอร์ที่จบแล้วจะถูกเก็บไว้แบบไม่ระบุตัวตน ตามความจำเป็นทางบัญชี)
+          </div>
+          <button onClick={() => { setShowDelete(true); setDelConfirm(""); setDelErr(""); }} style={btn(C.danger, C.danger, false)}>
+            ลบบัญชีถาวร...
+          </button>
+        </div>
+
+        {showDelete && (
+          <div onClick={() => !delBusy && setShowDelete(false)}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 60, display: "grid", placeItems: "center", padding: 16 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, padding: 20, width: "100%", maxWidth: 420, boxSizing: "border-box" }}>
+              <div style={{ fontWeight: 800, fontSize: 16, color: C.danger, marginBottom: 8 }}>⚠️ ยืนยันลบบัญชีถาวร</div>
+              <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.7, marginBottom: 10 }}>
+                หากยังมีออเดอร์ที่ไม่จบ ระบบจะไม่ให้ลบ (ตรวจให้อัตโนมัติ) และเมื่อลบแล้ว <b>กู้คืนไม่ได้ทุกกรณี</b>
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 6 }}>
+                พิมพ์คำว่า <b style={{ color: C.danger }}>ลบบัญชี</b> เพื่อยืนยัน
+              </div>
+              <input value={delConfirm} onChange={e => setDelConfirm(e.target.value)} placeholder="ลบบัญชี"
+                style={{ width: "100%", height: 42, border: `1.5px solid ${C.line}`, borderRadius: 9, padding: "0 12px", fontSize: 14, outline: "none", boxSizing: "border-box" }} />
+              {delErr && <div style={{ marginTop: 8, fontSize: 12.5, color: C.danger, background: "#FBEAE8", borderRadius: 8, padding: "8px 12px" }}>{delErr}</div>}
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <button disabled={delBusy} onClick={() => setShowDelete(false)} style={{ ...btn(C.ink, C.ink, false), flex: 1 }}>ยกเลิก</button>
+                <button disabled={delBusy || delConfirm.trim() !== "ลบบัญชี"} onClick={deleteAccount}
+                  style={{ ...btn(C.danger, "#fff"), flex: 1, opacity: delBusy || delConfirm.trim() !== "ลบบัญชี" ? .55 : 1 }}>
+                  {delBusy ? "กำลังลบ..." : "ลบบัญชีถาวร"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
