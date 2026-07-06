@@ -1,6 +1,8 @@
 // app/page.js — ฟีดชุมชน (แท็บ "ฟีด" ตาม prototype: แอปมือถือ + เว็บมีแถบข้างสินค้ามาใหม่)
+// W1: ผู้ที่ยังไม่ล็อกอิน → หน้า Landing (ตาม prototype โหมดเว็บไซต์) / ล็อกอินแล้ว → ฟีดเหมือนเดิม
 import { createClient } from "@/lib/supabase/server";
 import FeedClient from "./FeedClient";
+import LandingClient from "./LandingClient";
 
 export const dynamic = "force-dynamic";
 
@@ -8,12 +10,29 @@ export default async function FeedPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
+  // ── Guest → Landing (W1) ──
+  if (!user) {
+    const { data: products } = await supabase.from("products")
+      .select("id, name, price, images, shipping, status, seller_id, created_at")
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(12);
+    const sellerIds = [...new Set((products || []).map(p => p.seller_id).filter(Boolean))];
+    const { data: sellers } = sellerIds.length
+      ? await supabase.from("profiles").select("id, name, is_shop, kyc_status").in("id", sellerIds)
+      : { data: [] };
+    const sellerMap = Object.fromEntries((sellers || []).map(s => [s.id, s]));
+    const rows = (products || []).map(p => ({ ...p, seller: sellerMap[p.seller_id] || null }));
+    return <LandingClient products={rows} />;
+  }
+
+  // ── ล็อกอินแล้ว → ฟีดชุมชน (เดิม) ──
   const { data: posts } = await supabase.from("posts")
     .select("*, profiles(name, is_shop), products(id, name, price, images), post_likes(count), post_comments(count)")
     .order("created_at", { ascending: false }).limit(40);
 
   let myLikes = [], myFollows = [], myProducts = [], me = null;
-  if (user) {
+  {
     const ids = (posts || []).map(p => p.id);
     const [{ data: likes }, { data: follows }, { data: prods }, { data: prof }] = await Promise.all([
       ids.length ? supabase.from("post_likes").select("post_id").eq("user_id", user.id).in("post_id", ids) : { data: [] },
@@ -33,7 +52,7 @@ export default async function FeedPage() {
 
   return <FeedClient
     posts={posts || []} latest={latest || []}
-    user={user ? { id: user.id, name: me?.name, isShop: !!me?.is_shop, isAdmin: !!me?.is_admin } : null}
+    user={{ id: user.id, name: me?.name, isShop: !!me?.is_shop, isAdmin: !!me?.is_admin }}
     myLikes={myLikes} myFollows={myFollows} myProducts={myProducts}
   />;
 }
