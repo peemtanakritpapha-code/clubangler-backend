@@ -7,10 +7,11 @@
 //   - "ซื้อเลย/ใส่ตะกร้า" ใช้ AddToCartBar เดิมของ A3 → เข้า flow /checkout จริง ไม่ทำ modal จ่ายด่วนซ้ำ
 //   - ไม่มีการ์ด "ได้รับการสนับสนุน" และปุ่มหัวใจ — ระบบสปอนเซอร์/รายการโปรดยังไม่มีจริง (กติกาข้อ 18)
 // จอแคบ: grid ยุบเป็นคอลัมน์เดียวอัตโนมัติ (.prod-grid ใน <style> ด้านล่าง breakpoint 900px เดียวกับ shell)
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, ShieldCheck, Fish } from "lucide-react";
 import AddToCartBar from "@/components/AddToCartBar";
+import TimeLeft from "@/components/TimeLeft";
 import { COND_GRADES } from "@/lib/catalog";
 
 const C = { brand: "#0E7E8C", brandDk: "#0B5F6A", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7", shop: "#F0A500" };
@@ -20,6 +21,21 @@ export default function ProductClient({ p, seller, views, canBuy, isOwner, simil
   const imgs = p.images?.length ? p.images : [];
   const [imgIdx, setImgIdx] = useState(0);
   const [zoom, setZoom] = useState(false); // lightbox ดูรูปขยายใหญ่
+  const [hold, setHold] = useState(null); // ST1 6c: มีคนกำลังซื้อชิ้นนี้อยู่ไหม — poll 10 วิ
+  useEffect(() => {
+    let stop = false;
+    const load = async () => {
+      if (document.hidden) return;
+      try {
+        const res = await fetch(`/api/products/holds?ids=${p.id}`);
+        const data = await res.json();
+        if (!stop) setHold(data.holds?.[p.id] || null);
+      } catch {}
+    };
+    load();
+    const t = setInterval(load, 10000);
+    return () => { stop = true; clearInterval(t); };
+  }, [p.id]);
   const sold = p.status === "sold";
   const verified = seller?.kyc_status === "verified";
   const sAvatar = (seller?.name || "?").trim().charAt(0).toUpperCase();
@@ -79,7 +95,16 @@ export default function ProductClient({ p, seller, views, canBuy, isOwner, simil
 
             {/* ปุ่มซื้อ — flow จริงของ A3 (ใส่ตะกร้า/ซื้อเลย → /checkout) */}
             <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-              {canBuy ? (
+              {canBuy && hold ? (
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4, background: "#F6F9F9", border: `1.5px solid ${C.brand}`, borderRadius: 12, padding: "10px 14px" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 800, color: C.brand }}>🔒 มีคนกำลังทำรายการซื้อชิ้นนี้</span>
+                  <span style={{ fontSize: 12, color: C.muted }}>
+                    {hold.until
+                      ? <>หากเขาไม่ชำระ สินค้าจะว่างอีกครั้งใน <TimeLeft startIso={hold.until} prefix="" clock overdueText="อีกครู่..." style={{ color: "#B7791F" }} /> — หน้านี้จะปลดล็อกให้เอง</>
+                      : <>กำลังรอตรวจสอบการชำระเงิน — หากไม่สำเร็จ สินค้าจะกลับมาว่างอีกครั้ง</>}
+                  </span>
+                </div>
+              ) : canBuy ? (
                 <AddToCartBar product={{ id: p.id, name: p.name, price: p.price, img: p.images?.[0] || null }} />
               ) : (
                 <span style={{ height: 44, lineHeight: "44px", padding: "0 26px", borderRadius: 10, background: "#C9D6D8", color: "#fff", fontWeight: 800, fontSize: 14 }}>

@@ -68,6 +68,13 @@ export default function CheckoutCartClient({ addresses, tiers, userId }) {
   const submit = async () => {
     setErr("");
     if (bad.length) { setErr("มีสินค้าที่ไม่พร้อมขายในตะกร้า — กลับไปลบออกก่อน"); return; }
+    // ST1 6d: เช็คสิทธิ์จองสด ณ วินาทีกด
+    try {
+      const hr = await fetch(`/api/products/holds?ids=${good.map(x => x.id).join(",")}`);
+      const hd = await hr.json();
+      const heldNames = good.filter(x => hd.holds?.[x.id]).map(x => x.name);
+      if (heldNames.length) { setErr(`มีคนอื่นกำลังซื้อ: ${heldNames.join(", ")} — รอสักครู่หรือลบออกจากตะกร้าก่อน`); return; }
+    } catch {}
     if (!good.length) return;
     if (incomplete) { setShowErr(true); return; }
     setBusy(true);

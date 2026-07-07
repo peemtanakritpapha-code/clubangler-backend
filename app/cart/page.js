@@ -10,6 +10,7 @@ import { ShoppingCart, X, Fish } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getCart, removeFromCart, subscribeCart } from "@/lib/cart";
 import { feeFor } from "@/lib/fees";
+import TimeLeft from "@/components/TimeLeft";
 
 const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7", danger: "#C0392B" };
 const baht = n => "฿" + Number(n || 0).toLocaleString();
@@ -19,6 +20,23 @@ export default function CartPage() {
   const supabase = createClient();
   const [items, setItems] = useState(null);   // null = กำลังโหลด
   const [tiers, setTiers] = useState([]);
+  const [holds, setHolds] = useState({}); // ST1 6d: ชิ้นในตะกร้าที่ถูกคนอื่นจองอยู่ — poll 10 วิ
+  useEffect(() => {
+    let stop = false;
+    const load = async () => {
+      if (document.hidden) return;
+      const ids = getCart().map(x => x.id).join(",");
+      if (!ids) { setHolds({}); return; }
+      try {
+        const res = await fetch(`/api/products/holds?ids=${ids}`);
+        const data = await res.json();
+        if (!stop) setHolds(data.holds || {});
+      } catch {}
+    };
+    load();
+    const t = setInterval(load, 10000);
+    return () => { stop = true; clearInterval(t); };
+  }, []);  // eslint-disable-line
 
   // โหลดตะกร้า + ข้อมูลสดจาก DB ทุกครั้งที่ตะกร้าเปลี่ยน
   useEffect(() => {
@@ -65,7 +83,8 @@ export default function CartPage() {
   // กติกาเหล็ก: ค่าธรรมเนียมคิด "ต่อชิ้น" ผ่าน feeFor แล้วบวกกัน (prototype บรรทัด 1996) — ห้าม feeFor ของยอดรวม
   const buyerFee = tiers.length ? good.reduce((s, x) => s + feeFor(x.price, tiers, "buyer"), 0) : 0;
   const total = subtotal + shipping + buyerFee;
-  const canPay = good.length > 0 && bad.length === 0;
+  const heldCount = (items || []).filter(x => x.ok && holds[x.id]).length; // ST1 6d
+  const canPay = good.length > 0 && bad.length === 0 && heldCount === 0;
 
   const card = { background: "#fff", borderRadius: 14, padding: 12, boxShadow: "0 4px 16px rgba(0,0,0,.05)" };
 
@@ -95,8 +114,11 @@ export default function CartPage() {
             <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
             {items.map(p => (
               <div key={p.id} style={{ ...card, display: "flex", gap: 10, alignItems: "center", opacity: p.ok ? 1 : .75, border: p.ok ? "none" : `1.5px solid ${C.danger}` }}>
-                <Link href={`/product/${p.id}`} style={{ width: 52, height: 52, borderRadius: 10, background: C.brandTint, display: "flex", alignItems: "center", justifyContent: "center", color: C.brand, overflow: "hidden", flex: "none" }}>
+                <Link href={`/product/${p.id}`} style={{ width: 52, height: 52, borderRadius: 10, background: C.brandTint, display: "flex", alignItems: "center", justifyContent: "center", color: C.brand, overflow: "hidden", flex: "none", position: "relative" }}>
                   {p.img ? <img src={p.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Fish size={22} />}
+                  {p.ok && holds[p.id] && (
+                    <span style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, textShadow: "0 1px 3px rgba(0,0,0,.5)" }}>🔒</span>
+                  )}
                 </Link>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <Link href={`/product/${p.id}`} style={{ fontSize: 12.5, fontWeight: 600, color: C.ink, textDecoration: "none", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</Link>
@@ -107,6 +129,13 @@ export default function CartPage() {
                   ) : (
                     <div style={{ fontSize: 11.5, fontWeight: 800, color: C.danger, marginTop: 3 }}>⚠ สินค้านี้ไม่พร้อมขายแล้ว — ลบออกจากตะกร้าเพื่อไปต่อ</div>
                   )}
+                    {p.ok && holds[p.id] && (
+                      <div style={{ fontSize: 11.5, fontWeight: 800, color: "#B7791F", marginTop: 3 }}>
+                        {holds[p.id].until
+                          ? <>⏳ มีคนกำลังซื้อ — ว่างอีกครั้งใน <TimeLeft startIso={holds[p.id].until} prefix="" clock overdueText="อีกครู่..." style={{ color: "#B7791F" }} /></>
+                          : <>⏳ มีคนกำลังซื้อ (รอตรวจการชำระ) — รอสักครู่ หรือลบออกเพื่อไปต่อ</>}
+                      </div>
+                    )}
                 </div>
                 <button aria-label="ลบออกจากตะกร้า" onClick={() => removeFromCart(p.id)}
                   style={{ width: 32, height: 32, borderRadius: 9, border: `1px solid ${C.line}`, background: "#fff", color: C.danger, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flex: "none" }}>
@@ -138,6 +167,9 @@ export default function CartPage() {
               </div>
               {bad.length > 0 && (
                 <div style={{ fontSize: 12, color: C.danger, fontWeight: 700, marginTop: 10 }}>⚠ มีสินค้าที่ไม่พร้อมขาย {bad.length} ชิ้น — ลบออกก่อนจึงจะชำระเงินได้</div>
+              )}
+              {heldCount > 0 && (
+                <div style={{ fontSize: 12, color: "#B7791F", fontWeight: 700, marginTop: 10 }}>⏳ มีสินค้าที่คนอื่นกำลังซื้อ {heldCount} ชิ้น — รอให้ว่างก่อน หรือลบออกเพื่อชำระทันที</div>
               )}
               <button onClick={() => canPay && router.push("/checkout")} disabled={!canPay}
                 style={{ marginTop: 12, width: "100%", height: 48, borderRadius: 12, border: "none", background: C.brand, color: "#fff", fontWeight: 700, fontSize: 14, cursor: canPay ? "pointer" : "not-allowed", opacity: canPay ? 1 : .5 }}>

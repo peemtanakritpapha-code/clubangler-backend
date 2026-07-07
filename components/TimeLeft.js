@@ -20,18 +20,24 @@ function remain(deadlineMs, now) {
   return { text: `${d} วัน (ภายใน ${when})`, tone: MUTED };
 }
 
-export default function TimeLeft({ startIso, minutes = 0, hours = 0, days = 0, prefix = "เหลืออีก", overdueText = "เลยกำหนดแล้ว — ระบบกำลังดำเนินการ", style = {} }) {
+export default function TimeLeft({ startIso, minutes = 0, hours = 0, days = 0, clock = false, prefix = "เหลืออีก", overdueText = "เลยกำหนดแล้ว — ระบบกำลังดำเนินการ", style = {} }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 60000); // อัปเดตทุกนาที — ไม่วิ่งเป็นวินาที
+    const t = setInterval(() => setNow(Date.now()), clock ? 1000 : 60000); // clock = เดินวินาที (ใช้เฉพาะป้ายนับสั้น)
     return () => clearInterval(t);
-  }, []);
+  }, [clock]);
   if (!startIso) return null;
   const deadline = new Date(startIso).getTime() + (days * 24 + hours) * 3600000 + minutes * 60000;
   const r = remain(deadline, now);
+  // โหมดนาฬิกา: เหลือไม่ถึงชั่วโมงโชว์ m:ss (ตามดีไซน์ G1)
+  let text = r ? `${prefix} ${r.text}` : overdueText;
+  if (r && clock && deadline - now < 3600000) {
+    const total = Math.max(0, Math.floor((deadline - now) / 1000));
+    text = `${prefix} ${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+  }
   return (
     <span style={{ fontWeight: 700, color: r ? r.tone : MUTED, ...style }}>
-      {r ? `${prefix} ${r.text}` : overdueText}
+      {text}
     </span>
   );
 }

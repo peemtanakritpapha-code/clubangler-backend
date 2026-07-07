@@ -9,6 +9,7 @@
 //   .mkt-side = sidebar (โชว์เฉพาะจอกว้าง) · .mkt-desk = sort+ลงขาย · .mkt-mobile = ปุ่ม Filter + ชิปหมวด (ซ่อนบนจอกว้าง)
 // ตัวกรองทุกก้อนเป็น render function ใช้ร่วมกันระหว่างชีต (มือถือ) กับ sidebar (desktop) — state ชุดเดียว
 import { useEffect, useMemo, useState } from "react";
+import TimeLeft from "@/components/TimeLeft";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Search, X, ShieldCheck, Fish, Filter, ChevronRight, ChevronLeft, Plus } from "lucide-react";
@@ -17,10 +18,11 @@ import { CAT_MAINS, CATEGORY_TREE, catChildren, ALL_BRANDS, COND_GRADES } from "
 const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7", bg2: "#F1F3F4" };
 const RATIOS = ["1/1", "3/4", "4/3", "1/1", "3/4", "1/1", "4/3", "3/4"]; // ความสูงแปรผันแบบ prototype (MASONRY_RATIOS)
 
-function MasonryCard({ p, idx, router }) {
+function MasonryCard({ p, idx, router, hold }) {
   const ratio = p.image_ratio || RATIOS[idx % RATIOS.length]; // W5.8: ใช้สัดส่วนที่ผู้ขายเลือก (ของเก่าไม่มีค่า → สุ่มแบบเดิม)
   const s = p.seller;
   const sold = p.status === "sold";
+  const held = !!hold && !sold; // ST1 6b: มีคนกำลังซื้อ
   return (
     <div onClick={() => router.push(`/product/${p.id}`)} style={{ borderRadius: 12, overflow: "hidden", cursor: "pointer", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,.07)" }}>
       {/* รูปสินค้า — ความสูงแปรผัน */}
@@ -32,6 +34,19 @@ function MasonryCard({ p, idx, router }) {
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.38)", display: "grid", placeItems: "center" }}>
             <span style={{ border: "2px solid #fff", color: "#fff", fontWeight: 800, fontSize: 13, padding: "4px 14px", borderRadius: 999, transform: "rotate(-8deg)", letterSpacing: 1 }}>ขายแล้ว</span>
           </div>
+        )}
+        {held && (
+          <>
+            <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.2)" }} />
+            <div style={{ position: "absolute", top: 8, left: 8, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+              <span style={{ background: C.brand, color: "#fff", fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999, display: "flex", alignItems: "center", gap: 5 }}>🔒 มีคนกำลังซื้อ</span>
+              {hold.until && (
+                <span style={{ color: "#fff", fontSize: 11.5, fontWeight: 700, paddingLeft: 4, textShadow: "0 1px 3px rgba(0,0,0,.6)" }}>
+                  <TimeLeft startIso={hold.until} prefix="หมดเวลาใน" clock overdueText="กำลังปลดล็อก..." style={{ color: "#fff" }} />
+                </span>
+              )}
+            </div>
+          </>
         )}
         {/* ราคา — dark pill มุมซ้ายล่าง (prototype บรรทัด 716–732) */}
         <div style={{ position: "absolute", bottom: 8, left: 8, background: "rgba(0,0,0,.30)", backdropFilter: "blur(6px)", borderRadius: 999, padding: "5px 12px" }}>
@@ -75,6 +90,7 @@ export default function MarketClient({ products, loggedIn }) {
   const [mPath, setMPath] = useState([]);
   const [catModalQ, setCatModalQ] = useState("");
   const [nCols, setNCols] = useState(2);
+  const [holds, setHolds] = useState({}); // ST1 6b
   // ฟิลเตอร์ชีต (prototype MarketScreen บรรทัด 912–925, 1030–1090)
   const [filterOpen, setFilterOpen] = useState(false);
   const [priceMin, setPriceMin] = useState("");
@@ -132,6 +148,24 @@ export default function MarketClient({ products, loggedIn }) {
     // ขายแล้วจมท้ายเสมอ (stable sort — prototype บรรทัด 944)
     return [...l].sort((a, b) => (a.status === "sold" ? 1 : 0) - (b.status === "sold" ? 1 : 0));
   }, [products, q, catPath, priceMin, priceMax, cond, condGrade, brand, sortBy]);
+
+  // ST1 6b: ป้ายมีคนกำลังซื้อ — poll เฉพาะที่แสดง ทุก 20 วิ หยุดเมื่อแท็บถูกซ่อน
+  useEffect(() => {
+    let stop = false;
+    const load = async () => {
+      if (document.hidden) return;
+      const ids = list.slice(0, 60).map(p => p.id).join(",");
+      if (!ids) { setHolds({}); return; }
+      try {
+        const res = await fetch(`/api/products/holds?ids=${ids}`);
+        const data = await res.json();
+        if (!stop) setHolds(data.holds || {});
+      } catch {}
+    };
+    load();
+    const t = setInterval(load, 10000);
+    return () => { stop = true; clearInterval(t); };
+  }, [list]);
 
   // แจกการ์ดเข้าคอลัมน์แบบ index % n (prototype บรรทัด 1015–1026)
   const cols = useMemo(() => {
@@ -296,7 +330,7 @@ export default function MarketClient({ products, loggedIn }) {
             <div style={{ display: "flex", gap: 6, padding: "6px 10px 14px", alignItems: "flex-start" }}>
               {cols.map((col, ci) => (
                 <div key={ci} style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, marginTop: ci % 2 === 1 ? 24 : 0 }}>
-                  {col.map(({ p, i }) => <MasonryCard key={p.id} p={p} idx={i} router={router} />)}
+                  {col.map(({ p, i }) => <MasonryCard key={p.id} p={p} idx={i} router={router} hold={holds[p.id]} />)}
                 </div>
               ))}
             </div>
