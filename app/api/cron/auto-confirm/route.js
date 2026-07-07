@@ -4,6 +4,7 @@
 //     - มีคำขอขยายเวลาค้างรอผู้ขายตอบ → พักการยืนยันแทนไว้ก่อน (ผู้ขายยิ่งช้าเงินยิ่งออกช้า — แรงจูงใจให้รีบตอบ)
 //  B. ผู้ขายไม่ยืนยันรับของคืน ครบ M วันหลังผู้ซื้อส่งคืน → ระบบยืนยันแทน (→ return_received เข้าคิวคืนเงิน)
 //  C. ผู้ซื้อไม่ส่งของคืน ครบ Y วันหลังอนุมัติการคืน → ปิดเคสคืนอัตโนมัติ (→ delivered พร้อมเหตุผล)
+//  D. ผู้ขายไม่จัดส่ง ครบ X วัน (+ขยายที่ผู้ซื้ออนุมัติ) → ยกเลิก + คืนสต็อก + เข้าคิวคืนเงิน
 //  + ประทับเวลา self-healing: ออเดอร์ที่ไม่มี timestamp จะถูกประทับรอบแรกที่ cron เห็น แล้วเริ่มนับจากนั้น
 // ความปลอดภัย: ต้องแนบ x-cron-key (หรือ ?key=) ตรงกับ CRON_SECRET เท่านั้น
 import { NextResponse } from "next/server";
@@ -12,6 +13,16 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export const dynamic = "force-dynamic";
 
 const daysMs = n => n * 24 * 60 * 60 * 1000;
+
+// คืนสต็อกเมื่อออเดอร์ถูกยกเลิก — ฝั่งตรงข้ามของ consumeStock ใน verify/route.js
+// เปิดสินค้ากลับเป็น active เฉพาะตัวที่เป็น "sold" เท่านั้น (ไม่ปลดสินค้าที่ถูกแอดมินระงับ)
+async function restoreStock(admin, productId) {
+  if (!productId) return;
+  const { data: p } = await admin.from("products").select("stock, status").eq("id", productId).single();
+  if (!p) return;
+  const next = (Number(p.stock) || 0) + 1;
+  await admin.from("products").update({ stock: next, ...(p.status === "sold" ? { status: "active" } : {}) }).eq("id", productId);
+}
 
 async function run(req) {
   const key = req.headers.get("x-cron-key") || new URL(req.url).searchParams.get("key");
@@ -94,9 +105,9 @@ async function run(req) {
     result.return_expired.push(o.order_no);
   }
 
-  /* ── D) ผู้ขายไม่จัดส่ง ครบ X วัน (+ขยายที่ผู้ซื้ออนุมัติ) → ยกเลิกออเดอร์ เข้าคิวคืนเงิน ── */
+  /* ── D) ผู้ขายไม่จัดส่ง ครบ X วัน (+ขยายที่ผู้ซื้ออนุมัติ) → ยกเลิก + คืนสต็อก + เข้าคิวคืนเงิน ── */
   const { data: candD } = await admin.from("orders")
-    .select("id, order_no, item, buyer_id, seller_id, payment_verified_at, ship_extend_status, ship_extend_days")
+    .select("id, order_no, item, buyer_id, seller_id, product_id, payment_verified_at, ship_extend_status, ship_extend_days")
     .eq("status", "payment_verified").not("payment_verified_at", "is", null)
     .lt("payment_verified_at", new Date(now - daysMs(X)).toISOString()).limit(200);
   for (const o of candD || []) {
@@ -107,6 +118,7 @@ async function run(req) {
       .update({ status: "cancelled", cancelled_at: nowIso })
       .eq("id", o.id).eq("status", "payment_verified"); // กันชนกับผู้ขายที่เพิ่งกดแจ้งส่ง
     if (error) continue;
+    await restoreStock(admin, o.product_id); // คืนสต็อก — สินค้ากลับมาขายได้ (ตรงข้าม consumeStock ตอน approve)
     await admin.from("notifications").insert([
       { to_user: o.buyer_id, icon: "⛔", title: "ออเดอร์ถูกยกเลิก — ผู้ขายไม่จัดส่ง", body: `${o.item} — เกินกำหนด ${X + extra} วัน ทีมงานจะโอนเงินคืนเต็มจำนวนโดยเร็ว`, ref: o.order_no },
       { to_user: o.seller_id, icon: "⛔", title: "ออเดอร์ถูกยกเลิกอัตโนมัติ", body: `${o.item} — ไม่มีการแจ้งจัดส่งภายใน ${X + extra} วัน เงินจะถูกคืนให้ผู้ซื้อ`, ref: o.order_no },
