@@ -15,10 +15,18 @@ export async function POST(req, { params }) {
   if (!slipPath) return NextResponse.json({ error: "ยังไม่ได้แนบสลิป" }, { status: 400 });
 
   const admin = createAdminClient();
-  const { data: o } = await admin.from("orders").select("id, buyer_id, status, pay_group").eq("id", id).single();
+  const { data: o } = await admin.from("orders").select("id, buyer_id, status, pay_group, created_at, slip_reject_reason").eq("id", id).single();
   if (!o || o.buyer_id !== user.id) return NextResponse.json({ error: "ไม่พบออเดอร์" }, { status: 404 });
   if (!["pending_payment", "pending_verification"].includes(o.status))
     return NextResponse.json({ error: "ออเดอร์นี้เลยขั้นตอนชำระเงินแล้ว" }, { status: 400 });
+
+  // ST1: กันซอมบี้ฟื้น — หมดเวลาชำระแล้วห้ามแนบ (ยกเว้นสลิปถูกปฏิเสธ = เคยแนบทันเวลาแล้ว)
+  if (o.status === "pending_payment" && !o.slip_reject_reason) {
+    const { data: cfgRows } = await admin.from("platform_config").select("pay_within_minutes").limit(1);
+    const PAY_MIN = Number(cfgRows?.[0]?.pay_within_minutes) || 60;
+    if (new Date(o.created_at).getTime() < Date.now() - PAY_MIN * 60000)
+      return NextResponse.json({ error: "หมดเวลาชำระแล้ว — คำสั่งซื้อนี้กำลังถูกปิด สั่งซื้อใหม่ได้เลย" }, { status: 400 });
+  }
 
   const patch = {
     slip_path: slipPath,

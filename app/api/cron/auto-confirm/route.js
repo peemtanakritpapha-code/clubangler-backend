@@ -36,7 +36,8 @@ async function run(req) {
   const M = Number(cfg.return_auto_confirm_days) || 10;  // ยืนยันรับของคืนแทนผู้ขาย
   const Y = Number(cfg.return_ship_within_days) || 5;    // ผู้ซื้อต้องส่งคืนภายใน
   const X = Number(cfg.ship_within_days) || 3;           // ผู้ขายต้องจัดส่งภายใน (เกิน = ยกเลิก+คืนเงิน)
-  const Z = Number(cfg.pay_within_hours) || 24;          // ผู้ซื้อต้องชำระภายใน (ชม.) — เกิน = expired
+  const Z = Number(cfg.pay_within_minutes) || 60;        // ผู้ซื้อต้องชำระภายใน (นาที)
+  const zText = Z % 60 === 0 ? `${Z / 60} ชม.` : `${Z} นาที`;          // ผู้ซื้อต้องชำระภายใน (ชม.) — เกิน = expired
 
   const now = Date.now();
   const nowIso = new Date().toISOString();
@@ -131,14 +132,14 @@ async function run(req) {
   const { data: candE } = await admin.from("orders")
     .select("id, order_no, item, buyer_id, seller_id")
     .eq("status", "pending_payment").not("created_at", "is", null)
-    .lt("created_at", new Date(now - Z * 3600000).toISOString()).limit(200);
+    .lt("created_at", new Date(now - Z * 60000).toISOString()).limit(200);
   for (const o of candE || []) {
     const { error } = await admin.from("orders")
-      .update({ status: "expired", cancelled_at: nowIso, cancel_reason: `หมดเวลาชำระภายใน ${Z} ชม.` })
+      .update({ status: "expired", cancelled_at: nowIso, cancel_reason: `หมดเวลาชำระภายใน ${zText}` })
       .eq("id", o.id).eq("status", "pending_payment"); // กันชนกับผู้ซื้อที่เพิ่งแนบสลิป
     if (error) continue;
     await admin.from("notifications").insert([
-      { to_user: o.buyer_id, icon: "⏳", title: "คำสั่งซื้อหมดอายุ", body: `${o.item} — ไม่มีการชำระภายใน ${Z} ชม. สั่งซื้อใหม่ได้ตลอดถ้าสินค้ายังอยู่`, ref: o.order_no },
+      { to_user: o.buyer_id, icon: "⏳", title: "คำสั่งซื้อหมดอายุ", body: `${o.item} — ไม่มีการชำระภายใน ${zText} สั่งซื้อใหม่ได้ตลอดถ้าสินค้ายังอยู่`, ref: o.order_no },
       { to_user: o.seller_id, icon: "⏳", title: "ออเดอร์หมดอายุ — ผู้ซื้อไม่ชำระ", body: `${o.item} — สินค้ายังลงขายตามปกติ`, ref: o.order_no },
     ]);
     result.expired.push(o.order_no);

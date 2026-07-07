@@ -6,6 +6,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import TimeLeft from "@/components/TimeLeft";
 
 const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7", danger: "#C0392B", warn: "#B7791F", warnBg: "#FEF6E7" };
 const baht = n => "฿" + Number(n || 0).toLocaleString();
@@ -119,6 +120,11 @@ export default function PayClient({ order: o, groupOrders, config, userId }) {
           </div>
         </div>
 
+        {!submitted && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#FFF8EC", border: "1px solid #F3E3C2", borderRadius: 10, padding: "10px 14px", fontSize: 12.5, color: "#92400E", lineHeight: 1.55 }}>
+            ⏳ <span>เหลือเวลาชำระ <TimeLeft startIso={o.created_at} minutes={Number(config?.pay_within_minutes) || 60} prefix="อีก" overdueText="หมดเวลาแล้ว — ระบบกำลังปิดออเดอร์" /> — โอนแล้วอย่าลืมแนบสลิปก่อนหมดเวลา</span>
+          </div>
+        )}
         {rejectedOrder && (
           <div style={{ fontSize: 12.5, color: C.danger, background: "#FBEAE8", borderRadius: 10, padding: "10px 14px", fontWeight: 700 }}>
             ⚠ สลิปก่อนหน้าไม่ผ่านการตรวจสอบ — เหตุผล: {rejectedOrder.slip_reject_reason}<br />

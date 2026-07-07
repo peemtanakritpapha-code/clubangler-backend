@@ -10,6 +10,7 @@ import { ChevronLeft, ShieldCheck, MapPin, Package, Fish, Check } from "lucide-r
 import { createClient } from "@/lib/supabase/client";
 import ReturnSteps from "@/components/ReturnSteps";
 import ShippingLabel from "@/components/ShippingLabel";
+import TimeLeft from "@/components/TimeLeft";
 
 const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7", danger: "#C0392B", ok: "#1E8E3E", ret: "#C2410C" };
 const baht = n => "฿" + Number(n || 0).toLocaleString();
@@ -216,7 +217,8 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
   const X_DAYS = Number(config?.ship_within_days) || 3;               // ผู้ขายควรจัดส่งภายใน
   const Y_DAYS = Number(config?.return_ship_within_days) || 5;        // ผู้ซื้อต้องส่งคืนภายใน
   const E_DAYS = Number(config?.extend_receive_days) || 3;            // ขยายเวลารับของครั้งละ
-  const Z_DAYS = Number(config?.ship_extend_days) || 2;               // ขยายเวลาจัดส่งครั้งละ
+  const Z_DAYS = Number(config?.ship_extend_days) || 2;
+  const PAY_MIN = Number(config?.pay_within_minutes) || 60;           // ผู้ซื้อต้องชำระภายใน (ชม.)               // ขยายเวลาจัดส่งครั้งละ
   const effX = X_DAYS + (o.ship_extend_status === "approved" ? (Number(o.ship_extend_days) || 0) : 0);
   const effN = N_DAYS + (o.extend_status === "approved" ? (Number(o.extend_days) || 0) : 0); // กำหนดจริงรวมขยาย
   const escrowIn = ["payment_verified", "shipped", "delivered", "completed"].includes(o.status);
@@ -472,6 +474,11 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
           {err && <div style={{ fontSize: 12.5, color: C.danger, background: "#FBEAE8", borderRadius: 8, padding: "8px 12px", marginBottom: 12 }}>{err}</div>}
 
           {/* ══ ปุ่ม/ฟอร์มตามสถานะ — ฝั่งผู้ซื้อ ══ */}
+          {!isSeller && o.status === "pending_payment" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#FFF8EC", border: "1px solid #F3E3C2", borderRadius: 10, padding: "10px 13px", marginBottom: 10, fontSize: 12.5, color: "#92400E", lineHeight: 1.55 }}>
+              ⏳ <span>เหลือเวลาชำระ <TimeLeft startIso={o.created_at} minutes={PAY_MIN} prefix="อีก" overdueText="หมดเวลาแล้ว — ระบบกำลังปิดออเดอร์" /> — เลยเวลาออเดอร์จะถูกยกเลิก สั่งใหม่ได้เสมอ</span>
+            </div>
+          )}
           {!isSeller && o.status === "pending_payment" && (
             <Link href={`/pay/${o.id}`} style={{ display: "block", textAlign: "center", background: C.brand, color: "#fff", padding: "13px 0", borderRadius: 10, fontWeight: 800, fontSize: 14, textDecoration: "none" }}>
               💳 ชำระเงิน / แนบสลิป

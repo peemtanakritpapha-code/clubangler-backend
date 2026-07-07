@@ -48,6 +48,25 @@ export async function POST(req) {
   const refNo = payGroup || targets[0].order_no;
 
   if (approve) {
+    // ST1: backstop สุดท้าย — เช็คสต็อกจริง ณ วินาที approve (กันขายซ้ำจากเคสชนกันระดับ ms)
+    const pids = [...new Set(targets.map(o => o.product_id).filter(Boolean))];
+    const { data: prods } = pids.length
+      ? await admin.from("products").select("id, stock").in("id", pids)
+      : { data: [] };
+    const stockLeft = Object.fromEntries((prods || []).map(p => [String(p.id), Number(p.stock) || 0]));
+    const blocked = [];
+    targets = targets.filter(o => {
+      if (!o.product_id) return true;
+      const k = String(o.product_id);
+      if (stockLeft[k] > 0) { stockLeft[k] -= 1; return true; }
+      blocked.push(o.order_no);
+      return false;
+    });
+    if (blocked.length && !targets.length)
+      return NextResponse.json({ error: `สินค้าถูกขายไปแล้ว (${blocked.join(", ")}) — ห้ามอนุมัติ ใช้ปุ่มปฏิเสธพร้อมเหตุผล แล้วนัดโอนเงินคืนผู้ซื้อ` }, { status: 409 });
+    if (blocked.length)
+      return NextResponse.json({ error: `บางชิ้นถูกขายไปแล้ว (${blocked.join(", ")}) — ต้องแยกจัดการทีละใบ: ปฏิเสธใบที่ของหมดก่อน แล้วค่อยอนุมัติใบที่เหลือ` }, { status: 409 });
+
     const { error } = await admin.from("orders")
       .update({ status: "payment_verified", slip_reject_reason: null }).in("id", ids);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

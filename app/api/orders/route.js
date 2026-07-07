@@ -40,6 +40,25 @@ export async function POST(req) {
       return NextResponse.json({ error: `ซื้อสินค้าของตัวเองไม่ได้ ("${p.name}")` }, { status: 400 });
   }
 
+  // ── ST1: ด่านนับสิทธิ์มีชีวิต — กันซื้อทับซ้อน ──
+  // สิทธิ์มีชีวิต = pending_verification ทุกใบ + pending_payment ที่ยังไม่หมดเวลา (นับสด ไม่รอ cron)
+  const { data: cfgRows } = await admin.from("platform_config").select("pay_within_minutes").limit(1);
+  const PAY_MIN = Number(cfgRows?.[0]?.pay_within_minutes) || 60;
+  const freshCut = new Date(Date.now() - PAY_MIN * 60000).toISOString();
+  const { data: liveRows } = await admin.from("orders")
+    .select("product_id, buyer_id, status, created_at")
+    .in("product_id", ids).in("status", ["pending_payment", "pending_verification"]);
+  const live = (liveRows || []).filter(r => r.status === "pending_verification" || r.created_at >= freshCut);
+  for (const id of ids) {
+    const p = byId[id];
+    const claims = live.filter(r => String(r.product_id) === String(id));
+    const mine = claims.find(r => r.buyer_id === user.id);
+    if (mine)
+      return NextResponse.json({ error: `คุณมีคำสั่งซื้อ "${p.name}" รอชำระอยู่แล้ว — ไปที่ "การซื้อของฉัน" เพื่อชำระเงินใบเดิม` }, { status: 400 });
+    if (claims.length >= (Number(p.stock) || 1))
+      return NextResponse.json({ error: `มีผู้อื่นกำลังทำรายการ "${p.name}" อยู่ — หากไม่ชำระภายใน ${PAY_MIN} นาที สินค้าจะว่างอีกครั้ง` }, { status: 409 });
+  }
+
   const { data: tiers } = await admin.from("fee_tiers").select("*");
 
   // คำนวณต่อชิ้นผ่าน feeFor เท่านั้น (กติกาเหล็กข้อ 1) แล้วค่อยรวมเป็นยอดกลุ่ม
@@ -76,7 +95,11 @@ export async function POST(req) {
   }));
 
   const { data: orders, error } = await admin.from("orders").insert(inserts).select("id, order_no");
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    if (String(error.code) === "23505")
+      return NextResponse.json({ error: "คำสั่งซื้อนี้ถูกสร้างไปแล้ว — เช็คที่ \"การซื้อของฉัน\"" }, { status: 409 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   return NextResponse.json({
     ok: true,

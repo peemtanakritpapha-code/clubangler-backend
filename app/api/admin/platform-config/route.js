@@ -11,7 +11,7 @@ const ALLOWED = [
   "banner_enabled", "banner_text",
   "auto_confirm_days", "return_auto_confirm_days",
   "ship_within_days", "ship_extend_days", "return_ship_within_days", "extend_receive_days",
-  "pay_within_hours",
+  "pay_within_minutes",
 ];
 
 async function requireAdmin() {
@@ -51,7 +51,7 @@ export async function POST(req) {
   }
 
   // ต้องเหลืออย่างน้อย 1 ช่องทางรับเงินที่ใช้งานได้ (กติกาจาก prototype บรรทัด 5343)
-    if ("pay_within_hours" in patch) patch.pay_within_hours = Math.min(168, Math.max(1, Number(patch.pay_within_hours) || 0));
+    if ("pay_within_minutes" in patch) patch.pay_within_minutes = Math.min(10080, Math.max(5, Number(patch.pay_within_minutes) || 0));
 
   const { data: cur } = await admin.from("platform_config").select("*").single();
   if (!cur) return NextResponse.json({ error: "ไม่พบ platform_config" }, { status: 500 });

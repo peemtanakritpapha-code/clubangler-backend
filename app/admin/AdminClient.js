@@ -382,7 +382,7 @@ function SystemSettings({ config, onError }) {
     return_ship_within_days: Number(config?.return_ship_within_days) || 5,
     extend_receive_days: Number(config?.extend_receive_days) || 3,
     ship_extend_days: Number(config?.ship_extend_days) || 2,
-    pay_within_hours: Number(config?.pay_within_hours) || 24,
+    pay_within_minutes: Number(config?.pay_within_minutes) || 60,
     banner_enabled: !!config?.banner_enabled,
     banner_text: config?.banner_text || "",
   };
@@ -442,8 +442,8 @@ function SystemSettings({ config, onError }) {
         <Row label="ขยายเวลารับของครั้งละ (วัน)" hint="ผู้ซื้อขอขยายเวลายืนยันรับของได้ 1 ครั้ง — ต้องได้รับการยืนยันจากผู้ขาย จึงเลื่อนกำหนด auto-confirm">
           <input type="number" value={draft.extend_receive_days} onChange={e => set({ extend_receive_days: num(e.target.value, 1, 30) })} style={inputS} />
         </Row>
-        <Row label="ผู้ซื้อต้องชำระภายใน (ชม.)" hint="นับจากสร้างคำสั่งซื้อ — เกินกำหนด ระบบยกเลิกคำสั่งซื้ออัตโนมัติ (ไม่กระทบเงิน/สต็อก)">
-          <input type="number" value={draft.pay_within_hours} onChange={e => set({ pay_within_hours: num(e.target.value, 1, 168) })} style={inputS} />
+        <Row label="ผู้ซื้อต้องชำระภายใน (นาที)" hint="นับจากสร้างคำสั่งซื้อ — เกินกำหนด ระบบยกเลิกคำสั่งซื้ออัตโนมัติ (ไม่กระทบเงิน/สต็อก)">
+          <input type="number" value={draft.pay_within_minutes} onChange={e => set({ pay_within_minutes: num(e.target.value, 5, 10080) })} style={inputS} />
         </Row>
         <Row label="แบนเนอร์ประกาศ (ตัววิ่ง)" hint="แสดงบนหัวเว็บ/แอปทุกหน้า">
           <Toggle on={draft.banner_enabled} onClick={() => set({ banner_enabled: !draft.banner_enabled })} />
