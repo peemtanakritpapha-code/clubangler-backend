@@ -45,6 +45,7 @@ const BUYER_BADGE = {
   return_approved: ["อนุมัติคืน · รอคุณส่งกลับ", "#B7791F"], return_shipped: ["ส่งคืนแล้ว · รอผู้ขายรับ", "#B7791F"],
   return_received: ["ผู้ขายรับคืนแล้ว · รอคืนเงิน", C.brand], refunded: ["คืนเงินแล้ว", C.muted],
   cancelled: ["ยกเลิก · รอเงินคืน (ผู้ขายไม่จัดส่ง)", C.danger],
+  expired: ["หมดอายุ — ไม่มีการชำระเงิน", C.muted],
 };
 const SELLER_BADGE = {
   pending_payment: ["รอผู้ซื้อชำระ", "#B7791F"], pending_verification: ["แอดมินตรวจสลิป", "#B7791F"],
@@ -54,6 +55,7 @@ const SELLER_BADGE = {
   return_approved: ["อนุมัติคืน · รอผู้ซื้อส่งกลับ", "#B7791F"], return_shipped: ["ของคืนกำลังมา · รอคุณรับ", C.danger],
   return_received: ["รับคืนแล้ว · รอระบบคืนเงินผู้ซื้อ", C.brand], refunded: ["คืนเงินผู้ซื้อแล้ว", C.muted],
   cancelled: ["ถูกยกเลิก — ไม่จัดส่งตามกำหนด", C.danger],
+  expired: ["หมดอายุ — ผู้ซื้อไม่ชำระ", C.muted],
 };
 
 // Timeline 6 ขั้นตามบทบาท (spec §3–4)
@@ -461,6 +463,12 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
             </div>
           )}
 
+          {o.cancel_reason && ["cancelled", "expired"].includes(o.status) && (
+            <div style={{ fontSize: 12.5, color: C.muted, background: "#F6F9F9", borderRadius: 8, padding: "8px 12px", marginBottom: 12 }}>
+              🚫 เหตุผลการยกเลิก: {o.cancel_reason}
+            </div>
+          )}
+
           {err && <div style={{ fontSize: 12.5, color: C.danger, background: "#FBEAE8", borderRadius: 8, padding: "8px 12px", marginBottom: 12 }}>{err}</div>}
 
           {/* ══ ปุ่ม/ฟอร์มตามสถานะ — ฝั่งผู้ซื้อ ══ */}
@@ -468,6 +476,12 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
             <Link href={`/pay/${o.id}`} style={{ display: "block", textAlign: "center", background: C.brand, color: "#fff", padding: "13px 0", borderRadius: 10, fontWeight: 800, fontSize: 14, textDecoration: "none" }}>
               💳 ชำระเงิน / แนบสลิป
             </Link>
+          )}
+          {!isSeller && o.status === "pending_payment" && (
+            <button disabled={busy} onClick={() => call(`/api/orders/${o.id}/cancel`, {}, "ยกเลิกคำสั่งซื้อนี้?\n\nออเดอร์จะถูกปิดทันที หากต้องการสินค้านี้อีกครั้ง สั่งซื้อใหม่ได้")}
+              style={{ width: "100%", marginTop: 10, height: 42, border: `1px solid ${C.line}`, borderRadius: 10, background: "#fff", color: C.danger, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+              🚫 ยกเลิกคำสั่งซื้อ
+            </button>
           )}
           {!isSeller && o.status === "payment_verified" && (
             <div style={{ ...box, background: "#F6F9F9", border: "none", fontSize: 12.5, color: C.muted, lineHeight: 1.7 }}>

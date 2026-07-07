@@ -21,6 +21,7 @@ const BUYER_S = {
   return_approved: ["อนุมัติคืน · รอคุณส่งกลับ", C.amber, "R1"], return_shipped: ["ส่งคืนแล้ว · รอผู้ขายรับ", C.amber, "R2"],
   return_received: ["ผู้ขายรับคืนแล้ว · รอคืนเงิน", C.brand, "R3"], refunded: ["คืนเงินแล้ว", C.muted, "R4"],
   cancelled: ["ยกเลิก · รอเงินคืน", C.danger, "R4"],
+  expired: ["หมดอายุ — ไม่มีการชำระเงิน", C.muted, 1],
 };
 const SELLER_S = {
   pending_payment: ["รอผู้ซื้อชำระ", C.amber, 1], pending_verification: ["แอดมินตรวจสลิป", C.amber, 2],
@@ -30,6 +31,7 @@ const SELLER_S = {
   return_approved: ["อนุมัติคืน · รอผู้ซื้อส่งกลับ", C.amber, "R1"], return_shipped: ["ของคืนกำลังมา · รอคุณรับ", C.danger, "R2"],
   return_received: ["รับคืนแล้ว · รอระบบคืนเงิน", C.brand, "R3"], refunded: ["คืนเงินผู้ซื้อแล้ว", C.muted, "R4"],
   cancelled: ["ถูกยกเลิก — ไม่จัดส่งตามกำหนด", C.danger, "R4"],
+  expired: ["หมดอายุ — ผู้ซื้อไม่ชำระ", C.muted, 1],
 };
 
 // แถบ ⚡ hint งานที่ต้องทำ — ข้อความตามความจริงของระบบเท่านั้น (กติกาข้อ 18)
@@ -119,7 +121,7 @@ export default function OrdersClient({ orders, userId, initialRole = "buy" }) {
 
   // จัดหมวดตามความเร่ง: มีงาน ⚡ → กำลังดำเนินการ → จบแล้ว (จาง)
   const H = HINT[role];
-  const DONE = role === "sell" ? ["completed", "refunded", "cancelled"] : ["completed", "refunded", "delivered"]; // ผู้ซื้อ cancelled ยังรอเงินคืน = ไม่จบ
+  const DONE = role === "sell" ? ["completed", "refunded", "cancelled", "expired"] : ["completed", "refunded", "delivered", "expired"]; // ผู้ซื้อ cancelled ยังรอเงินคืน = ไม่จบ
   const todo = list.filter(o => H[o.status]);
   const doing = list.filter(o => !H[o.status] && !DONE.includes(o.status));
   const done = list.filter(o => !H[o.status] && DONE.includes(o.status));

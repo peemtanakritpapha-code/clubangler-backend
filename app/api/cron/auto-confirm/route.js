@@ -36,10 +36,11 @@ async function run(req) {
   const M = Number(cfg.return_auto_confirm_days) || 10;  // ยืนยันรับของคืนแทนผู้ขาย
   const Y = Number(cfg.return_ship_within_days) || 5;    // ผู้ซื้อต้องส่งคืนภายใน
   const X = Number(cfg.ship_within_days) || 3;           // ผู้ขายต้องจัดส่งภายใน (เกิน = ยกเลิก+คืนเงิน)
+  const Z = Number(cfg.pay_within_hours) || 24;          // ผู้ซื้อต้องชำระภายใน (ชม.) — เกิน = expired
 
   const now = Date.now();
   const nowIso = new Date().toISOString();
-  const result = { stamped: 0, buyer_confirmed: [], seller_received: [], return_expired: [], cancelled: [] };
+  const result = { stamped: 0, buyer_confirmed: [], seller_received: [], return_expired: [], cancelled: [], expired: [] };
 
   /* ── 0) ประทับเวลา self-healing ── */
   for (const [status, col] of [["shipped", "shipped_at"], ["return_shipped", "return_shipped_at"],
@@ -115,7 +116,7 @@ async function run(req) {
     const extra = o.ship_extend_status === "approved" ? (Number(o.ship_extend_days) || 0) : 0;
     if (new Date(o.payment_verified_at).getTime() > now - daysMs(X + extra)) continue; // ยังอยู่ในช่วงขยาย
     const { error } = await admin.from("orders")
-      .update({ status: "cancelled", cancelled_at: nowIso })
+      .update({ status: "cancelled", cancelled_at: nowIso, cancel_reason: `ผู้ขายไม่จัดส่งภายใน ${X + extra} วัน — ระบบยกเลิกอัตโนมัติ` })
       .eq("id", o.id).eq("status", "payment_verified"); // กันชนกับผู้ขายที่เพิ่งกดแจ้งส่ง
     if (error) continue;
     await restoreStock(admin, o.product_id); // คืนสต็อก — สินค้ากลับมาขายได้ (ตรงข้าม consumeStock ตอน approve)
@@ -126,7 +127,24 @@ async function run(req) {
     result.cancelled.push(o.order_no);
   }
 
-  return NextResponse.json({ ok: true, N, M, Y, X, ...result });
+  /* ── E) ไม่ชำระเงิน ครบ Z ชม. → หมดอายุอัตโนมัติ (expired — ไม่แตะเส้นทางเงิน/สต็อก) ── */
+  const { data: candE } = await admin.from("orders")
+    .select("id, order_no, item, buyer_id, seller_id")
+    .eq("status", "pending_payment").not("created_at", "is", null)
+    .lt("created_at", new Date(now - Z * 3600000).toISOString()).limit(200);
+  for (const o of candE || []) {
+    const { error } = await admin.from("orders")
+      .update({ status: "expired", cancelled_at: nowIso, cancel_reason: `หมดเวลาชำระภายใน ${Z} ชม.` })
+      .eq("id", o.id).eq("status", "pending_payment"); // กันชนกับผู้ซื้อที่เพิ่งแนบสลิป
+    if (error) continue;
+    await admin.from("notifications").insert([
+      { to_user: o.buyer_id, icon: "⏳", title: "คำสั่งซื้อหมดอายุ", body: `${o.item} — ไม่มีการชำระภายใน ${Z} ชม. สั่งซื้อใหม่ได้ตลอดถ้าสินค้ายังอยู่`, ref: o.order_no },
+      { to_user: o.seller_id, icon: "⏳", title: "ออเดอร์หมดอายุ — ผู้ซื้อไม่ชำระ", body: `${o.item} — สินค้ายังลงขายตามปกติ`, ref: o.order_no },
+    ]);
+    result.expired.push(o.order_no);
+  }
+
+  return NextResponse.json({ ok: true, N, M, Y, X, Z, ...result });
 }
 
 export async function POST(req) { return run(req); }

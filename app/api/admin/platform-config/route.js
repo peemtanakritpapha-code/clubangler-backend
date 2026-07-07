@@ -10,6 +10,8 @@ const ALLOWED = [
   "bank_enabled", "banks",
   "banner_enabled", "banner_text",
   "auto_confirm_days", "return_auto_confirm_days",
+  "ship_within_days", "ship_extend_days", "return_ship_within_days", "extend_receive_days",
+  "pay_within_hours",
 ];
 
 async function requireAdmin() {
@@ -33,7 +35,7 @@ export async function POST(req) {
     return NextResponse.json({ error: "ไม่มีข้อมูลให้บันทึก" }, { status: 400 });
 
   // วันครบกำหนดต้องอยู่ระหว่าง 1–30 (prototype บรรทัด 5570)
-  for (const k of ["auto_confirm_days", "return_auto_confirm_days"])
+  for (const k of ["auto_confirm_days", "return_auto_confirm_days", "ship_within_days", "ship_extend_days", "return_ship_within_days", "extend_receive_days"])
     if (k in patch) patch[k] = Math.min(30, Math.max(1, Number(patch[k]) || 0));
 
   // ตรวจ banks ให้เป็นรายการที่ครบถ้วน
@@ -49,6 +51,8 @@ export async function POST(req) {
   }
 
   // ต้องเหลืออย่างน้อย 1 ช่องทางรับเงินที่ใช้งานได้ (กติกาจาก prototype บรรทัด 5343)
+    if ("pay_within_hours" in patch) patch.pay_within_hours = Math.min(168, Math.max(1, Number(patch.pay_within_hours) || 0));
+
   const { data: cur } = await admin.from("platform_config").select("*").single();
   if (!cur) return NextResponse.json({ error: "ไม่พบ platform_config" }, { status: 500 });
   const next = { ...cur, ...patch };
