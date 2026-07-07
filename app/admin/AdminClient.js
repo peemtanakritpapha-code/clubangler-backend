@@ -378,6 +378,10 @@ function SystemSettings({ config, onError }) {
   const base = {
     auto_confirm_days: Number(config?.auto_confirm_days) || 3,
     return_auto_confirm_days: Number(config?.return_auto_confirm_days) || 10,
+    ship_within_days: Number(config?.ship_within_days) || 3,
+    return_ship_within_days: Number(config?.return_ship_within_days) || 5,
+    extend_receive_days: Number(config?.extend_receive_days) || 3,
+    ship_extend_days: Number(config?.ship_extend_days) || 2,
     banner_enabled: !!config?.banner_enabled,
     banner_text: config?.banner_text || "",
   };
@@ -424,6 +428,18 @@ function SystemSettings({ config, onError }) {
         </Row>
         <Row label="ยืนยันรับของคืนอัตโนมัติ (วัน)" hint="ผู้ขายไม่ยืนยันรับของคืนจากผู้ซื้อ → ระบบยืนยันแทนและเข้าคิวคืนเงิน">
           <input type="number" value={draft.return_auto_confirm_days} onChange={e => set({ return_auto_confirm_days: num(e.target.value, 1, 30) })} style={inputS} />
+        </Row>
+        <Row label="ผู้ขายต้องจัดส่งภายใน (วัน)" hint="นับจากการชำระผ่านการตรวจสอบ — เกินกำหนด ระบบยกเลิกออเดอร์และส่งเข้าคิวคืนเงินอัตโนมัติ">
+          <input type="number" value={draft.ship_within_days} onChange={e => set({ ship_within_days: num(e.target.value, 1, 30) })} style={inputS} />
+        </Row>
+        <Row label="ขยายเวลาจัดส่งครั้งละ (วัน)" hint="ผู้ขายขอขยายเวลาจัดส่งได้ 1 ครั้ง — ต้องได้รับการยืนยันจากผู้ซื้อ จึงเลื่อนกำหนดยกเลิก">
+          <input type="number" value={draft.ship_extend_days} onChange={e => set({ ship_extend_days: num(e.target.value, 1, 30) })} style={inputS} />
+        </Row>
+        <Row label="ผู้ซื้อต้องส่งคืนภายใน (วัน)" hint="นับจากวันอนุมัติการคืน — เกินกำหนด ระบบปิดเคสคืนอัตโนมัติ (ออเดอร์เดินต่อตามปกติ)">
+          <input type="number" value={draft.return_ship_within_days} onChange={e => set({ return_ship_within_days: num(e.target.value, 1, 30) })} style={inputS} />
+        </Row>
+        <Row label="ขยายเวลารับของครั้งละ (วัน)" hint="ผู้ซื้อขอขยายเวลายืนยันรับของได้ 1 ครั้ง — ต้องได้รับการยืนยันจากผู้ขาย จึงเลื่อนกำหนด auto-confirm">
+          <input type="number" value={draft.extend_receive_days} onChange={e => set({ extend_receive_days: num(e.target.value, 1, 30) })} style={inputS} />
         </Row>
         <Row label="แบนเนอร์ประกาศ (ตัววิ่ง)" hint="แสดงบนหัวเว็บ/แอปทุกหน้า">
           <Toggle on={draft.banner_enabled} onClick={() => set({ banner_enabled: !draft.banner_enabled })} />
@@ -472,7 +488,7 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
   }, [verifyQ, verifyGroups]);
   const [rejectGroup, setRejectGroup] = useState(null);   // pay_group ที่กำลังปฏิเสธทั้งกลุ่ม
   const returnQ = useMemo(() => orders.filter(o => ["return_requested", "disputed", "return_shipped"].includes(o.status)), [orders]);
-  const refundQ = useMemo(() => orders.filter(o => o.status === "return_received"), [orders]);
+  const refundQ = useMemo(() => orders.filter(o => ["return_received", "cancelled"].includes(o.status)), [orders]); // cancelled = ยกเลิกเพราะไม่จัดส่ง → คืนเงิน
   const [kycUrls, setKycUrls] = useState({});
   const [rejectKyc, setRejectKyc] = useState(null);
   const [uq, setUq] = useState("");                 // AD1: ค้นหาผู้ใช้
@@ -925,7 +941,7 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
                     <div>
                       <div style={{ fontSize: 13.5, fontWeight: 800, color: C.ink }}>{o.item}</div>
-                      <div style={{ fontSize: 11.5, color: C.muted }}>{o.order_no} · {o.require_return === false ? "คำตัดสิน: คืนเงินไม่ต้องคืนของ" : `รับของคืนแล้ว${o.auto_confirmed ? " (ระบบยืนยันแทน)" : ""}`}</div>
+                      <div style={{ fontSize: 11.5, color: C.muted }}>{o.order_no} · {o.status === "cancelled" ? "ยกเลิกอัตโนมัติ: ผู้ขายไม่จัดส่งตามกำหนด" : o.require_return === false ? "คำตัดสิน: คืนเงินไม่ต้องคืนของ" : `รับของคืนแล้ว${o.auto_confirmed ? " (ระบบยืนยันแทน)" : ""}`}</div>
                     <span onClick={() => setSelOrder(o)} style={{ display: "inline-block", marginTop: 2, fontSize: 11, color: C.brand, fontWeight: 800, cursor: "pointer" }}>ดูรายละเอียดทั้งหมด ›</span>
                     </div>
                     <div style={{ textAlign: "right" }}>

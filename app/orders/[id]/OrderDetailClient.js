@@ -44,6 +44,7 @@ const BUYER_BADGE = {
   disputed: ["อยู่ระหว่างข้อพิพาท", C.danger], return_requested: ["ขอคืน · รอแอดมินพิจารณา", "#B7791F"],
   return_approved: ["อนุมัติคืน · รอคุณส่งกลับ", "#B7791F"], return_shipped: ["ส่งคืนแล้ว · รอผู้ขายรับ", "#B7791F"],
   return_received: ["ผู้ขายรับคืนแล้ว · รอคืนเงิน", C.brand], refunded: ["คืนเงินแล้ว", C.muted],
+  cancelled: ["ยกเลิก · รอเงินคืน (ผู้ขายไม่จัดส่ง)", C.danger],
 };
 const SELLER_BADGE = {
   pending_payment: ["รอผู้ซื้อชำระ", "#B7791F"], pending_verification: ["แอดมินตรวจสลิป", "#B7791F"],
@@ -52,6 +53,7 @@ const SELLER_BADGE = {
   disputed: ["มีข้อพิพาท", C.danger], return_requested: ["ผู้ซื้อขอคืน · รอแอดมิน", "#B7791F"],
   return_approved: ["อนุมัติคืน · รอผู้ซื้อส่งกลับ", "#B7791F"], return_shipped: ["ของคืนกำลังมา · รอคุณรับ", C.danger],
   return_received: ["รับคืนแล้ว · รอระบบคืนเงินผู้ซื้อ", C.brand], refunded: ["คืนเงินผู้ซื้อแล้ว", C.muted],
+  cancelled: ["ถูกยกเลิก — ไม่จัดส่งตามกำหนด", C.danger],
 };
 
 // Timeline 6 ขั้นตามบทบาท (spec §3–4)
@@ -206,6 +208,15 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
   const [recvFiles, setRecvFiles] = useState([]);
 
   const badge = (isSeller ? SELLER_BADGE : BUYER_BADGE)[o.status] || [o.status, C.muted];
+  // จำนวนวันจากตั้งค่าระบบ (cron ทำงานจริง — ชื่อคอลัมน์ตรงกับแท็บตั้งค่าระบบ)
+  const N_DAYS = Number(config?.auto_confirm_days) || 3;              // ยืนยันรับของอัตโนมัติ
+  const M_DAYS = Number(config?.return_auto_confirm_days) || 10;      // ยืนยันรับของคืนอัตโนมัติ
+  const X_DAYS = Number(config?.ship_within_days) || 3;               // ผู้ขายควรจัดส่งภายใน
+  const Y_DAYS = Number(config?.return_ship_within_days) || 5;        // ผู้ซื้อต้องส่งคืนภายใน
+  const E_DAYS = Number(config?.extend_receive_days) || 3;            // ขยายเวลารับของครั้งละ
+  const Z_DAYS = Number(config?.ship_extend_days) || 2;               // ขยายเวลาจัดส่งครั้งละ
+  const effX = X_DAYS + (o.ship_extend_status === "approved" ? (Number(o.ship_extend_days) || 0) : 0);
+  const effN = N_DAYS + (o.extend_status === "approved" ? (Number(o.extend_days) || 0) : 0); // กำหนดจริงรวมขยาย
   const escrowIn = ["payment_verified", "shipped", "delivered", "completed"].includes(o.status);
   const inReturn = RETURN_FLOW.includes(o.status);
   const total = Number(o.price) + Number(o.buyer_fee || 0) + Number(o.ship_fee || 0);
@@ -285,7 +296,20 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
           </div>
           <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 18 }}>สั่งเมื่อ {new Date(o.created_at).toLocaleString("th-TH", { day: "numeric", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" })}</div>
 
-          <StepTimeline status={o.status} steps={isSeller ? SELL_STEPS : BUY_STEPS} />
+          {o.status === "cancelled" ? (
+            <div style={{ background: "#FBEAE8", border: `1px solid ${C.danger}33`, borderRadius: 10, padding: "12px 16px", marginBottom: 14, fontSize: 12.5, color: C.danger, lineHeight: 1.7 }}>
+              ⛔ <b>ออเดอร์ถูกยกเลิกอัตโนมัติ</b> — ผู้ขายไม่แจ้งจัดส่งภายในกำหนด{o.cancelled_at ? ` (ยกเลิกเมื่อ ${new Date(o.cancelled_at).toLocaleDateString("th-TH", { day: "numeric", month: "short" })})` : ""}
+              <br />{isSeller ? "เงินของผู้ซื้อจะถูกคืนเต็มจำนวน" : `ทีมงานจะโอนเงินคืนเต็มจำนวน ${baht(total)} โดยเร็ว — ติดตามสถานะได้ที่นี่`}
+            </div>
+          ) : (
+            <StepTimeline status={o.status} steps={isSeller ? SELL_STEPS : BUY_STEPS} />
+          )}
+
+          {o.auto_delivered && !inReturn && (
+            <div style={{ fontSize: 11.5, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "7px 11px", marginBottom: 12 }}>
+              ⏰ ออเดอร์นี้ระบบยืนยันรับสินค้าแทนผู้ซื้อ (ครบกำหนด {N_DAYS} วันหลังจัดส่งโดยไม่มีการแจ้งปัญหา)
+            </div>
+          )}
 
           {/* กล่อง escrow (spec §3 ข้อ 2) — ข้อความตามจริง ไม่อ้าง auto-confirm ที่ยังไม่มี */}
           {inReturn && o.status !== "refunded" && (
@@ -296,13 +320,13 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
               </div>
             </div>
           )}
-          {!inReturn && (
+          {!inReturn && o.status !== "cancelled" && (
             <div style={{ background: C.brandTint, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 14 }}>
               <ShieldCheck size={18} color={C.brand} style={{ flex: "none", marginTop: 1 }} />
               <div style={{ fontSize: 12.5, color: C.brand, lineHeight: 1.6 }}>
                 {isSeller
                   ? <>เงิน {baht(total)} ของผู้ซื้อ{escrowIn ? "อยู่ในระบบคุ้มครองแล้ว" : "จะพักกับ ClubAngler เมื่อชำระ"} — คุณจะได้รับ <b>{baht(sellerNet)}</b> หลังผู้ซื้อยืนยันรับสินค้าและทีมงานโอนในเวลาทำการ</>
-                  : <>เงิน {baht(total)} ของคุณ{escrowIn ? "ถูกพักไว้กับ ClubAngler อย่างปลอดภัย" : "จะถูกพักกับ ClubAngler เมื่อชำระ"} — จะปล่อยให้ผู้ขายเมื่อคุณกด "ยืนยันได้รับสินค้า"</>}
+                  : <>เงิน {baht(total)} ของคุณ{escrowIn ? "ถูกพักไว้กับ ClubAngler อย่างปลอดภัย" : "จะถูกพักกับ ClubAngler เมื่อชำระ"} — จะปล่อยให้ผู้ขายเมื่อคุณกด "ยืนยันได้รับสินค้า" หรือครบ {effN} วันหลังจัดส่งโดยไม่มีการแจ้งปัญหา</>}
               </div>
             </div>
           )}
@@ -425,7 +449,7 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
               )}
               {!isSeller && o.status === "return_shipped" && (
                 <div style={{ fontSize: 12, color: "#92400E", background: "#FFFBEB", borderRadius: 8, padding: "8px 11px", marginTop: 10 }}>
-                  ⏱ หากผู้ขายไม่ยืนยันรับของภายในเวลาอันควร ทีมงานสามารถยืนยันแทนและส่งเรื่องเข้าคิวคืนเงินได้ — คุณไม่ต้องทำอะไรเพิ่ม
+                  ⏱ หากผู้ขายไม่ยืนยันรับของภายใน {M_DAYS} วันนับจากวันส่งคืน ระบบจะยืนยันแทนอัตโนมัติและส่งเรื่องเข้าคิวคืนเงินทันที — คุณไม่ต้องทำอะไรเพิ่ม
                 </div>
               )}
               {o.auto_confirmed && <div style={{ fontSize: 11, color: C.ret, marginTop: 6 }}>⏰ ทีมงานยืนยันรับของคืนแทนผู้ขาย (ครบกำหนด)</div>}
@@ -445,6 +469,25 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
               💳 ชำระเงิน / แนบสลิป
             </Link>
           )}
+          {!isSeller && o.status === "payment_verified" && (
+            <div style={{ ...box, background: "#F6F9F9", border: "none", fontSize: 12.5, color: C.muted, lineHeight: 1.7 }}>
+              📦 รอผู้ขายจัดส่ง — ⏱ หากไม่จัดส่งภายใน {effX} วัน{o.payment_verified_at ? ` (ภายใน ${new Date(new Date(o.payment_verified_at).getTime() + effX * 86400000).toLocaleDateString("th-TH", { day: "numeric", month: "short" })})` : ""} ระบบจะยกเลิกและคืนเงินให้คุณอัตโนมัติเต็มจำนวน
+              {o.ship_extend_status === "approved" && <> · ✅ คุณอนุมัติขยายเวลาจัดส่ง +{o.ship_extend_days} วันแล้ว</>}
+              {o.ship_extend_status === "rejected" && <> · คุณไม่อนุมัติการขยายเวลา — กำหนดเดิมมีผล</>}
+            </div>
+          )}
+          {!isSeller && o.status === "payment_verified" && o.ship_extend_status === "pending" && (
+            <div style={{ border: "1.5px solid #F0A500", background: "#FFFBEB", borderRadius: 12, padding: 14, marginTop: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#92400E" }}>⏳ ผู้ขายขอขยายเวลาจัดส่ง +{o.ship_extend_days} วัน</div>
+              <div style={{ fontSize: 11.5, color: C.muted, margin: "3px 0 10px" }}>อนุมัติ = เลื่อนกำหนดยกเลิกออกไป · ปฏิเสธ = กำหนดเดิม ({X_DAYS} วัน) ยังมีผล</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button disabled={busy} onClick={() => call(`/api/orders/${o.id}/extend`, { kind: "ship", action: "reject" })}
+                  style={{ flex: 1, height: 40, borderRadius: 9, border: `1.5px solid ${C.danger}`, background: "#fff", color: C.danger, fontWeight: 800, fontSize: 12.5, cursor: "pointer" }}>✕ ปฏิเสธ</button>
+                <button disabled={busy} onClick={() => call(`/api/orders/${o.id}/extend`, { kind: "ship", action: "approve" })}
+                  style={{ flex: 2, height: 40, borderRadius: 9, border: "none", background: C.ok, color: "#fff", fontWeight: 800, fontSize: 12.5, cursor: "pointer" }}>✓ อนุมัติ +{o.ship_extend_days} วัน</button>
+              </div>
+            </div>
+          )}
           {!isSeller && o.status === "pending_verification" && (
             <div style={{ ...box, background: "#FFFBEB", border: "1px solid #FDE68A", fontSize: 12.5, color: "#92400E" }}>🕐 แนบสลิปแล้ว — ทีมงานกำลังตรวจสอบ สถานะจะอัปเดตที่นี่</div>
           )}
@@ -460,9 +503,34 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
               ⚠ แจ้งปัญหา / ขอคืนสินค้า
             </button>
           )}
+          {/* ขยายเวลารับของ (ผู้ซื้อขอ 1 ครั้ง — ผู้ขายต้องยืนยัน) */}
+          {!isSeller && o.status === "shipped" && !o.extend_status && (
+            <button disabled={busy} onClick={() => call(`/api/orders/${o.id}/extend`, { action: "request" }, `ขอขยายเวลายืนยันรับของ +${E_DAYS} วัน?\n\nต้องได้รับการยืนยันจากผู้ขาย (ขอได้ 1 ครั้ง)`)}
+              style={{ marginTop: 8, width: "100%", height: 38, borderRadius: 10, border: `1px solid ${C.line}`, background: "#fff", color: C.muted, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+              ⏳ ยังไม่ได้รับของ? ขอขยายเวลา +{E_DAYS} วัน (ผู้ขายต้องยืนยัน)
+            </button>
+          )}
+          {!isSeller && o.status === "shipped" && o.extend_status === "pending" && (
+            <div style={{ marginTop: 8, fontSize: 12, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 9, padding: "8px 12px" }}>
+              ⏳ ส่งคำขอขยายเวลา +{o.extend_days} วันแล้ว — รอผู้ขายยืนยัน (ระหว่างนี้ระบบยังไม่ยืนยันรับแทน)
+            </div>
+          )}
+          {!isSeller && o.status === "shipped" && o.extend_status === "approved" && (
+            <div style={{ marginTop: 8, fontSize: 12, color: C.ok, background: "#F0FDF4", borderRadius: 9, padding: "8px 12px" }}>
+              ✅ ผู้ขายอนุมัติขยายเวลา +{o.extend_days} วัน — กำหนดยืนยันรวมเป็น {effN} วันหลังจัดส่ง
+            </div>
+          )}
+          {!isSeller && o.status === "shipped" && o.extend_status === "rejected" && (
+            <div style={{ marginTop: 8, fontSize: 12, color: C.danger, background: "#FBEAE8", borderRadius: 9, padding: "8px 12px" }}>
+              ❌ ผู้ขายไม่อนุมัติการขยายเวลา — กำหนดเดิม {N_DAYS} วันหลังจัดส่งยังมีผล
+            </div>
+          )}
           {!isSeller && o.status === "return_approved" && (
             <div style={{ display: "grid", gap: 8, background: "#FFF7ED", border: "1.5px solid #FED7AA", borderRadius: 10, padding: 12 }}>
               <div style={{ fontSize: 12.5, fontWeight: 800, color: C.ret }}>ส่งสินค้าคืนผู้ขาย + กรอกเลขพัสดุ</div>
+              <div style={{ fontSize: 11.5, color: "#92400E" }}>
+                ⏱ ส่งคืนภายใน {Y_DAYS} วันนับจากวันอนุมัติ{o.return_approved_at ? ` (ภายใน ${new Date(new Date(o.return_approved_at).getTime() + Y_DAYS * 86400000).toLocaleDateString("th-TH", { day: "numeric", month: "short" })})` : ""} — เลยกำหนด ระบบจะปิดเคสคืนอัตโนมัติ
+              </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <select value={ret.carrier} onChange={e => setRet({ ...ret, carrier: e.target.value })}
                   style={{ height: 40, border: `1.5px solid ${C.line}`, borderRadius: 9, padding: "0 8px", fontSize: 12.5, background: "#fff" }}>
@@ -488,7 +556,24 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
           {isSeller && o.status === "payment_verified" && (
             <div style={{ border: `1.5px solid ${C.brand}`, borderRadius: 12, padding: 14 }}>
               <div style={{ fontSize: 14, fontWeight: 800, color: C.ink }}>🚚 ถึงตาคุณแล้ว — แจ้งจัดส่ง</div>
-              <div style={{ fontSize: 11.5, color: C.muted, margin: "3px 0 12px" }}>เงินเข้าระบบคุ้มครองแล้ว ส่งของแล้วกรอกเลขพัสดุด้านล่าง</div>
+              <div style={{ fontSize: 11.5, color: C.muted, margin: "3px 0 12px" }}>
+                เงินเข้าระบบคุ้มครองแล้ว ส่งของแล้วกรอกเลขพัสดุด้านล่าง — ⏱ <b style={{ color: C.danger }}>กรุณาจัดส่งภายใน {effX} วัน{o.payment_verified_at ? ` (ภายใน ${new Date(new Date(o.payment_verified_at).getTime() + effX * 86400000).toLocaleDateString("th-TH", { day: "numeric", month: "short" })})` : ""} — เกินกำหนด ออเดอร์ถูกยกเลิกอัตโนมัติ</b>
+              </div>
+              {o.ship_extend_status === "pending" && (
+                <div style={{ fontSize: 12, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 9, padding: "8px 12px", marginBottom: 10 }}>
+                  ⏳ ส่งคำขอขยายเวลาจัดส่ง +{o.ship_extend_days} วันแล้ว — รอผู้ซื้อยืนยัน (ระหว่างนี้ระบบยังไม่ยกเลิก)
+                </div>
+              )}
+              {o.ship_extend_status === "approved" && (
+                <div style={{ fontSize: 12, color: C.ok, background: "#F0FDF4", borderRadius: 9, padding: "8px 12px", marginBottom: 10 }}>
+                  ✅ ผู้ซื้ออนุมัติขยายเวลา +{o.ship_extend_days} วัน — กำหนดจัดส่งรวมเป็น {effX} วัน
+                </div>
+              )}
+              {o.ship_extend_status === "rejected" && (
+                <div style={{ fontSize: 12, color: C.danger, background: "#FBEAE8", borderRadius: 9, padding: "8px 12px", marginBottom: 10 }}>
+                  ❌ ผู้ซื้อไม่อนุมัติการขยายเวลา — กำหนดเดิม {X_DAYS} วันยังมีผล กรุณารีบจัดส่ง
+                </div>
+              )}
               <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
                 <select value={ship.carrier} onChange={e => setShip({ ...ship, carrier: e.target.value })}
                   style={{ height: 42, border: `1.5px solid ${C.line}`, borderRadius: 9, padding: "0 8px", fontSize: 12.5, background: "#fff" }}>
@@ -501,16 +586,35 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
                 style={{ width: "100%", height: 46, border: "none", borderRadius: 10, background: ship.no.trim() ? C.brand : "#C9D6D8", color: "#fff", fontWeight: 800, fontSize: 13.5, cursor: "pointer" }}>
                 🚚 ยืนยันแจ้งจัดส่ง
               </button>
+              {!o.ship_extend_status && (
+                <button disabled={busy} onClick={() => call(`/api/orders/${o.id}/extend`, { kind: "ship", action: "request" }, `ขอขยายเวลาจัดส่ง +${Z_DAYS} วัน?\n\nต้องได้รับการยืนยันจากผู้ซื้อ (ขอได้ 1 ครั้ง)`)}
+                  style={{ marginTop: 8, width: "100%", height: 38, borderRadius: 10, border: `1px solid ${C.line}`, background: "#fff", color: C.muted, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                  ⏳ ส่งไม่ทัน? ขอขยายเวลาจัดส่ง +{Z_DAYS} วัน (ผู้ซื้อต้องยืนยัน)
+                </button>
+              )}
+            </div>
+          )}
+          {isSeller && o.status === "shipped" && o.extend_status === "pending" && (
+            <div style={{ border: `1.5px solid #F0A500`, background: "#FFFBEB", borderRadius: 12, padding: 14, marginBottom: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#92400E" }}>⏳ ผู้ซื้อขอขยายเวลารับของ +{o.extend_days} วัน</div>
+              <div style={{ fontSize: 11.5, color: C.muted, margin: "3px 0 10px" }}>ระหว่างรอคำตอบ ระบบจะยังไม่ยืนยันรับแทนผู้ซื้อ (เงินยังไม่เข้าคิวโอน) — ตอบเพื่อเดินหน้าต่อ</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button disabled={busy} onClick={() => call(`/api/orders/${o.id}/extend`, { action: "reject" })}
+                  style={{ flex: 1, height: 40, borderRadius: 9, border: `1.5px solid ${C.danger}`, background: "#fff", color: C.danger, fontWeight: 800, fontSize: 12.5, cursor: "pointer" }}>✕ ไม่อนุมัติ</button>
+                <button disabled={busy} onClick={() => call(`/api/orders/${o.id}/extend`, { action: "approve" })}
+                  style={{ flex: 2, height: 40, borderRadius: 9, border: "none", background: C.ok, color: "#fff", fontWeight: 800, fontSize: 12.5, cursor: "pointer" }}>✓ อนุมัติ +{o.extend_days} วัน</button>
+              </div>
             </div>
           )}
           {isSeller && o.status === "shipped" && (
             <div style={{ ...box, background: "#F1F3F4", border: "none", fontSize: 12.5, color: C.muted, lineHeight: 1.7 }}>
-              📦 จัดส่งแล้ว — รอผู้ซื้อกดยืนยันรับของ เงินจะเข้าคิวโอนให้คุณทันทีหลังยืนยัน
+              📦 จัดส่งแล้ว — รอผู้ซื้อกดยืนยันรับของ (หรือระบบยืนยันให้อัตโนมัติเมื่อครบ {effN} วัน) เงินจะเข้าคิวโอนให้คุณทันทีหลังยืนยัน
             </div>
           )}
           {isSeller && o.status === "return_shipped" && (
             <div style={{ display: "grid", gap: 8, background: "#FFF7ED", border: "1.5px solid #FED7AA", borderRadius: 10, padding: 12 }}>
               <div style={{ fontSize: 12.5, fontWeight: 800, color: C.ret }}>ได้รับของคืนแล้ว? ถ่ายรูปสภาพของอย่างน้อย 1 รูปก่อนยืนยัน (หลักฐานคุ้มครองคุณ)</div>
+              <div style={{ fontSize: 11.5, color: "#92400E" }}>⏱ หากไม่ยืนยันภายใน {M_DAYS} วันนับจากวันที่ผู้ซื้อส่งคืน ระบบจะยืนยันแทนอัตโนมัติ</div>
               <input type="file" accept="image/*" multiple style={{ fontSize: 11.5 }} onChange={e => setRecvFiles(Array.from(e.target.files || []))} />
               <button disabled={busy || !recvFiles.length} onClick={doReturnReceive}
                 style={{ height: 44, border: "none", borderRadius: 9, background: recvFiles.length ? C.ret : "#C9D6D8", color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>

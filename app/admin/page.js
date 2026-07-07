@@ -41,7 +41,7 @@ export default async function AdminPage() {
   // A5: ภาพรวมระบบ (prototype AdminOverview บรรทัด 4415–4428) + platform_config สำหรับหน้าตั้งค่า
   const [{ count: ordersTotal }, { data: escrowRows }, { count: activeCount }, { count: soldCount }, { data: config }] = await Promise.all([
     supabase.from("orders").select("*", { count: "exact", head: true }),
-    supabase.from("orders").select("price").in("status", ["payment_verified", "shipped", "delivered"]),
+    supabase.from("orders").select("price").in("status", ["payment_verified", "shipped", "delivered", "cancelled"]), // cancelled = เงินยังพักรอคืน
     supabase.from("products").select("*", { count: "exact", head: true }).eq("status", "active"),
     supabase.from("products").select("*", { count: "exact", head: true }).eq("status", "sold"),
     supabase.from("platform_config").select("*").single(),

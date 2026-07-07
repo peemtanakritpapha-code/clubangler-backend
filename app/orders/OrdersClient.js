@@ -8,7 +8,7 @@ import { ChevronRight } from "lucide-react";
 
 const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7", danger: "#C0392B", ok: "#1E8E3E" };
 const baht = n => "฿" + Number(n || 0).toLocaleString();
-const RETURN_FLOW = ["disputed", "return_requested", "return_approved", "return_shipped", "return_received", "refunded"];
+const RETURN_FLOW = ["disputed", "return_requested", "return_approved", "return_shipped", "return_received", "refunded", "cancelled"]; // cancelled รวมในกลุ่มปัญหา/คืนเงิน
 
 // ป้ายสถานะแยกบทบาท (ชุดเดียวกับหน้ารายละเอียด — spec §5)
 const BUYER_BADGE = {
@@ -18,6 +18,7 @@ const BUYER_BADGE = {
   disputed: ["อยู่ระหว่างข้อพิพาท", C.danger], return_requested: ["ขอคืน · รอแอดมินพิจารณา", "#B7791F"],
   return_approved: ["อนุมัติคืน · รอคุณส่งกลับ", "#B7791F"], return_shipped: ["ส่งคืนแล้ว · รอผู้ขายรับ", "#B7791F"],
   return_received: ["ผู้ขายรับคืนแล้ว · รอคืนเงิน", C.brand], refunded: ["คืนเงินแล้ว", C.muted],
+  cancelled: ["ยกเลิก · รอเงินคืน", C.danger],
 };
 const SELLER_BADGE = {
   pending_payment: ["รอผู้ซื้อชำระ", "#B7791F"], pending_verification: ["แอดมินตรวจสลิป", "#B7791F"],
@@ -26,18 +27,19 @@ const SELLER_BADGE = {
   disputed: ["มีข้อพิพาท", C.danger], return_requested: ["ผู้ซื้อขอคืน · รอแอดมิน", "#B7791F"],
   return_approved: ["อนุมัติคืน · รอผู้ซื้อส่งกลับ", "#B7791F"], return_shipped: ["ของคืนกำลังมา · รอคุณรับ", C.danger],
   return_received: ["รับคืนแล้ว · รอระบบคืนเงิน", C.brand], refunded: ["คืนเงินผู้ซื้อแล้ว", C.muted],
+  cancelled: ["ถูกยกเลิก — ไม่จัดส่งตามกำหนด", C.danger],
 };
 
 // แถบ ⚡ hint งานที่ต้องทำ — ข้อความตามความจริงของระบบเท่านั้น (กติกาข้อ 18)
 const HINT = {
   buy: {
     pending_payment: "⚡ รอคุณชำระเงิน — โอนแล้วแนบสลิปเพื่อเริ่มการคุ้มครอง escrow",
-    shipped: "⚡ ของกำลังมา — ได้รับแล้วกดยืนยันในหน้ารายละเอียดเพื่อปล่อยเงินให้ผู้ขาย",
+    shipped: "⚡ ของกำลังมา — ได้รับแล้วกดยืนยันเพื่อปล่อยเงินให้ผู้ขาย (ไม่กดภายในกำหนด ระบบยืนยันให้อัตโนมัติ)",
     return_approved: "⚡ อนุมัติคืนแล้ว — ส่งของกลับและกรอกเลขพัสดุในหน้ารายละเอียด",
   },
   sell: {
     payment_verified: "⚡ ถึงตาคุณแล้ว — เข้าไปแจ้งจัดส่ง + กรอกเลขพัสดุ",
-    return_shipped: "⚡ ของคืนกำลังมา — รับแล้วถ่ายรูปสภาพและกดยืนยันในหน้ารายละเอียด",
+    return_shipped: "⚡ ของคืนกำลังมา — รับแล้วถ่ายรูปสภาพและกดยืนยัน (เลยกำหนด ระบบยืนยันแทนอัตโนมัติ)",
   },
 };
 
