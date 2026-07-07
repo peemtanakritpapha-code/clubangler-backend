@@ -1,13 +1,16 @@
 "use client";
 // components/NotiBell.js — ระฆัง + จุดแดงนับเลข + รายการแจ้งเตือน + mark read
+// AD5: กดได้ทุกรายการ — มี link ไปตาม link / มี ref เด้งเข้าหน้าออเดอร์นั้น / กลุ่มชำระไปหน้ารวมออเดอร์
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const C = { brand: "#0E7E8C", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", danger: "#C0392B" };
 
 export default function NotiBell({ userId }) {
   const supabase = createClient();
+  const router = useRouter();
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(false);
   const boxRef = useRef(null);
@@ -39,6 +42,19 @@ export default function NotiBell({ userId }) {
     return new Date(t).toLocaleDateString("th-TH");
   };
 
+  // AD5: กดรายการ → ปิดกล่องแล้วนำทางตามข้อมูลที่มี
+  const go = async n => {
+    setOpen(false);
+    if (n.link) return router.push(n.link);
+    if (n.ref) {
+      // ref เป็นเลขออเดอร์เดี่ยว → เด้งเข้าหน้ารายละเอียด (RLS เห็นเฉพาะออเดอร์ของตัวเอง)
+      const { data: o } = await supabase.from("orders").select("id").eq("order_no", n.ref).limit(1).maybeSingle();
+      if (o?.id) return router.push(`/orders/${o.id}`);
+      return router.push("/orders"); // กลุ่มชำระ / หาไม่เจอ → หน้ารวมออเดอร์
+    }
+    router.push("/notifications");
+  };
+
   return (
     <div ref={boxRef} style={{ position: "relative" }}>
       <button onClick={() => { setOpen(o => !o); if (!open && unread) markAllRead(); }}
@@ -55,10 +71,14 @@ export default function NotiBell({ userId }) {
           <div style={{ padding: "10px 14px", fontWeight: 800, fontSize: 13, color: C.ink, borderBottom: `1px solid ${C.line}` }}>การแจ้งเตือน</div>
           {items.length === 0 && <div style={{ padding: 20, fontSize: 12.5, color: C.muted, textAlign: "center" }}>ยังไม่มีการแจ้งเตือน</div>}
           {items.map(n => (
-            <div key={n.id} style={{ padding: "10px 14px", borderBottom: `1px solid ${C.line}`, background: n.read ? "#fff" : "#F0F9FA" }}>
-              <div style={{ fontSize: 12.5, fontWeight: 800, color: C.ink }}>{n.icon} {n.title}</div>
-              {n.body && <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{n.body}</div>}
-              <div style={{ fontSize: 10.5, color: C.muted, marginTop: 3 }}>{n.ref ? `${n.ref} · ` : ""}{ago(n.created_at)}</div>
+            <div key={n.id} onClick={() => go(n)}
+              style={{ padding: "10px 14px", borderBottom: `1px solid ${C.line}`, background: n.read ? "#fff" : "#F0F9FA", cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 800, color: C.ink }}>{n.icon} {n.title}</div>
+                {n.body && <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{n.body}</div>}
+                <div style={{ fontSize: 10.5, color: C.muted, marginTop: 3 }}>{n.ref ? `${n.ref} · ` : ""}{ago(n.created_at)}</div>
+              </div>
+              <span style={{ flex: "none", fontSize: 16, color: C.muted }}>›</span>
             </div>
           ))}
           {/* W5.7d: ทางเข้าหน้ารวมการแจ้งเตือน */}

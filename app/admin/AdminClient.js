@@ -467,6 +467,11 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
   const router = useRouter();
   const supabase = createClient();
   const [tab, setTab] = useState("overview");
+  // AD5: เปิดแท็บตรงจาก URL (?tab=...) — รองรับลิงก์จากแจ้งเตือนแอดมิน
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (["overview", "users", "verify", "returns", "payout", "kyc", "products", "payment", "fees", "settings"].includes(t)) setTab(t);
+  }, []);
   const [slipUrls, setSlipUrls] = useState({});
   const [reject, setReject] = useState(null);       // orderId ที่กำลังปฏิเสธ
   const [fail, setFail] = useState(null);           // orderId ที่โอนไม่สำเร็จ
