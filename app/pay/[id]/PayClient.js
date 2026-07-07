@@ -85,7 +85,7 @@ export default function PayClient({ order: o, groupOrders, config, userId }) {
   const banks = Array.isArray(config?.banks) ? config.banks : [];
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "system-ui, sans-serif", padding: "20px 16px" }}>
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "inherit", padding: "20px 16px" }}>
       <div style={{ maxWidth: 560, margin: "0 auto", display: "grid", gap: 14 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <Link href="/market" style={{ color: C.brand, fontSize: 13, fontWeight: 700, textDecoration: "none" }}>‹ ตลาดสินค้า</Link>

@@ -58,7 +58,7 @@ export default function KycClient({ initialProfile, userId }) {
     background: solid ? bg : "#fff", color: solid ? fg : bg, border: solid ? "none" : `1px solid ${C.line}` });
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "system-ui, sans-serif", padding: "24px 16px" }}>
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "inherit", padding: "24px 16px" }}>
       <div style={{ maxWidth: 640, margin: "0 auto", display: "grid", gap: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Link href="/profile" aria-label="กลับ" style={{ width: 40, height: 40, borderRadius: 999, background: "#fff", boxShadow: "0 2px 8px rgba(0,0,0,.06)", display: "grid", placeItems: "center", color: C.ink, textDecoration: "none", flex: "none", fontSize: 18 }}>‹</Link>

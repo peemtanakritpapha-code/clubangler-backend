@@ -200,7 +200,7 @@ export default function MarketClient({ products, loggedIn }) {
     </>
   );
   return (
-    <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "system-ui, sans-serif", paddingBottom: 90 }}>
+    <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "inherit", paddingBottom: 90 }}>
       <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", alignItems: "flex-start" }}>
 
         {/* ── Sidebar ฟิลเตอร์ (จอกว้างเท่านั้น — prototype WMarketplace บรรทัด 6331–6360) ── */}

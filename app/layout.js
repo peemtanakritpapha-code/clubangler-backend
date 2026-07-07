@@ -1,13 +1,13 @@
-// app/layout.js — โครงหลักทั้งเว็บ: ฟอนต์จริงจาก prototype + เปลือกแอป/เว็บ
-import { IBM_Plex_Sans_Thai } from "next/font/google";
+// app/layout.js — โครงหลักทั้งเว็บ: ฟอนต์ Prompt ทั้งแอป (self-host ผ่าน next/font) + เปลือกแอป/เว็บ
+import { Prompt } from "next/font/google";
 import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "@/components/AppShell";
 import SwRegister from "@/components/SwRegister";
 
-const plexThai = IBM_Plex_Sans_Thai({
+const prompt = Prompt({
   subsets: ["thai", "latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
 
@@ -45,7 +45,7 @@ export default async function RootLayout({ children }) {
   config = cfg;
 
   return (
-    <html lang="th" className={plexThai.className}>
+    <html lang="th" className={prompt.className}>
       <body>
         <SwRegister />
         <AppShell

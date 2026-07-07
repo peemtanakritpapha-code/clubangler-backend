@@ -29,7 +29,7 @@ export default function ProductClient({ p, seller, views, canBuy, isOwner, simil
     : "จัดส่งฟรี";
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "system-ui, sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "inherit" }}>
       <style>{`.prod-grid { display: grid; grid-template-columns: 1fr; gap: 22px; align-items: start; }
 @media (min-width: 900px) { .prod-grid { grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 28px; } }`}</style>
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "20px 16px 60px" }}>

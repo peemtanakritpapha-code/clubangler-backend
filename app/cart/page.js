@@ -70,7 +70,7 @@ export default function CartPage() {
   const card = { background: "#fff", borderRadius: 14, padding: 12, boxShadow: "0 4px 16px rgba(0,0,0,.05)" };
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "system-ui, sans-serif", padding: "20px 16px 140px" }}>
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "inherit", padding: "20px 16px 140px" }}>
       {/* W5.7b: จอกว้าง = 2 คอลัมน์ (รายการ | การ์ดสรุป sticky) ตาม prototype WCart · จอแคบยุบคอลัมน์เดียว */}
       <style>{`.cart-grid { display: grid; gap: 12px; } .cart-side { position: static; }
 @media (min-width: 900px) { .cart-grid { grid-template-columns: minmax(0,1fr) 340px; align-items: start; } .cart-side { position: sticky; top: 84px; } }`}</style>

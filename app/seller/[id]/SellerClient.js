@@ -70,7 +70,7 @@ export default function SellerClient({ seller: s, products, posts, followers: fo
   const card = { background: "#fff", borderRadius: 12, border: `1px solid ${C.line}` };
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "system-ui, sans-serif", paddingBottom: 60 }}>
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "inherit", paddingBottom: 60 }}>
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
         <div style={{ padding: "14px 20px" }}>
           <button onClick={() => router.back()} style={{ display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: C.muted, cursor: "pointer", fontSize: 13.5, fontFamily: "inherit" }}>

@@ -157,7 +157,7 @@ export default function SellClient({ userId, tiers, editProduct = null }) {
   const warnBox = { marginTop: 6, fontSize: 12, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 9, padding: "8px 12px", lineHeight: 1.6 };
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "system-ui, sans-serif", padding: "24px 16px 60px" }}>
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "inherit", padding: "24px 16px 60px" }}>
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
           <button onClick={() => router.back()} aria-label="กลับ" style={{ width: 40, height: 40, borderRadius: 999, border: "none", background: "#fff", boxShadow: "0 2px 8px rgba(0,0,0,.06)", display: "grid", placeItems: "center", color: C.ink, cursor: "pointer" }}>

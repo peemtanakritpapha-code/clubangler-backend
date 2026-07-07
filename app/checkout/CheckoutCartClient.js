@@ -98,11 +98,11 @@ export default function CheckoutCartClient({ addresses, tiers, userId }) {
   const card = { background: "#fff", borderRadius: 14, padding: 18, boxShadow: "0 4px 16px rgba(0,0,0,.05)" };
 
   if (items === null) return (
-    <div style={{ minHeight: "100vh", background: C.bg, display: "grid", placeItems: "center", color: C.muted, fontSize: 13, fontFamily: "system-ui, sans-serif" }}>กำลังโหลด...</div>
+    <div style={{ minHeight: "100vh", background: C.bg, display: "grid", placeItems: "center", color: C.muted, fontSize: 13, fontFamily: "inherit" }}>กำลังโหลด...</div>
   );
 
   if (items.length === 0) return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "system-ui, sans-serif", padding: "60px 16px", textAlign: "center" }}>
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "inherit", padding: "60px 16px", textAlign: "center" }}>
       <div style={{ fontSize: 40 }}>🧺</div>
       <div style={{ fontSize: 15, fontWeight: 800, color: C.ink, margin: "8px 0 6px" }}>ตะกร้าว่าง — ไม่มีรายการให้ชำระ</div>
       <Link href="/market" style={{ display: "inline-block", marginTop: 10, background: C.brand, color: "#fff", padding: "11px 22px", borderRadius: 10, fontWeight: 800, fontSize: 13.5, textDecoration: "none" }}>🛒 ไปตลาดสินค้า</Link>
@@ -110,7 +110,7 @@ export default function CheckoutCartClient({ addresses, tiers, userId }) {
   );
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "system-ui, sans-serif", padding: "20px 16px" }}>
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "inherit", padding: "20px 16px" }}>
       <div style={{ maxWidth: 640, margin: "0 auto", display: "grid", gap: 14 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <Link href="/cart" style={{ color: C.brand, fontSize: 13, fontWeight: 700, textDecoration: "none" }}>‹ ตะกร้า</Link>
