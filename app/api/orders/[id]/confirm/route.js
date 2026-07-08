@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyAdmins } from "@/lib/notifyAdmins";
 
 export async function POST(req, { params }) {
   const { id } = await params;
@@ -24,5 +25,6 @@ export async function POST(req, { params }) {
     to_user: o.seller_id, icon: "✅", title: "ผู้ซื้อยืนยันรับสินค้าแล้ว",
     body: `${o.item} — รอแอดมินโอนเงินให้คุณ`, ref: o.order_no,
   });
+  await notifyAdmins(admin, { icon: "💸", title: "ผู้ซื้อยืนยันรับแล้ว — พร้อมโอนเงินผู้ขาย", body: o.item, ref: o.order_no, link: "/admin?tab=payout" });
   return NextResponse.json({ ok: true });
 }

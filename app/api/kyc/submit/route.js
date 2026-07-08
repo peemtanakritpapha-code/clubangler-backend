@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyAdmins } from "@/lib/notifyAdmins";
 
 export async function POST(req) {
   const supabase = await createClient();
@@ -29,5 +30,6 @@ export async function POST(req) {
   await admin.from("notifications").insert({
     to_user: user.id, icon: "🪪", title: "ส่งเอกสารยืนยันตัวตนแล้ว", body: "ทีมงานจะตรวจสอบภายใน 24 ชั่วโมง",
   });
+  await notifyAdmins(admin, { icon: "🪪", title: "KYC ใหม่รอตรวจ", body: "มีผู้ขายยื่นยืนยันตัวตน", link: "/admin?tab=kyc" });
   return NextResponse.json({ ok: true });
 }

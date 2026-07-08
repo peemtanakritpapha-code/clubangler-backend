@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyAdmins } from "@/lib/notifyAdmins";
 
 export async function POST(req, { params }) {
   const { id } = await params;
@@ -44,5 +45,6 @@ export async function POST(req, { params }) {
 
   const { error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await notifyAdmins(admin, { icon: "🧾", title: "สลิปใหม่รอตรวจ", body: "มีการแนบสลิปเข้าคิวตรวจสอบ", ref: o.pay_group || null, link: "/admin?tab=verify" });
   return NextResponse.json({ ok: true });
 }

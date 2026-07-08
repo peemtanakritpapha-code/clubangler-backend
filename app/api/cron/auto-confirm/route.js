@@ -9,6 +9,7 @@
 // ความปลอดภัย: ต้องแนบ x-cron-key (หรือ ?key=) ตรงกับ CRON_SECRET เท่านั้น
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyAdmins } from "@/lib/notifyAdmins";
 
 export const dynamic = "force-dynamic";
 
@@ -144,6 +145,14 @@ async function run(req) {
     ]);
     result.expired.push(o.order_no);
   }
+
+  // AD5: สรุปแจ้งแอดมิน — เฉพาะรอบที่มีงานเกิด
+  if (result.buyer_confirmed.length)
+    await notifyAdmins(admin, { icon: "💸", title: `คิวโอนเงินเพิ่ม ${result.buyer_confirmed.length} ใบ (ระบบยืนยันแทน)`, body: result.buyer_confirmed.join(", "), link: "/admin?tab=payout" });
+  if (result.seller_received.length)
+    await notifyAdmins(admin, { icon: "↩️", title: `คิวคืนเงินเพิ่ม ${result.seller_received.length} เคส (ยืนยันรับคืนแทน)`, body: result.seller_received.join(", "), link: "/admin?tab=payout" });
+  if (result.cancelled.length)
+    await notifyAdmins(admin, { icon: "⛔", title: `ยกเลิกไม่จัดส่ง ${result.cancelled.length} ใบ — เข้าคิวคืนเงิน`, body: result.cancelled.join(", "), link: "/admin?tab=payout" });
 
   return NextResponse.json({ ok: true, N, M, Y, X, Z, ...result });
 }

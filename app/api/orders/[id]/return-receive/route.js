@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyAdmins } from "@/lib/notifyAdmins";
 
 export async function POST(req, { params }) {
   const { id } = await params;
@@ -29,5 +30,6 @@ export async function POST(req, { params }) {
     to_user: o.buyer_id, icon: "📦", title: "ผู้ขายรับสินค้าคืนแล้ว",
     body: `${o.item} — รอแอดมินโอนเงินคืนให้คุณ`, ref: o.order_no,
   });
+  await notifyAdmins(admin, { icon: "↩️", title: "เคสคืนเข้าคิวคืนเงิน", body: o.item, ref: o.order_no, link: "/admin?tab=payout" });
   return NextResponse.json({ ok: true });
 }
