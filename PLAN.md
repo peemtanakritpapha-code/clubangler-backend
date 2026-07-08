@@ -1,0 +1,79 @@
+# ClubAngler — แผนพัฒนา v13
+อัปเดต: 8 ก.ค. 2569 · เอกสารนี้ใช้เปิดห้องทำงานใหม่คู่กับ `clubangler-src.zip` เสมอ
+
+---
+
+## 1) สถานะปัจจุบัน (ทั้งหมดอยู่บนโปรดักชัน clubangler.com)
+
+**โครงสร้างพื้นฐาน:** Next.js App Router (JS, inline styles) · Supabase สิงคโปร์ (PostgreSQL + RLS + Storage) · DigitalOcean VPS (club@165.22.249.225) + nginx + PM2 · Cloudflare SSL Full (strict) · GitHub private repo
+
+**ระบบที่เสร็จและใช้งานจริง:**
+- Auth/โปรไฟล์/สมุดที่อยู่/ลงขายสินค้าครบหมวด · ฟีดชุมชน (A2) · ตะกร้า+กลุ่มชำระ (A3) · หน้าร้าน/ตลาด Masonry (A4) · AppShell รองรับมือถือ (A1) · PWA (P1) · หน้ากฎหมาย PDPA + ลบบัญชี 3 ชั้น (P2)
+- **Escrow เต็มวงจรสองทิศทาง:** ซื้อ → สลิป → แอดมินตรวจ → ส่ง → ยืนยัน → โอนผู้ขาย / พิพาท → คืนของ → คืนเงิน
+- **หน้ารายละเอียดออเดอร์ (OD1):** timeline 6 ขั้นตามบทบาท · ShippingLabel · ลิงก์ติดตามพัสดุจริง · ฟอร์มพิพาท v2 · ReturnSteps v2 · lightbox
+- **หน้า /pay:** PromptPay QR ฝังยอดสด (promptpay.io) + ปุ่มบันทึก QR + แนบสลิป
+- **แอดมิน (AD1–AD5):** sidebar + กล่องงานเข้าวันนี้ · จัดการผู้ใช้/KYC · ศูนย์ข้อมูลออเดอร์ · ตัดสินพิพาท 3 ทาง · จัดการสินค้า · ตั้งค่าระบบ · **แจ้งเตือนแอดมิน + deep link เข้าคิวตรง**
+- **สูตรเงิน (S4-B):** ฐานค่าธรรมเนียมผู้ขาย = ราคา + ค่าส่ง · คำนวณผ่าน `lib/fees.js` เท่านั้น · ค่า fee snapshot ลงออเดอร์ตอนสร้าง
+- **Escrow อัตโนมัติ (cron):** `/api/cron/auto-confirm` เดินทุก **5 นาที** ผ่าน crontab (secret จาก `CRON_SECRET` ใน `.env.local`, log ที่ `~/cron-auto-confirm.log`) — กติกา A–E: ยืนยันรับแทน / ยืนยันรับคืนแทน / ปิดเคสคืน / ยกเลิกไม่จัดส่ง+คืนสต็อก / หมดเวลาชำระ → expired · ระบบขยายเวลา 2 ทิศทาง (พักการกวาดเมื่อมีคำขอค้าง)
+
+**ซีรีส์ที่ปิดในรอบ v12 → v13 (ทำเสร็จทั้งหมดในรอบนี้):**
+- **OC1 — ยกเลิกคำสั่งซื้อ:** ปุ่มผู้ซื้อยกเลิกเอง (เฉพาะก่อนชำระ, กันหลังแนบสลิป) · cron เคส E หมดเวลาอัตโนมัติ · สถานะ `expired` (แยกจาก `cancelled` เด็ดขาด) · คอลัมน์ `cancel_reason` บันทึกที่มา 3 ทาง + แสดงในหน้ารายละเอียด · ช่องตั้งค่า "ชำระภายใน (นาที)"
+- **T1 — นับถอยหลังสด:** component กลาง `TimeLeft` (หน่วยปรับเอง วัน/ชม./นาที + โหมด clock m:ss + สีไต่ เทา→ส้ม→แดง + ไม่โชว์เลขติดลบ) ครบ 5 จุด: รอชำระ (หน้ารายละเอียด+หน้า /pay) · รอผู้ขายส่ง (2 ฝั่ง) · รอยืนยันรับ · รอส่งคืน · รอรับของคืน — เคารพสถานะขยายเวลา pending = ซ่อนนาฬิกา
+- **ST1 — กันซื้อทับซ้อน (3 ชั้น + ป้ายสด):**
+  1. DB: `uniq_live_order_per_buyer_product` (partial unique index) + `idx_orders_product_live`
+  2. ด่านสร้างออเดอร์: นับ "สิทธิ์มีชีวิต" = pending_verification ทุกใบ + pending_payment ที่ยังไม่เกินเวลาชำระ — เต็มสต็อก = 409 / เจอของตัวเอง = 400 พาไปจ่ายใบเดิม / ดัก 23505 ตอบภาษาคน
+  3. ด่านสลิป: เกินเวลา = ปฏิเสธ (ยกเว้นสลิปเคยถูก reject — จ่ายเงินแล้ว ให้แนบใหม่ได้เสมอ)
+  4. ด่านเงิน (verify): เช็คสต็อกก่อน approve ทีละใบ — ชิ้นหมด = ไม่อนุมัติ + สั่งแอดมินพาเข้าคิวคืนเงิน
+  5. `/api/products/holds` (public, สูตรเดียวกับด่านสร้าง) + ป้าย G1: pill teal "🔒 มีคนกำลังซื้อ" + เวลาขาว m:ss ใต้ป้าย + ฟิล์มดำ 20% — หน้าตลาด (poll 10 วิ, หยุดเมื่อแท็บซ่อน) · หน้าสินค้า (ปุ่มซื้อล็อก-ปลดเอง) · ตะกร้า (รูปติดกุญแจ + กันปุ่มชำระ) · checkout (เช็คสด ณ วินาทีกด)
+- **AD5 — แจ้งเตือนแอดมินครบวงจร:** `/admin?tab=` deep link · NotiBell กดได้ทุกรายการ (มี link ไปตาม link / มี ref ค้น id เด้งเข้าออเดอร์ / กลุ่มชำระไปหน้ารวม) · helper `lib/notifyAdmins.js` (จุดเดียวทั้งระบบ) ยิง 5 จุด: แนบสลิป→verify · พิพาท→returns · ยืนยันรับ→payout · รับของคืน→payout · KYC→kyc + สรุปจาก cron เมื่อมีงานเกิด
+- **UI:** ฟอนต์ **Prompt** ทั้งแอป (next/font ที่ layout + inline root ทุกหน้าเป็น inherit) · หน้า `/orders` ดีไซน์ใหม่: chips งานของคุณวันนี้ · แท็บ segmented + ตัวเลข · การ์ดแถบสี + progress dots + แถบ ⚡ บอกงาน (ไม่มีปุ่ม การ์ดคลิกทั้งใบ) · หมวดเรียงตามความเร่ง · สลับซื้อ/ขายในหน้า (sync ?role= ด้วย useEffect)
+
+**บั๊กที่เจอและแก้แล้วรอบนี้:** `orders_status_check` ไม่มี cancelled/expired (cron D เคยพังเงียบ — ตอนนี้ครบ 14 สถานะ) · whitelist platform-config เคยกิน 4 ช่องตั้งค่า escrow ทิ้งเงียบ ๆ · ออเดอร์ซ้ำในข้อมูลถูกล้างก่อนติด unique index
+
+**ค่าตั้งระบบปัจจุบัน:** ยืนยันรับแทน 5 วัน · ยืนยันรับคืนแทน 3 วัน · ผู้ขายส่งภายใน 3 วัน · ขยายส่งครั้งละ 2 วัน · ส่งคืนภายใน 5 วัน · ขยายรับของครั้งละ 3 วัน · **ชำระภายใน 5 นาที** · cron ทุก 5 นาที
+
+---
+
+## 2) กติกาเหล็ก (Iron Rules — เพิ่มจาก v12)
+
+1. คำนวณเงินผ่าน `feeFor()/netPayout()` ใน `lib/fees.js` เท่านั้น — ต่อรายการแล้วค่อยรวม
+2. เขียนตาราง `orders` ผ่าน API route (service key) เท่านั้น
+3. ปฏิเสธ/ปิดเคสทุกชนิด ต้องมีเหตุผลผ่าน modal — ห้าม window.prompt/alert
+4. ห้าม inline component ในฟังก์ชัน render · ห้ามค่าสุ่มตอน SSR
+5. FK ใน Supabase query ต้องระบุชัด (กัน PGRST201 เงียบ)
+6. `expired` (ยังไม่มีเงิน) ≠ `cancelled` (เงินอยู่ escrow → เข้าคิวคืนเงิน) — ห้ามปนเด็ดขาด
+7. เพิ่มสถานะใหม่ = ต้องอัปเดต `orders_status_check` + whitelist ของ platform-config พร้อมกันเสมอ
+8. **สูตร "สิทธิ์มีชีวิต" มีที่เดียว** (ด่านสร้างออเดอร์ = ตัวตัดสิน, holds API/ป้าย = กระจก) — แก้สูตรต้องแก้คู่กัน
+9. **component กลางห้ามสร้างซ้ำ:** TimeLeft, NotiBell, ShippingLabel, ReturnSteps, SlipPicker ฯลฯ + `notifyAdmins` คือทางเดียวของแจ้งเตือนแอดมิน
+10. Service worker ห้าม cache ข้อมูลออเดอร์/API สด
+11. ที่อยู่เปิดเผยหลังเงินเข้า escrow เท่านั้น
+12. ข้อความในระบบพูดเฉพาะสิ่งที่ทำได้จริง
+13. **Patch script:** anchor ต้อง assert count==1 + กันรันซ้ำ · ห้ามอ้างตัวแปรใน scope โดยไม่เห็นบรรทัด map/ประกาศจริง (บทเรียนเคส x→p) · ไฟล์ในเครื่องเป็น LF — เขียน patch แบบตรวจ line ending เอง
+
+---
+
+## 3) คิวงานถัดไป
+
+**P3 — Capacitor ห่อแอปยื่น store (ชิ้นใหญ่ถัดไป · เริ่มห้องใหม่):**
+- โปรเจกต์แยก `clubangler-app` ชี้ `https://clubangler.com` · appId `com.clubangler.app`
+- Android ก่อน (Android Studio พร้อม) → `.aab` → Play Console / ตามด้วย iOS `.ipa`
+- บัญชี Google Play + Apple Developer จ่ายแล้ว รอยืนยันตัวตน — งาน build เริ่มก่อนได้
+- เตรียมของประกอบ: ไอคอน/สกรีนช็อต/คำอธิบาย store · นโยบายความเป็นส่วนตัว (มี /privacy แล้ว)
+
+**QC รอบเก็บงาน:** ไอคอนสถานะที่วิ่งยังไม่เพอร์เฟกต์ (ค้างจากก่อน v12) · ไล่ดูของใหม่ทั้งหมดบนมือถือจริง (ป้าย G1 การ์ดแคบ, countdown, Prompt)
+
+**งานจิ๋ว:** บีบ `hero.mp4` 147MB → ≤8MB (HandBrake: Fast 720p30, RF30, Web Optimized) · ตาม Cloudflare Email Routing ของ `support@clubangler.com` (ค้าง Disabled/Syncing)
+
+**อนาคต (จดไว้):** order_events audit log เต็มรูป · WProduct W5.4 หน้าสินค้า desktop (prototype ~บรรทัด 6520) · ป้าย real-time เป็น WebSocket เมื่อ volume โต · cache 10 วิที่ holds API เมื่อคนเยอะ
+
+---
+
+## 4) วิธีทำงาน (Workflow)
+
+- **จับมือทำ:** เสนอแผน → เคาะ → แก้ทีละไฟล์ → เทสต์ localhost → ยืนยัน → ค่อยไปต่อ · mock ก่อน implement เสมอสำหรับงาน UI
+- **Deploy:** `git add` → commit → push → `ssh club@165.22.249.225` → `~/deploy.sh` · deploy คั่นระหว่างซีรีส์
+- **หลัง deploy ใหญ่:** `git archive -o clubangler-src.zip HEAD` (zip นี้ + เอกสารนี้ = ชุดเปิดห้องใหม่)
+- **ไฟล์ใหญ่ (>50KB):** Python patch script + assert ทุกจุด · เช็ค syntax: `Get-Content -Raw <file> | node --input-type=module --check -`
+- **PowerShell 5.1:** ไม่มี `&&` · path มี `[id]` ใช้ `-LiteralPath` · `Copy-Item ... -Force`
+- **บัญชีทดสอบ:** แอดมิน PEEM TNKPP · ผู้ซื้อ peemza, TEST · สินค้าทดสอบ id 9 (stock 14997), TESTเวลา/TESTระบบ
+- **เทสต์ ST1:** บีบ stock เป็น 1 + ยืด pay_within_minutes ชั่วคราว แล้ว**คืนค่าเสมอ** (5 นาที)
