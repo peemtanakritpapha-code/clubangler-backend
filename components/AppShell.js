@@ -11,6 +11,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LayoutGrid, Store, Plus, ShoppingCart, User, Wrench, Bell, Globe, ChevronDown, ShoppingBag, Package, Settings, Wallet, X } from "lucide-react";
 import NotiBell from "@/components/NotiBell";
+import PullToRefresh from "@/components/PullToRefresh"; // PTR1: ปัดลงรีเฟรช (เฉพาะแอพ/PWA)
 import { createClient } from "@/lib/supabase/client";
 import { getCart, subscribeCart } from "@/lib/cart";
 
@@ -117,6 +118,7 @@ export default function AppShell({ user, banner, children, buyCount = 0, sellCou
 
   return (
     <>
+      <PullToRefresh />
       {/* ── ทรงเว็บ (จอกว้าง) ── */}
       <div className="shell-web" style={{ position: "sticky", top: 0, zIndex: 30, background: "#fff", borderBottom: `1px solid ${C.line}`, alignItems: "center", gap: 14, padding: "10px 22px" }}>
         <Logo size={19} />
