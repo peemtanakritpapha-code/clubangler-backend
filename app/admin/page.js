@@ -1,6 +1,7 @@
 // app/admin/page.js — หลังบ้านแอดมิน (A5 ก้าว 1: เพิ่มข้อมูลหน้าภาพรวม + platform_config)
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin"; // POST3.2: ตาราง reports ไม่มี policy ฝั่ง client
 import AdminClient from "./AdminClient";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +48,40 @@ export default async function AdminPage() {
     supabase.from("platform_config").select("*").single(),
   ]);
   const { data: tiers } = await supabase.from("fee_tiers").select("*").order("min");
+
+  // POST3.2: คิวรายงาน — อ่านด้วย service key + ประกอบเนื้อหาที่ถูกรายงาน (โพสต์/คอมเมนต์/สินค้า) + ชื่อคน
+  const adminDb = createAdminClient();
+  const { data: reportRows } = await adminDb.from("reports").select("*")
+    .order("created_at", { ascending: false }).limit(100);
+  const rp = reportRows || [];
+  const rpIds = t => [...new Set(rp.filter(r => r.target_type === t).map(r => r.target_id))];
+  const [pids, cids, prids] = [rpIds("post"), rpIds("comment"), rpIds("product")];
+  const [{ data: rPosts }, { data: rComments }, { data: rProds }] = await Promise.all([
+    pids.length ? adminDb.from("posts").select("id, text, images, author_id, status").in("id", pids) : { data: [] },
+    cids.length ? adminDb.from("post_comments").select("id, text, user_id").in("id", cids) : { data: [] },
+    prids.length ? adminDb.from("products").select("id, name, price, images, status, seller_id").in("id", prids) : { data: [] },
+  ]);
+  const pplIds = [...new Set([
+    ...rp.map(r => r.reporter_id),
+    ...(rPosts || []).map(x => x.author_id),
+    ...(rComments || []).map(x => x.user_id),
+    ...(rProds || []).map(x => x.seller_id),
+  ])].filter(Boolean);
+  const { data: ppl } = pplIds.length
+    ? await adminDb.from("profiles").select("id, name, banned_at").in("id", pplIds) : { data: [] };
+  const pplMap = Object.fromEntries((ppl || []).map(x => [x.id, x]));
+  const reports = rp.map(r => {
+    const t = r.target_type === "post" ? (rPosts || []).find(x => x.id === r.target_id)
+      : r.target_type === "comment" ? (rComments || []).find(x => x.id === r.target_id)
+      : (rProds || []).find(x => x.id === r.target_id);
+    const ownerId = t ? (r.target_type === "product" ? t.seller_id : (t.author_id || t.user_id)) : null;
+    return {
+      ...r,
+      reporter: pplMap[r.reporter_id]?.name || "ผู้ใช้",
+      target: t || null,
+      owner: ownerId ? { id: ownerId, name: pplMap[ownerId]?.name || "ผู้ใช้", banned: !!pplMap[ownerId]?.banned_at } : null,
+    };
+  });
   const stats = {
     ordersTotal: ordersTotal || 0,
     escrowSum: (escrowRows || []).reduce((s, o) => s + Number(o.price || 0), 0),
@@ -55,5 +90,5 @@ export default async function AdminPage() {
   };
 
   return <AdminClient orders={orders || []} sellers={sellers || []} buyers={buyers || []} userId={user.id}
-    kycQueue={kycQueue || []} users={users || []} products={products || []} stats={stats} config={config || null} tiers={tiers || []} />;
+    kycQueue={kycQueue || []} users={users || []} products={products || []} stats={stats} config={config || null} tiers={tiers || []} reports={reports} />;
 }
