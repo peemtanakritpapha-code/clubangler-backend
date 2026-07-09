@@ -80,7 +80,7 @@ export default function SellerClient({ seller: s, products, posts, followers: fo
 
         <div style={{ border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden", background: "#fff", margin: "0 20px" }}>
           {/* ปก: รูปไทม์ไลน์จริงถ้ามี / ไม่มี = ลายจุดเดิม + เจ้าของกดเปลี่ยนปกได้ (prototype 5991–5993) */}
-          <div style={{ height: 140, background: C.brand, position: "relative" }}>
+          <div style={{ height: 190, background: C.brand, position: "relative" }}>
             {coverUrl
               ? <img src={coverUrl} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
               : <div style={{ position: "absolute", inset: 0, opacity: .12, backgroundImage: "radial-gradient(circle,#fff 1.5px,transparent 1.5px)", backgroundSize: "22px 22px" }} />}
@@ -94,9 +94,9 @@ export default function SellerClient({ seller: s, products, posts, followers: fo
           </div>
 
           <div style={{ padding: "0 20px 16px" }}>
-            <div style={{ display: "flex", alignItems: "flex-end", gap: 14, marginTop: -38, position: "relative", zIndex: 1 }}>
+            <div style={{ marginTop: -42, position: "relative", zIndex: 1 }}>{/* NAV3: avatar คร่อมขอบปกซ้าย ชื่ออยู่ใต้ */}
               <div style={{ position: "relative", flex: "none" }}>
-                <div style={{ width: 84, height: 84, borderRadius: "50%", background: s.is_shop ? C.shop : C.brand, border: "4px solid #fff", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 28, fontWeight: 700, overflow: "hidden" }}>
+                <div style={{ width: 92, height: 92, borderRadius: "50%", background: s.is_shop ? C.shop : C.brand, border: "4px solid #fff", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 28, fontWeight: 700, overflow: "hidden" }}>
                   {avatarUrl ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : avatar}
                 </div>
                 {isOwner && (
@@ -107,9 +107,9 @@ export default function SellerClient({ seller: s, products, posts, followers: fo
                   </label>
                 )}
               </div>
-              <div style={{ flex: 1, paddingBottom: 6 }}>
+              <div style={{ marginTop: 10 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 19, fontWeight: 800, color: C.ink }}>{s.name || "ผู้ขาย"}</span>
+                  <span style={{ fontSize: 21, fontWeight: 800, color: C.ink }}>{s.name || "ผู้ขาย"}</span>
                   {verified && <ShieldCheck size={18} color={C.brand} />}
                 </div>
                 <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{s.is_shop ? "ร้านค้า" : "ผู้ขาย"}</div>
