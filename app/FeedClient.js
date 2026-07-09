@@ -144,6 +144,7 @@ function PostCard({ p, user, liked0, following0, onNeedLogin, blocks, onBlock })
   const [cms, setCms] = useState(null);           // null = ยังไม่โหลด
   const [cmN, setCmN] = useState(p.post_comments?.[0]?.count || 0);
   const [cmText, setCmText] = useState("");
+  const [cmErr, setCmErr] = useState(""); // AUTO1.3: โชว์เหตุผลตอนคอมเมนต์โดนบล็อก
   // POST1: แก้ไข/ลบโพสต์ตัวเอง + ลบคอมเมนต์ตัวเอง
   const [gone, setGone] = useState(false);
   const [pText, setPText] = useState(p.text);
@@ -190,13 +191,18 @@ function PostCard({ p, user, liked0, following0, onNeedLogin, blocks, onBlock })
     if (!user) return onNeedLogin();
     const t = cmText.trim();
     if (!t) return;
-    setCmText("");
+    setCmErr("");
     const res = await fetch("/api/posts/comment", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ postId: p.id, text: t, parentId: replyTo?.id || null }),
     });
     const j = await res.json().catch(() => ({}));
-    if (j.comment) { setCms(c => [...(c || []), j.comment]); setCmN(n => n + 1); setReplyTo(null); }
+    if (j.comment) {
+      // สำเร็จค่อยล้างช่องพิมพ์ (AUTO1.3 — เดิมล้างก่อนส่ง พอโดนบล็อกข้อความหายเงียบ)
+      setCmText(""); setCms(c => [...(c || []), j.comment]); setCmN(n => n + 1); setReplyTo(null);
+    } else {
+      setCmErr(j.error || "ส่งความคิดเห็นไม่สำเร็จ ลองใหม่อีกครั้ง"); // เช่น โดนตัวกรองคำต้องห้าม
+    }
   };
 
   // POST1: บันทึกแก้ไข (ข้อความ+ถอดรูป) — ตีตรา edited_at
@@ -453,6 +459,7 @@ function PostCard({ p, user, liked0, following0, onNeedLogin, blocks, onBlock })
                 placeholder={replyTo ? ("ตอบกลับ " + replyTo.name + "...") : "แสดงความคิดเห็น..."} style={{ flex: 1, height: 36, border: `1.5px solid ${C.line}`, borderRadius: 999, padding: "0 14px", fontSize: 12.5, outline: "none" }} />
               <button onClick={addComment} style={{ height: 36, padding: "0 16px", border: "none", borderRadius: 999, background: C.brand, color: "#fff", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>ส่ง</button>
               </div>
+              {cmErr && <div style={{ marginTop: 6, fontSize: 11.5, color: C.danger, fontWeight: 600 }}>{cmErr}</div>}
             </div>
           )}
         </div>
