@@ -49,10 +49,10 @@ const iconBtn = { width: 40, height: 40, borderRadius: 999, border: `1px solid $
 const thPill = { display: "inline-flex", alignItems: "center", gap: 5, height: 40, padding: "0 13px", borderRadius: 999, border: `1px solid ${C.line}`, background: "#fff", color: C.muted, fontSize: 12.5, fontWeight: 700 };
 
 /* แถวเมนูใน dropdown โปรไฟล์ (prototype: ไอคอนพื้นอ่อน + ข้อความ + badge ตัวเลข) — ใช้ร่วมกับ bottom sheet มือถือ (NAV1) */
-function MenuRow({ icon: Icon, label, href, onClick, badge, danger }) {
+function MenuRow({ icon: Icon, label, href, onClick, badge, danger, dark }) {
   const inner = (
     <>
-      <span style={{ width: 34, height: 34, borderRadius: 10, background: danger ? "#FBEAE8" : C.brandTint, color: danger ? C.danger : C.brand, display: "grid", placeItems: "center", flex: "none" }}>
+      <span style={{ width: 34, height: 34, borderRadius: 10, background: danger ? "#FBEAE8" : dark ? "#1F2937" : C.brandTint, color: danger ? C.danger : dark ? "#fff" : C.brand, display: "grid", placeItems: "center", flex: "none" }}>
         <Icon size={16} />
       </span>
       <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: danger ? C.danger : C.ink }}>{label}</span>
@@ -228,6 +228,8 @@ export default function AppShell({ user, banner, children, buyCount = 0, sellCou
             <MenuRow icon={Store} label="สินค้าที่ลงขาย" href="/my-products" onClick={closeSheet} />
             <MenuRow icon={Settings} label="ตั้งค่าบัญชี" href="/profile" onClick={closeSheet} />
             <MenuRow icon={Wallet} label="บัญชีรับเงิน & ยืนยันตัวตน" href="/kyc" onClick={closeSheet} />
+            {/* NAV2: ทางเข้าหลังบ้านบนมือถือ — เห็นเฉพาะแอดมิน (สิทธิ์จริงกันที่ /admin ฝั่งเซิร์ฟเวอร์) */}
+            {user.isAdmin && <MenuRow icon={Wrench} label="หลังบ้านแอดมิน" href="/admin" onClick={closeSheet} dark />}
             <MenuRow icon={X} label="ออกจากระบบ" onClick={logout} danger />
           </div>
         </>

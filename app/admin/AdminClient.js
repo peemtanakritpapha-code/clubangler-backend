@@ -675,6 +675,12 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
             <div style={{ fontSize: 15, fontWeight: 800 }}>ClubAngler <span style={{ fontWeight: 500, color: "#8E9296" }}>Admin</span></div>
           </div>
         )}
+        {/* NAV2: จอแคบ — ปุ่มกลับหน้าร้านที่หัวแถบเมนู (จอกว้างมีอยู่แล้วท้าย sidebar) */}
+        {narrow && (
+          <Link href="/" title="กลับหน้าร้าน" style={{ flex: "none", display: "flex", alignItems: "center", gap: 6, padding: "9px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,.22)", color: "#D8DADC", textDecoration: "none", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}>
+            <LayoutGrid size={15} /> หน้าร้าน
+          </Link>
+        )}
         {MENU.map(it => <SideItem key={it.k} it={it} />)}
         {!narrow && (
           <div style={{ marginTop: "auto", paddingTop: 18, borderTop: "1px solid rgba(255,255,255,.08)" }}>
