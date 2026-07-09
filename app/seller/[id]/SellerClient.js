@@ -85,7 +85,7 @@ export default function SellerClient({ seller: s, products, posts, followers: fo
               ? <img src={coverUrl} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
               : <div style={{ position: "absolute", inset: 0, opacity: .12, backgroundImage: "radial-gradient(circle,#fff 1.5px,transparent 1.5px)", backgroundSize: "22px 22px" }} />}
             {isOwner && (
-              <label style={{ position: "absolute", right: 12, bottom: 12, display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,.94)", color: C.ink, borderRadius: 9, padding: "7px 13px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              <label style={{ position: "absolute", right: 12, bottom: 12, zIndex: 2, display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,.94)", color: C.ink, borderRadius: 9, padding: "7px 13px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                 <Camera size={14} /> {uploading === "cover" ? "กำลังอัปโหลด..." : "เปลี่ยนปก"}
                 <input type="file" accept="image/*" style={{ display: "none" }} disabled={!!uploading}
                   onChange={e => { uploadImage(e.target.files?.[0], "cover"); e.target.value = ""; }} />
