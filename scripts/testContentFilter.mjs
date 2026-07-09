@@ -32,6 +32,11 @@ const CASES = [
   ["add id line peemshop", true, "id line"],
   ["https://line.me/ti/p/abc123", true, "ลิงก์ line.me"],
   ["lin.ee/xyz", true, "ลิงก์ย่อ lin.ee"],
+  ["ขอLine ที", true, "Line ปนประโยคไทย (บั๊กที่เจอจริง)"],
+  ["แอด Line หน่อยครับ", true, "Line เว้นวรรคในประโยคไทย"],
+  ["มี line ไหม", true, "line ตัวเล็กในประโยคไทย"],
+  ["braided line 4 strands new in box", false, "ประโยคอังกฤษล้วน line = สายเอ็น"],
+  ["ขาย PE line เบอร์ 1.5 สภาพดี", false, "ไทยปนอังกฤษแต่มีคำขยายสาย (PE) ต้องรอด"],
 
   // ── คลังคำ: ต้องโดนรวมถึงแบบหลบเลี่ยง ──
   ["ไอ้เหี้ยขายแพงจัง", true, "คำหยาบตรง"],
