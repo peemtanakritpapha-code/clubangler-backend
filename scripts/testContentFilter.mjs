@@ -1,6 +1,7 @@
 // scripts/testContentFilter.mjs — AUTO1: ชุดทดสอบตัวกรองเนื้อหา
 // รัน: node scripts/testContentFilter.mjs  (ต้องขึ้น ALL PASS ก่อน deploy ทุกครั้งที่แก้ lib/contentFilter.js)
-import { checkContent } from "../lib/contentFilter.js";
+import { checkContent, PATTERN_RULES_ENABLED } from "../lib/contentFilter.js";
+const P = PATTERN_RULES_ENABLED; // เคสเบอร์/LINE คาดหวังผลตามสวิตช์ — ปิดอยู่ = ต้องรอด, เปิด = ต้องโดน
 
 const WORDS = ["เหี้ย", "สัส", "ควย"]; // ตัวอย่างคลังคำ (ของจริงอยู่ใน DB)
 
@@ -17,24 +18,24 @@ const CASES = [
   ["online shopping deadline วันนี้", false, "line ในคำอื่น (online/deadline)"],
 
   // ── เบอร์โทร: ต้องโดนทุกแบบ ──
-  ["สนใจโทร 0812345678", true, "เบอร์ติดกัน"],
-  ["ทัก 081-234-5678 ได้เลย", true, "เบอร์มีขีด"],
-  ["โทร 081 234 5678 นะครับ", true, "เบอร์เว้นวรรค"],
-  ["เบอร์ 081.234.5678", true, "เบอร์มีจุด"],
-  ["096 123 4567 รับสายตลอด", true, "เบอร์ 09"],
-  ["ติดต่อ 0612345678", true, "เบอร์ 06"],
+  ["สนใจโทร 0812345678", P, "เบอร์ติดกัน"],
+  ["ทัก 081-234-5678 ได้เลย", P, "เบอร์มีขีด"],
+  ["โทร 081 234 5678 นะครับ", P, "เบอร์เว้นวรรค"],
+  ["เบอร์ 081.234.5678", P, "เบอร์มีจุด"],
+  ["096 123 4567 รับสายตลอด", P, "เบอร์ 09"],
+  ["ติดต่อ 0612345678", P, "เบอร์ 06"],
 
   // ── LINE: ต้องโดน ──
-  ["ทักไลน์มาคุยราคา", true, "คำไทย ไลน์"],
-  ["แอดไลน์ peem123", true, "แอดไลน์"],
-  ["line: peem123", true, "line:"],
-  ["Line ID @peemshop", true, "line id @"],
-  ["add id line peemshop", true, "id line"],
-  ["https://line.me/ti/p/abc123", true, "ลิงก์ line.me"],
-  ["lin.ee/xyz", true, "ลิงก์ย่อ lin.ee"],
-  ["ขอLine ที", true, "Line ปนประโยคไทย (บั๊กที่เจอจริง)"],
-  ["แอด Line หน่อยครับ", true, "Line เว้นวรรคในประโยคไทย"],
-  ["มี line ไหม", true, "line ตัวเล็กในประโยคไทย"],
+  ["ทักไลน์มาคุยราคา", P, "คำไทย ไลน์"],
+  ["แอดไลน์ peem123", P, "แอดไลน์"],
+  ["line: peem123", P, "line:"],
+  ["Line ID @peemshop", P, "line id @"],
+  ["add id line peemshop", P, "id line"],
+  ["https://line.me/ti/p/abc123", P, "ลิงก์ line.me"],
+  ["lin.ee/xyz", P, "ลิงก์ย่อ lin.ee"],
+  ["ขอLine ที", P, "Line ปนประโยคไทย (บั๊กที่เจอจริง)"],
+  ["แอด Line หน่อยครับ", P, "Line เว้นวรรคในประโยคไทย"],
+  ["มี line ไหม", P, "line ตัวเล็กในประโยคไทย"],
   ["braided line 4 strands new in box", false, "ประโยคอังกฤษล้วน line = สายเอ็น"],
   ["ขาย PE line เบอร์ 1.5 สภาพดี", false, "ไทยปนอังกฤษแต่มีคำขยายสาย (PE) ต้องรอด"],
 
