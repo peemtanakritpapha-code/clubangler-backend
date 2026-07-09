@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 
 const C = { brand: "#0E7E8C", brandTint: "#E7F2F3", ink: "#17181A", muted: "#80868D", line: "#E4E2DC", accent: "#D98A3D", danger: "#C24D42" };
 const baht = n => "฿" + Number(n || 0).toLocaleString();
-const FILTERS = ["ทั้งหมด", "ติดตาม", "ร้านค้า", "ประกาศ"];
+const FILTERS = ["ทั้งหมด", "ติดตาม", "ประกาศ"]; // KYC2: ถอดแท็บ "ร้านค้า" — ไม่มีระบบร้านค้าแล้ว (KYC = ยืนยันตัวตน)
 
 const ago = t => {
   const s = (Date.now() - new Date(t).getTime()) / 1000;
@@ -477,7 +477,6 @@ export default function FeedClient({ posts, latest, user, myLikes, myFollows, my
     if (blocks.includes(p.author_id)) return false; // POST2
     if (p.status === "removed") return false; // POST3.1: soft delete — แอดมินเห็นในหลังบ้านเท่านั้น
     if (filter === "ติดตาม") return user && (myFollows.includes(p.author_id) || p.author_id === user.id);
-    if (filter === "ร้านค้า") return !!p.profiles?.is_shop;
     if (filter === "ประกาศ") return p.is_announcement;
     return true;
   }), [posts, filter, myFollows, user, blocks]);

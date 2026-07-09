@@ -17,7 +17,9 @@ export async function POST(req) {
     return NextResponse.json({ error: "รายการนี้ไม่อยู่ในคิว KYC" }, { status: 400 });
 
   if (approve) {
-    const { error } = await admin.from("profiles").update({ kyc_status: "verified", is_shop: true, kyc_reject_reason: null }).eq("id", userId);
+    // KYC2: ผ่าน KYC = "ผู้ใช้ยืนยันตัวตนแล้ว" (ป้ายโล่ ✓) เท่านั้น — ไม่ใช่ร้านค้า
+    // is_shop เก็บไว้เป็นธงแยกสำหรับอนาคต (ตั้งเองผ่าน DB ได้ถ้าจะมีระบบร้านค้าจริง)
+    const { error } = await admin.from("profiles").update({ kyc_status: "verified", kyc_reject_reason: null }).eq("id", userId);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     await admin.from("notifications").insert({ to_user: userId, icon: "✅", title: "ยืนยันตัวตนสำเร็จ", body: "บัญชีของคุณผ่าน KYC แล้ว — รับเงินจากการขายได้เต็มรูปแบบ" });
   } else {

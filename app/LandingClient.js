@@ -5,6 +5,7 @@ import { productPath } from "@/lib/slug";
 // หมายเหตุ: AnnouncementBanner ไม่ใส่ซ้ำ — AppShell แสดงให้อยู่แล้วทุกหน้า
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import TimeLeft from "@/components/TimeLeft";
 import { Lock, Package, ShieldCheck, RotateCcw, Fish } from "lucide-react";
 
 const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7", bg2: "#F1F3F4", white: "#fff" };
@@ -22,12 +23,13 @@ function LBtn({ children, variant = "primary", size = "md", href, onClick, style
 }
 
 /* ── การ์ดสินค้า (WProductCard จาก prototype — map เข้าคอลัมน์จริง) ── */
-function LandingCard({ p }) {
+function LandingCard({ p, hold }) {
   const s = p.seller || null;
   const name = s?.name || "บัญชีที่ถูกลบ";
   const avatar = (name || "?").trim().charAt(0).toUpperCase();
   const verified = ["approved", "verified"].includes(s?.kyc_status);
   const freeShip = (p.shipping?.mode || "free") !== "paid";
+  const held = !!hold && p.status !== "sold"; // ST2: มีคนกำลังซื้อ — สูตรเดียวกับหน้าตลาด
   return (
     <Link href={productPath(p)} style={{ display: "block", textDecoration: "none", background: C.white, borderRadius: 11, border: `1px solid ${C.line}`, overflow: "hidden", cursor: "pointer", transition: "transform .15s,box-shadow .15s" }}
       onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 10px 28px rgba(0,0,0,.1)"; }}
@@ -37,6 +39,19 @@ function LandingCard({ p }) {
           ? <img src={p.images[0]} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
           : <Fish size={38} color={C.brand} strokeWidth={1.1} />}
         {freeShip && <div style={{ position: "absolute", top: 8, right: 8, background: C.brand, color: "#fff", fontSize: 9.5, fontWeight: 800, padding: "2px 7px", borderRadius: 999 }}>ส่งฟรี</div>}
+        {held && (
+          <>
+            <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.2)" }} />
+            <div style={{ position: "absolute", top: 8, left: 8, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+              <span style={{ background: C.brand, color: "#fff", fontSize: 10.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999, display: "flex", alignItems: "center", gap: 5 }}>🔒 มีคนกำลังซื้อ</span>
+              {hold.until && (
+                <span style={{ color: "#fff", fontSize: 11, fontWeight: 700, paddingLeft: 4, textShadow: "0 1px 3px rgba(0,0,0,.6)" }}>
+                  <TimeLeft startIso={hold.until} prefix="หมดเวลาใน" clock overdueText="กำลังปลดล็อก..." style={{ color: "#fff" }} />
+                </span>
+              )}
+            </div>
+          </>
+        )}
         <div style={{ position: "absolute", left: 7, bottom: 7, background: "rgba(15,23,42,.72)", color: "#fff", fontWeight: 700, fontSize: 13, padding: "4px 9px", borderRadius: 8 }}>฿{Number(p.price || 0).toLocaleString()}</div>
       </div>
       <div style={{ padding: "8px 10px 9px" }}>
@@ -63,6 +78,25 @@ export default function LandingClient({ products = [] }) {
     for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; }
     setRandom(a.slice(0, 8));
   }, [seed, products]);
+
+  // ST2: ป้าย "มีคนกำลังซื้อ" — poll ทุก 10 วิ หยุดเมื่อแท็บถูกซ่อน (แพทเทิร์นเดียวกับหน้าตลาด)
+  const [holds, setHolds] = useState({});
+  useEffect(() => {
+    let stop = false;
+    const load = async () => {
+      if (document.hidden) return;
+      const ids = products.slice(0, 60).map(p => p.id).join(",");
+      if (!ids) { setHolds({}); return; }
+      try {
+        const res = await fetch(`/api/products/holds?ids=${ids}`);
+        const data = await res.json();
+        if (!stop) setHolds(data.holds || {});
+      } catch {}
+    };
+    load();
+    const t = setInterval(load, 10000);
+    return () => { stop = true; clearInterval(t); };
+  }, [products]);
   const steps = [
     { icon: Lock, t: "1 · โอนเข้าบัญชีกลาง", d: "ผู้ซื้อชำระเข้าคนกลาง ไม่ใช่เข้าผู้ขายตรง" },
     { icon: Package, t: "2 · ได้ของ แล้วยืนยัน", d: "ผู้ขายส่งของ ผู้ซื้อกดยืนยันเมื่อได้รับ" },
@@ -113,7 +147,7 @@ export default function LandingClient({ products = [] }) {
             <Link href="/market" style={{ fontSize: 13, color: C.brand, textDecoration: "none" }}>ดูทั้งหมด →</Link>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))", gap: 14 }}>
-            {latest.map(p => <LandingCard key={p.id} p={p} />)}
+            {latest.map(p => <LandingCard key={p.id} p={p} hold={holds[p.id]} />)}
             {latest.length === 0 && <div style={{ color: C.muted, fontSize: 13, padding: "20px 0" }}>ยังไม่มีสินค้าในระบบ</div>}
           </div>
         </div>
@@ -130,7 +164,7 @@ export default function LandingClient({ products = [] }) {
             <LBtn size="sm" variant="outline" onClick={() => setSeed(s => s + 1)}><RotateCcw size={14} /> สุ่มใหม่</LBtn>
           </div>
           <div style={{ display: "flex", gap: 12, overflowX: "auto", padding: "2px 24px 8px" }}>
-            {random.map(p => <div key={p.id} style={{ flex: "0 0 150px" }}><LandingCard p={p} /></div>)}
+            {random.map(p => <div key={p.id} style={{ flex: "0 0 150px" }}><LandingCard p={p} hold={holds[p.id]} /></div>)}
             {random.length === 0 && <div style={{ color: C.muted, fontSize: 13, padding: "12px 24px" }}>ยังไม่มีสินค้า</div>}
           </div>
         </div>

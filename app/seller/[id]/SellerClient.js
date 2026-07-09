@@ -5,7 +5,8 @@ import { productPath } from "@/lib/slug";
 // ปก 120px ลายจุด + avatar วงกลมทับปก / ชื่อ+โล่ KYC / ปุ่มติดตาม↔กำลังติดตาม + แชร์
 // กล่อง bio+ที่ตั้ง+เข้าร่วมเมื่อ+KYC / แถบสถิติ 3 ช่อง / 3 แท็บ: โพสต์ · สินค้า · เกี่ยวกับ
 // ปุ่มติดตามใช้แพทเทิร์นเดียวกับ FeedClient (A2): insert/delete ตาราง follows ฝั่ง client
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import TimeLeft from "@/components/TimeLeft";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MapPin, Clock, ShieldCheck, Share2, Heart, MessageCircle, Package, Plus, Check, ChevronLeft, Camera } from "lucide-react";
@@ -68,6 +69,25 @@ export default function SellerClient({ seller: s, products, posts, followers: fo
   const joined = s.created_at ? new Date(s.created_at).toLocaleDateString("th-TH", { month: "long", year: "numeric" }) : null;
   // สินค้าขายแล้วจมท้ายรายการ (prototype บรรทัด 5981)
   const items = [...products].sort((a, b) => (a.status === "sold" ? 1 : 0) - (b.status === "sold" ? 1 : 0));
+
+  // ST2: ป้าย "มีคนกำลังซื้อ" บนแท็บสินค้า — poll ทุก 10 วิ (แพทเทิร์นเดียวกับหน้าตลาด)
+  const [holds, setHolds] = useState({});
+  useEffect(() => {
+    let stop = false;
+    const load = async () => {
+      if (document.hidden) return;
+      const ids = products.slice(0, 60).map(p => p.id).join(",");
+      if (!ids) { setHolds({}); return; }
+      try {
+        const res = await fetch(`/api/products/holds?ids=${ids}`);
+        const data = await res.json();
+        if (!stop) setHolds(data.holds || {});
+      } catch {}
+    };
+    load();
+    const t = setInterval(load, 10000);
+    return () => { stop = true; clearInterval(t); };
+  }, [products]);
 
   const toggleFollow = async () => {
     if (!me) { router.push("/login"); return; }
@@ -231,6 +251,19 @@ export default function SellerClient({ seller: s, products, posts, followers: fo
                             ? <img src={p.images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                             : <div style={{ display: "grid", placeItems: "center", height: "100%", fontSize: 26 }}>🎣</div>}
                           {p.status === "sold" && <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.45)", display: "grid", placeItems: "center", color: "#fff", fontWeight: 800, fontSize: 14 }}>ขายแล้ว</div>}
+                          {p.status !== "sold" && !!holds[p.id] && (
+                            <>
+                              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.2)" }} />
+                              <div style={{ position: "absolute", top: 6, left: 6, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                                <span style={{ background: C.brand, color: "#fff", fontSize: 10.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999, display: "flex", alignItems: "center", gap: 5 }}>🔒 มีคนกำลังซื้อ</span>
+                                {holds[p.id].until && (
+                                  <span style={{ color: "#fff", fontSize: 10.5, fontWeight: 700, paddingLeft: 4, textShadow: "0 1px 3px rgba(0,0,0,.6)" }}>
+                                    <TimeLeft startIso={holds[p.id].until} prefix="หมดเวลาใน" clock overdueText="กำลังปลดล็อก..." style={{ color: "#fff" }} />
+                                  </span>
+                                )}
+                              </div>
+                            </>
+                          )}
                         </div>
                         <div style={{ padding: "8px 10px" }}>
                           <div style={{ fontSize: 12, color: C.ink, fontWeight: 600, lineHeight: 1.35, height: 32, overflow: "hidden" }}>{p.name}</div>
