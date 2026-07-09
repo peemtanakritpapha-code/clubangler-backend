@@ -18,6 +18,10 @@ export async function POST(req) {
   if (text.length > 1000) return NextResponse.json({ error: "ความคิดเห็นยาวเกินไป (สูงสุด 1,000 ตัวอักษร)" }, { status: 400 });
 
   const admin = createAdminClient();
+  // POST3.1: กันคนโดนแบนใช้งานชุมชน
+  const { data: banChk } = await admin.from("profiles").select("banned_at").eq("id", user.id).single();
+  if (banChk?.banned_at)
+    return NextResponse.json({ error: "บัญชีของคุณถูกระงับการใช้งานชุมชน" }, { status: 403 });
   const { data: post } = await admin.from("posts").select("id, author_id").eq("id", postId).single();
   if (!post) return NextResponse.json({ error: "ไม่พบโพสต์" }, { status: 404 });
 

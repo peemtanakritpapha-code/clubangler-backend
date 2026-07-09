@@ -9,6 +9,7 @@ const ALLOWED = [
   "promptpay_enabled", "promptpay_id", "promptpay_name",
   "bank_enabled", "banks",
   "banner_enabled", "banner_text",
+  "post_approval", // POST3.1
   "auto_confirm_days", "return_auto_confirm_days",
   "ship_within_days", "ship_extend_days", "return_ship_within_days", "extend_receive_days",
   "pay_within_minutes",

@@ -46,14 +46,14 @@ function Composer({ user, myProducts, onPosted }) {
   const [announce, setAnnounce] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [notice, setNotice] = useState(""); // POST3.1: แจ้ง "รออนุมัติ"
   const canAnnounce = user?.isAdmin || user?.isShop;
 
   const submit = async () => {
-    setErr("");
+    setErr(""); setNotice("");
     if (!text.trim()) return;
     setBusy(true);
     try {
-      let image_url = null;
       const imgUrls = [];
       for (const file of files) {
         const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
@@ -62,13 +62,14 @@ function Composer({ user, myProducts, onPosted }) {
         if (error) throw error;
         imgUrls.push(supabase.storage.from("products").getPublicUrl(path).data.publicUrl);
       }
-      image_url = imgUrls[0] || null;
-      const { error } = await supabase.from("posts").insert({
-        author_id: user.id, text: text.trim(), image_url, images: imgUrls,
-        product_id: prodId ? Number(prodId) : null,
-        is_announcement: canAnnounce && announce,
+      // POST3.1: สร้างโพสต์ผ่าน API — server แปะสถานะตามสวิตช์อนุมัติ + กันคนโดนแบน (Iron Rule 17 แนวเดียวกับคอมเมนต์)
+      const res = await fetch("/api/posts/create", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text.trim(), images: imgUrls, productId: prodId ? Number(prodId) : null, announce: canAnnounce && announce }),
       });
-      if (error) throw error;
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || "โพสต์ไม่สำเร็จ");
+      if (j.status === "pending") setNotice("✅ ส่งโพสต์แล้ว — รอแอดมินอนุมัติก่อนแสดงให้คนอื่นเห็น");
       setText(""); setFiles([]); setPreviews(p => { p.forEach(u => URL.revokeObjectURL(u)); return []; }); setProdId(""); setAnnounce(false);
       onPosted();
     } catch (e) { setErr(e.message || String(e)); }
@@ -126,6 +127,7 @@ function Composer({ user, myProducts, onPosted }) {
         </button>
       </div>
       {err && <div style={{ marginTop: 8, fontSize: 12, color: C.danger }}>{err}</div>}
+      {notice && <div style={{ marginTop: 8, fontSize: 12, color: C.brand, fontWeight: 600 }}>{notice}</div>}
     </div>
   );
 }
@@ -244,7 +246,7 @@ function PostCard({ p, user, liked0, following0, onNeedLogin, blocks, onBlock })
             {isShop && badge("ร้านค้า", "#FBF1E6", C.accent)}
             {p.is_announcement && badge("ประกาศ", C.brandTint, C.brand)}
           </div>
-          <div style={{ fontSize: 11, color: C.muted }}>{ago(p.created_at)}{editedAt ? " · แก้ไขแล้ว" : ""}</div>
+          <div style={{ fontSize: 11, color: C.muted }}>{ago(p.created_at)}{editedAt ? " · แก้ไขแล้ว" : ""}{p.status === "pending" && <span style={{ marginLeft: 6, background: "#FEF3C7", color: "#92400E", borderRadius: 999, padding: "1px 8px", fontSize: 10, fontWeight: 700 }}>⏳ รออนุมัติ</span>}</div>
         </div>
         {user && (
           <div style={{ position: "relative" }}>
@@ -466,6 +468,7 @@ export default function FeedClient({ posts, latest, user, myLikes, myFollows, my
 
   const list = useMemo(() => posts.filter(p => {
     if (blocks.includes(p.author_id)) return false; // POST2
+    if (p.status === "removed") return false; // POST3.1: soft delete — แอดมินเห็นในหลังบ้านเท่านั้น
     if (filter === "ติดตาม") return user && (myFollows.includes(p.author_id) || p.author_id === user.id);
     if (filter === "ร้านค้า") return !!p.profiles?.is_shop;
     if (filter === "ประกาศ") return p.is_announcement;

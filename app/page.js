@@ -30,6 +30,7 @@ export default async function FeedPage() {
   // profiles!posts_author_id_fkey = ระบุเส้นทาง join ชัดๆ (posts→profiles มี 2 ทาง: author_id ตรง / อ้อมผ่าน post_likes → ไม่ระบุ = PGRST201)
   const { data: posts, error: postsErr } = await supabase.from("posts")
     .select("*, profiles!posts_author_id_fkey(name, is_shop, avatar_path), products(id, name, price, images), post_likes(count), post_comments(count)")
+    .neq("status", "removed") // POST3.1: soft delete ไม่โผล่ฟีด (ของคนอื่น RLS กันอีกชั้น)
     .order("created_at", { ascending: false }).limit(40);
   if (postsErr) console.error("FEED QUERY ERROR:", postsErr.code, "|", postsErr.message);
 

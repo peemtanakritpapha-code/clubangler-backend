@@ -385,6 +385,7 @@ function SystemSettings({ config, onError }) {
     pay_within_minutes: Number(config?.pay_within_minutes) || 60,
     banner_enabled: !!config?.banner_enabled,
     banner_text: config?.banner_text || "",
+    post_approval: !!config?.post_approval, // POST3.1
   };
   const [draft, setDraft] = useState(base);
   const [busy, setBusy] = useState(false);
@@ -454,6 +455,9 @@ function SystemSettings({ config, onError }) {
               style={{ ...inputS, width: "100%", textAlign: "left" }} />
           </div>
         ) : null}
+        <Row label="อนุมัติโพสต์ก่อนแสดง" hint="เปิด = โพสต์ใหม่ต้องผ่านแอดมินก่อนขึ้นฟีด (โพสต์ของแอดมินไม่ต้องรอ) · ปิด = แสดงทันที">
+          <Toggle on={draft.post_approval} onClick={() => set({ post_approval: !draft.post_approval })} />
+        </Row>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, background: dirty ? "#FFFBEB" : "#fff", border: `1px solid ${dirty ? "#FDE68A" : C.line}`, borderRadius: 12, padding: "12px 14px", flexWrap: "wrap" }}>

@@ -24,7 +24,8 @@ export default async function SellerPage({ params }) {
     supabase.from("orders").select("*", { count: "exact", head: true }).eq("seller_id", id).eq("status", "completed"),
     supabase.from("posts")
       .select("*, products(id, name, price, images), post_likes(count), post_comments(count)")
-      .eq("author_id", id).order("created_at", { ascending: false }).limit(20),
+      .eq("author_id", id).neq("status", "removed") // POST3.1
+      .order("created_at", { ascending: false }).limit(20),
     user
       ? supabase.from("follows").select("follower_id").eq("follower_id", user.id).eq("followee_id", id).maybeSingle()
       : Promise.resolve({ data: null }),

@@ -32,6 +32,10 @@ export async function POST(req) {
     return NextResponse.json({ error: "กรุณาเลือกเหตุผล" }, { status: 400 });
 
   const admin = createAdminClient();
+  // POST3.1: กันคนโดนแบนใช้งานชุมชน
+  const { data: banChk } = await admin.from("profiles").select("banned_at").eq("id", user.id).single();
+  if (banChk?.banned_at)
+    return NextResponse.json({ error: "บัญชีของคุณถูกระงับการใช้งานชุมชน" }, { status: 403 });
 
   // ตรวจว่าเป้าหมายมีจริง (กันรายงานลอย/ยิง id มั่ว)
   const table = targetType === "post" ? "posts" : targetType === "comment" ? "post_comments" : "products";
