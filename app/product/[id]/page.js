@@ -2,12 +2,14 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ProductClient from "./ProductClient";
+import { productPath, productIdFromParam } from "@/lib/slug";
 
 export const dynamic = "force-dynamic";
 
 // SHARE1: Open Graph — แชร์ไป LINE/FB/ชีตระบบ แล้วขึ้นการ์ดรูป+ชื่อ+ราคา (ไม่ใช่ลิงก์โล้นๆ)
 export async function generateMetadata({ params }) {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const id = productIdFromParam(rawId); // SEO2: รับทั้ง /product/14 และ /product/14-ชื่อ
   const supabase = await createClient();
   const { data: p } = await supabase.from("products").select("name, price, detail, images").eq("id", id).single();
   if (!p) return { title: "ไม่พบสินค้า — ClubAngler" };
@@ -17,13 +19,15 @@ export async function generateMetadata({ params }) {
   return {
     title,
     description,
+    alternates: { canonical: productPath({ id, name: p.name }) }, // SEO2: ชี้ URL แบบ slug เป็นตัวจริงกัน Google นับซ้ำ
     openGraph: { title, description, images, type: "website", siteName: "ClubAngler" },
     twitter: { card: "summary_large_image", title, description, images },
   };
 }
 
 export default async function ProductPage({ params }) {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const id = productIdFromParam(rawId); // SEO2: รับทั้ง /product/14 และ /product/14-ชื่อ
   const supabase = await createClient();
   const { data: p } = await supabase.from("products").select("*").eq("id", id).single();
   if (!p) notFound();
@@ -57,7 +61,7 @@ export default async function ProductPage({ params }) {
       ? "https://schema.org/NewCondition" : "https://schema.org/UsedCondition",
     offers: {
       "@type": "Offer",
-      url: `https://clubangler.com/product/${p.id}`,
+      url: `https://clubangler.com${productPath(p)}`,
       priceCurrency: "THB",
       price: Number(p.price || 0),
       availability: p.status === "active" ? "https://schema.org/InStock" : "https://schema.org/SoldOut",

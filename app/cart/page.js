@@ -1,4 +1,5 @@
 "use client";
+import { productPath } from "@/lib/slug";
 // app/cart/page.js — ตะกร้าจริง (A3 ก้าว 2)
 // UI ยกจาก prototype: CartScreen (มือถือ บรรทัด 1955–1991) + สรุปยอดแบบ WCart (บรรทัด 6076–6124)
 // เสริมจาก prototype: ดึงข้อมูลสดจาก DB ตรวจว่าสินค้ายังพร้อมขาย (active + stock ≥ 1)
@@ -114,14 +115,14 @@ export default function CartPage() {
             <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
             {items.map(p => (
               <div key={p.id} style={{ ...card, display: "flex", gap: 10, alignItems: "center", opacity: p.ok ? 1 : .75, border: p.ok ? "none" : `1.5px solid ${C.danger}` }}>
-                <Link href={`/product/${p.id}`} style={{ width: 52, height: 52, borderRadius: 10, background: C.brandTint, display: "flex", alignItems: "center", justifyContent: "center", color: C.brand, overflow: "hidden", flex: "none", position: "relative" }}>
+                <Link href={productPath(p)} style={{ width: 52, height: 52, borderRadius: 10, background: C.brandTint, display: "flex", alignItems: "center", justifyContent: "center", color: C.brand, overflow: "hidden", flex: "none", position: "relative" }}>
                   {p.img ? <img src={p.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Fish size={22} />}
                   {p.ok && holds[p.id] && (
                     <span style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, textShadow: "0 1px 3px rgba(0,0,0,.5)" }}>🔒</span>
                   )}
                 </Link>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <Link href={`/product/${p.id}`} style={{ fontSize: 12.5, fontWeight: 600, color: C.ink, textDecoration: "none", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</Link>
+                  <Link href={productPath(p)} style={{ fontSize: 12.5, fontWeight: 600, color: C.ink, textDecoration: "none", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</Link>
                   {p.ok ? (
                     <div style={{ fontSize: 13, fontWeight: 800, color: C.brand, marginTop: 3 }}>
                       {baht(p.price)} <span style={{ fontSize: 10.5, fontWeight: 600, color: C.muted }}>· {p.shipFee ? `ค่าส่ง ${baht(p.shipFee)}` : p.shipLabel}</span>

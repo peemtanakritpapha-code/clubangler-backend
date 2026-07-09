@@ -1,4 +1,5 @@
 "use client";
+import { productPath } from "@/lib/slug";
 // app/orders/[id]/OrderDetailClient.js — รายละเอียดออเดอร์ (spec §3–4 + prototype WOrderDetail 1296 / ฝั่งขาย 970)
 // ตรรกะทั้งหมดย้ายมาจาก OrdersClient เดิม (call/upload/ส่งคืน/รับคืน/พิพาท) — API ชุดเดิม ไม่แตะฝั่ง server
 // กติกาที่รักษา: ที่อยู่ผู้ซื้อเปิดหลังเงินเข้า escrow เท่านั้น · ปฏิเสธ/รายงานผ่าน modal มีเหตุผลเสมอ ·
@@ -379,7 +380,7 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
               {counterpart?.kyc_status === "verified" && <ShieldCheck size={13} color={C.brand} />}
             </Link>
             <div style={{ display: "flex", gap: 12, padding: 14, alignItems: "center" }}>
-              <Link href={o.products?.id ? `/product/${o.products.id}` : "#"} style={{ width: 56, height: 56, borderRadius: 8, background: C.brandTint, flex: "none", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+              <Link href={productPath(o.products)} style={{ width: 56, height: 56, borderRadius: 8, background: C.brandTint, flex: "none", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
                 {o.products?.images?.[0] ? <img src={o.products.images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Fish size={24} color={C.brand} strokeWidth={1.2} />}
               </Link>
               <div style={{ flex: 1, minWidth: 0 }}>

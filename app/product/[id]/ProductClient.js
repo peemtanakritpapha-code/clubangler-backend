@@ -1,4 +1,5 @@
 "use client";
+import { productPath } from "@/lib/slug";
 // app/product/[id]/ProductClient.js — หน้าสินค้าโฉมเว็บ (W5.4)
 // derive จาก prototype WProduct (บรรทัด 6520–6736):
 //   breadcrumb / 2 คอลัมน์: แกลเลอรี่ (รูปใหญ่ + thumbnail กดสลับ) | ชื่อ+ราคา+ปุ่มซื้อ+การ์ดผู้ขาย+
@@ -220,7 +221,7 @@ export default function ProductClient({ p, seller, views, canBuy, isOwner, simil
             <div style={{ fontSize: 16, fontWeight: 800, color: C.ink, marginBottom: 14 }}>สินค้าที่คล้ายกับสินค้านี้</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))", gap: 12 }}>
               {similar.map(x => (
-                <Link key={x.id} href={`/product/${x.id}`} style={{ textDecoration: "none", background: "#fff", borderRadius: 12, overflow: "hidden", border: `1px solid ${C.line}` }}>
+                <Link key={x.id} href={productPath(x)} style={{ textDecoration: "none", background: "#fff", borderRadius: 12, overflow: "hidden", border: `1px solid ${C.line}` }}>
                   <div style={{ aspectRatio: "1/1", background: "#EDF2F2", display: "flex", alignItems: "center", justifyContent: "center", color: C.brand }}>
                     {x.images?.[0]
                       ? <img src={x.images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />

@@ -1,4 +1,5 @@
 "use client";
+import { productPath } from "@/lib/slug";
 // app/seller/[id]/SellerClient.js — หน้าร้านค้า (A4 ก้าว 1)
 // UI ยกจาก prototype WSellerProfile (บรรทัด 5975–6072):
 // ปก 120px ลายจุด + avatar วงกลมทับปก / ชื่อ+โล่ KYC / ปุ่มติดตาม↔กำลังติดตาม + แชร์
@@ -175,7 +176,7 @@ export default function SellerClient({ seller: s, products, posts, followers: fo
                 {f.text ? <p style={{ fontSize: 13.5, color: C.ink, lineHeight: 1.6, margin: "0 0 10px", whiteSpace: "pre-wrap" }}>{f.text}</p> : null}
                 {f.image_url ? <div style={{ borderRadius: 10, overflow: "hidden", margin: "0 0 10px" }}><img src={f.image_url} alt="" style={{ width: "100%", display: "block", maxHeight: 320, objectFit: "cover" }} /></div> : null}
                 {f.products ? (
-                  <Link href={`/product/${f.products.id}`} style={{ display: "flex", gap: 10, alignItems: "center", margin: "0 0 10px", background: "#FAFAF8", border: `1px solid ${C.line}`, borderRadius: 12, padding: 10, textDecoration: "none" }}>
+                  <Link href={productPath(f.products)} style={{ display: "flex", gap: 10, alignItems: "center", margin: "0 0 10px", background: "#FAFAF8", border: `1px solid ${C.line}`, borderRadius: 12, padding: 10, textDecoration: "none" }}>
                     <div style={{ width: 44, height: 44, borderRadius: 9, overflow: "hidden", background: "#EDF2F2", flex: "none" }}>
                       {f.products.images?.[0] && <img src={f.products.images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                     </div>
@@ -198,7 +199,7 @@ export default function SellerClient({ seller: s, products, posts, followers: fo
                 {items.length ? (
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(140px,1fr))", gap: 12 }}>
                     {items.map(p => (
-                      <Link key={p.id} href={`/product/${p.id}`} style={{ textDecoration: "none", background: "#fff", borderRadius: 12, overflow: "hidden", border: `1px solid ${C.line}` }}>
+                      <Link key={p.id} href={productPath(p)} style={{ textDecoration: "none", background: "#fff", borderRadius: 12, overflow: "hidden", border: `1px solid ${C.line}` }}>
                         <div style={{ aspectRatio: "1/1", background: "#EDF2F2", position: "relative" }}>
                           {p.images?.[0]
                             ? <img src={p.images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />

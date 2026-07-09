@@ -1,4 +1,5 @@
 "use client";
+import { productPath } from "@/lib/slug";
 // app/market/MarketClient.js — ตลาดสกินเต็ม (A4 ก้าว 2–3 + W2 โหมด desktop)
 // derive จาก prototype:
 //   - MarketScreen (บรรทัด 903–1028): ค้นหา + ชิปหมวดหลัก/ย่อย 2 ชั้น + "พบ N รายการ" + Masonry
@@ -24,7 +25,7 @@ function MasonryCard({ p, idx, router, hold }) {
   const sold = p.status === "sold";
   const held = !!hold && !sold; // ST1 6b: มีคนกำลังซื้อ
   return (
-    <div onClick={() => router.push(`/product/${p.id}`)} style={{ borderRadius: 12, overflow: "hidden", cursor: "pointer", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,.07)" }}>
+    <div onClick={() => router.push(productPath(p))} style={{ borderRadius: 12, overflow: "hidden", cursor: "pointer", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,.07)" }}>
       {/* รูปสินค้า — ความสูงแปรผัน */}
       <div style={{ aspectRatio: ratio, background: "#F0F0F0", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", color: C.brand }}>
         {p.images?.[0]

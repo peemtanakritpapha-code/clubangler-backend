@@ -1,4 +1,5 @@
 "use client";
+import { productPath } from "@/lib/slug";
 // app/FeedClient.js — ฟีดชุมชนตาม prototype: composer + 4 แท็บ + ไลก์/คอมเมนต์/ติดตาม + แถบข้าง (จอกว้าง)
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -329,7 +330,7 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
       })()}
 
       {p.products && (
-        <Link href={`/product/${p.products.id}`} style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10, background: "#FAFAF8", border: `1px solid ${C.line}`, borderRadius: 12, padding: 10, textDecoration: "none" }}>
+        <Link href={productPath(p.products)} style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10, background: "#FAFAF8", border: `1px solid ${C.line}`, borderRadius: 12, padding: 10, textDecoration: "none" }}>
           <div style={{ width: 46, height: 46, borderRadius: 9, background: "#EDF2F2", overflow: "hidden", flex: "none" }}>
             {p.products.images?.[0] && <img src={p.products.images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
           </div>
@@ -456,7 +457,7 @@ export default function FeedClient({ posts, latest, user, myLikes, myFollows, my
           ลงขายล่าสุดในตลาด · <Link href="/market" style={{ color: C.brand, fontWeight: 700, textDecoration: "none" }}>ดูทั้งหมด ›</Link>
         </div>
         {latest.map(p => (
-          <Link key={p.id} href={`/product/${p.id}`} style={{ display: "flex", gap: 10, alignItems: "center", textDecoration: "none" }}>
+          <Link key={p.id} href={productPath(p)} style={{ display: "flex", gap: 10, alignItems: "center", textDecoration: "none" }}>
             <div style={{ width: 44, height: 44, borderRadius: 9, background: "#EDF2F2", overflow: "hidden", flex: "none" }}>
               {p.images?.[0] && <img src={p.images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
             </div>

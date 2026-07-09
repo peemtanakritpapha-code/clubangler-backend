@@ -1,4 +1,5 @@
 "use client";
+import { productPath } from "@/lib/slug";
 // app/LandingClient.js — หน้า Landing สำหรับผู้ที่ยังไม่ล็อกอิน (W1)
 // derive จาก prototype: WLanding (บรรทัด 6212) + WProductCard (5947) + WBtn (5909)
 // หมายเหตุ: AnnouncementBanner ไม่ใส่ซ้ำ — AppShell แสดงให้อยู่แล้วทุกหน้า
@@ -28,7 +29,7 @@ function LandingCard({ p }) {
   const verified = ["approved", "verified"].includes(s?.kyc_status);
   const freeShip = (p.shipping?.mode || "free") !== "paid";
   return (
-    <Link href={`/product/${p.id}`} style={{ display: "block", textDecoration: "none", background: C.white, borderRadius: 11, border: `1px solid ${C.line}`, overflow: "hidden", cursor: "pointer", transition: "transform .15s,box-shadow .15s" }}
+    <Link href={productPath(p)} style={{ display: "block", textDecoration: "none", background: C.white, borderRadius: 11, border: `1px solid ${C.line}`, overflow: "hidden", cursor: "pointer", transition: "transform .15s,box-shadow .15s" }}
       onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 10px 28px rgba(0,0,0,.1)"; }}
       onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = ""; }}>
       <div style={{ aspectRatio: "1/1", background: C.bg2, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>

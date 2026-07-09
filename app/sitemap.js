@@ -2,6 +2,7 @@
 // เข้าถึงที่ https://clubangler.com/sitemap.xml — Next สร้าง XML ให้อัตโนมัติ
 // ใช้ supabase-js ตรงๆ (ไม่ผ่าน lib/supabase/server) เพราะ sitemap ไม่มี request/cookies context
 import { createClient } from "@supabase/supabase-js";
+import { productPath } from "@/lib/slug";
 
 export const revalidate = 3600; // cache 1 ชั่วโมง — สินค้าใหม่โผล่ใน sitemap ภายใน 1 ชม.
 
@@ -25,13 +26,13 @@ export default async function sitemap() {
     );
     const { data: products } = await supabase
       .from("products")
-      .select("id, created_at")
+      .select("id, name, created_at")
       .eq("status", "active")
       .order("created_at", { ascending: false })
       .limit(5000);
 
     productPages = (products || []).map((p) => ({
-      url: `${BASE}/product/${p.id}`,
+      url: `${BASE}${productPath(p)}`, // SEO2: URL แบบมีชื่อ
       lastModified: p.created_at ? new Date(p.created_at) : undefined,
       changeFrequency: "daily",
       priority: 0.7,

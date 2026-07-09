@@ -1,4 +1,5 @@
 "use client";
+import { productPath } from "@/lib/slug";
 // app/my-products/MyProductsClient.js — สินค้าที่ลงขาย (W5.3)
 // derive จาก prototype WMyProducts (บรรทัด 7523–7560):
 //   แท็บ กำลังขาย (n) / รอตรวจ (n) / ขายแล้ว (n) · เมนู ⋯ บนการ์ด · ป้าย "ถูกระงับโดยแอดมิน"
@@ -79,7 +80,7 @@ export default function MyProductsClient({ products, userId }) {
                   <>
                     <div onClick={() => setMenuFor(null)} style={{ position: "fixed", inset: 0, zIndex: 5 }} />
                     <div style={{ position: "absolute", top: 40, right: 8, zIndex: 6, background: "#fff", borderRadius: 10, boxShadow: "0 6px 20px rgba(0,0,0,.15)", border: `1px solid ${C.line}`, overflow: "hidden", minWidth: 170 }}>
-                      <Link href={`/product/${p.id}`} style={{ display: "block", padding: "10px 14px", fontSize: 12.5, color: C.ink, textDecoration: "none" }}>ดูหน้าสินค้า</Link>
+                      <Link href={productPath(p)} style={{ display: "block", padding: "10px 14px", fontSize: 12.5, color: C.ink, textDecoration: "none" }}>ดูหน้าสินค้า</Link>
                       <Link href={`/sell?edit=${p.id}`} style={{ display: "block", padding: "10px 14px", fontSize: 12.5, color: C.ink, textDecoration: "none", borderTop: `1px solid ${C.line}` }}>แก้ไขประกาศ</Link>
                       {p.status === "active" && (
                         <div onClick={() => !busy && setStatus(p, "sold")} style={{ padding: "10px 14px", fontSize: 12.5, color: C.ink, cursor: "pointer", borderTop: `1px solid ${C.line}` }}>ทำเครื่องหมายว่าขายแล้ว</div>

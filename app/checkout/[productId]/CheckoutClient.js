@@ -1,4 +1,5 @@
 "use client";
+import { productPath } from "@/lib/slug";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -60,7 +61,7 @@ export default function CheckoutClient({ product: p, addresses, tiers, userId })
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "inherit", padding: "20px 16px" }}>
       <div style={{ maxWidth: 640, margin: "0 auto", display: "grid", gap: 14 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Link href={`/product/${p.id}`} style={{ color: C.brand, fontSize: 13, fontWeight: 700, textDecoration: "none" }}>‹ กลับ</Link>
+          <Link href={productPath(p)} style={{ color: C.brand, fontSize: 13, fontWeight: 700, textDecoration: "none" }}>‹ กลับ</Link>
           <div style={{ fontWeight: 800, color: C.brand }}>🛒 ยืนยันคำสั่งซื้อ</div>
         </div>
 
