@@ -71,7 +71,7 @@ export default async function ProductPage({ params }) {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <ProductClient p={p} seller={seller} views={views} canBuy={canBuy} isOwner={isOwner} similar={similar || []} />
+      <ProductClient p={p} seller={seller} views={views} canBuy={canBuy} isOwner={isOwner} similar={similar || []} loggedIn={!!user} />
     </>
   );
 }

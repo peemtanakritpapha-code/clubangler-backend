@@ -15,7 +15,7 @@ export default async function SellerPage({ params }) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  const [{ data: products }, { count: followers }, { count: sales }, { data: posts }, follow] = await Promise.all([
+  const [{ data: products }, { count: followers }, { count: sales }, { data: posts }, follow, block] = await Promise.all([
     supabase.from("products")
       .select("id, name, price, cond, location, images, status, created_at")
       .eq("seller_id", id).in("status", ["active", "sold"])
@@ -28,6 +28,9 @@ export default async function SellerPage({ params }) {
     user
       ? supabase.from("follows").select("follower_id").eq("follower_id", user.id).eq("followee_id", id).maybeSingle()
       : Promise.resolve({ data: null }),
+    user // POST2: viewer บล็อกร้านนี้อยู่ไหม
+      ? supabase.from("user_blocks").select("blocked_id").eq("blocker_id", user.id).eq("blocked_id", id).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
   return (
@@ -39,6 +42,7 @@ export default async function SellerPage({ params }) {
       sales={sales || 0}
       me={user ? { id: user.id } : null}
       initiallyFollowing={!!follow?.data}
+      initiallyBlocked={!!block?.data}
     />
   );
 }

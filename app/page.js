@@ -33,19 +33,21 @@ export default async function FeedPage() {
     .order("created_at", { ascending: false }).limit(40);
   if (postsErr) console.error("FEED QUERY ERROR:", postsErr.code, "|", postsErr.message);
 
-  let myLikes = [], myFollows = [], myProducts = [], me = null;
+  let myLikes = [], myFollows = [], myProducts = [], myBlocks = [], me = null;
   {
     const ids = (posts || []).map(p => p.id);
-    const [{ data: likes }, { data: follows }, { data: prods }, { data: prof }] = await Promise.all([
+    const [{ data: likes }, { data: follows }, { data: prods }, { data: prof }, { data: blocks }] = await Promise.all([
       ids.length ? supabase.from("post_likes").select("post_id").eq("user_id", user.id).in("post_id", ids) : { data: [] },
       supabase.from("follows").select("followee_id").eq("follower_id", user.id),
       supabase.from("products").select("id, name, price").eq("seller_id", user.id).eq("status", "active").limit(20),
       supabase.from("profiles").select("name, is_shop, is_admin, avatar_path").eq("id", user.id).single(),
+      supabase.from("user_blocks").select("blocked_id").eq("blocker_id", user.id), // POST2
     ]);
     myLikes = (likes || []).map(x => x.post_id);
     myFollows = (follows || []).map(x => x.followee_id);
     myProducts = prods || [];
     me = prof;
+    myBlocks = (blocks || []).map(x => x.blocked_id);
   }
 
   const { data: latest } = await supabase.from("products")
@@ -55,6 +57,6 @@ export default async function FeedPage() {
   return <FeedClient
     posts={posts || []} latest={latest || []}
     user={{ id: user.id, name: me?.name, isShop: !!me?.is_shop, isAdmin: !!me?.is_admin, avatar: me?.avatar_path || null }}
-    myLikes={myLikes} myFollows={myFollows} myProducts={myProducts}
+    myLikes={myLikes} myFollows={myFollows} myProducts={myProducts} myBlocks={myBlocks}
   />;
 }

@@ -15,13 +15,30 @@ const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7
 const baht = n => "฿" + Number(n || 0).toLocaleString();
 const ago = d => { const s = (Date.now() - new Date(d).getTime()) / 1000; if (s < 3600) return `${Math.max(1, Math.floor(s / 60))} นาทีที่แล้ว`; if (s < 86400) return `${Math.floor(s / 3600)} ชม.ที่แล้ว`; return `${Math.floor(s / 86400)} วันที่แล้ว`; };
 
-export default function SellerClient({ seller: s, products, posts, followers: followers0, sales, me, initiallyFollowing }) {
+export default function SellerClient({ seller: s, products, posts, followers: followers0, sales, me, initiallyFollowing, initiallyBlocked }) {
   const router = useRouter();
   const supabase = createClient();
   const [tab, setTab] = useState("โพสต์");
   const [following, setFollowing] = useState(initiallyFollowing);
   const [followers, setFollowers] = useState(followers0);
   const [copied, setCopied] = useState(false);
+  // POST2: สถานะบล็อก — บล็อกจากเมนูในฟีด มาปลดที่นี่
+  const [blocked, setBlocked] = useState(!!initiallyBlocked);
+  const toggleBlock = async () => {
+    if (!me) { router.push("/login"); return; }
+    if (blocked) {
+      await supabase.from("user_blocks").delete().eq("blocker_id", me.id).eq("blocked_id", s.id);
+      setBlocked(false);
+    } else {
+      const { error } = await supabase.from("user_blocks").insert({ blocker_id: me.id, blocked_id: s.id });
+      if (error && error.code !== "23505") { alert("บล็อกไม่สำเร็จ ลองใหม่อีกครั้ง"); return; }
+      setBlocked(true);
+      if (following) { // บล็อกแล้วเลิกติดตามให้ด้วย (แนวเดียวกับ FB)
+        await supabase.from("follows").delete().eq("follower_id", me.id).eq("followee_id", s.id);
+        setFollowing(false); setFollowers(x => Math.max(0, x - 1));
+      }
+    }
+  };
   // W5.2: รูปปก (ไทม์ไลน์) + รูปโปรไฟล์ — อัปโหลดเข้า bucket products โฟลเดอร์ {userId}/ (P1.2 ล้างให้ตอนลบบัญชีอยู่แล้ว)
   const [coverUrl, setCoverUrl] = useState(s.cover_path || "");
   const [avatarUrl, setAvatarUrl] = useState(s.avatar_path || "");
@@ -119,13 +136,22 @@ export default function SellerClient({ seller: s, products, posts, followers: fo
 
             {!isOwner && (
               <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-                <button onClick={toggleFollow} style={{
-                  flex: 1, height: 42, borderRadius: 9, cursor: "pointer", fontWeight: 800, fontSize: 13.5, fontFamily: "inherit",
-                  border: `1.5px solid ${C.brand}`, background: following ? "#fff" : C.brand, color: following ? C.brand : "#fff",
-                  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
-                }}>
-                  {following ? <><Check size={15} /> กำลังติดตาม</> : <><Plus size={15} /> ติดตาม</>}
-                </button>
+                {blocked ? (
+                  <button onClick={toggleBlock} style={{
+                    flex: 1, height: 42, borderRadius: 9, cursor: "pointer", fontWeight: 800, fontSize: 13.5, fontFamily: "inherit",
+                    border: "1.5px solid #C24D42", background: "#fff", color: "#C24D42",
+                  }}>
+                    ปลดบล็อก
+                  </button>
+                ) : (
+                  <button onClick={toggleFollow} style={{
+                    flex: 1, height: 42, borderRadius: 9, cursor: "pointer", fontWeight: 800, fontSize: 13.5, fontFamily: "inherit",
+                    border: `1.5px solid ${C.brand}`, background: following ? "#fff" : C.brand, color: following ? C.brand : "#fff",
+                    display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  }}>
+                    {following ? <><Check size={15} /> กำลังติดตาม</> : <><Plus size={15} /> ติดตาม</>}
+                  </button>
+                )}
                 <button aria-label="แชร์" onClick={share} style={{ border: `1px solid ${C.line}`, background: "#fff", color: C.ink, borderRadius: 9, padding: "0 14px", cursor: "pointer" }}>
                   {copied ? <span style={{ fontSize: 11.5, fontWeight: 700, color: C.brand }}>คัดลอกแล้ว ✓</span> : <Share2 size={16} />}
                 </button>

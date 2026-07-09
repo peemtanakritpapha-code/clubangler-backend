@@ -4,7 +4,8 @@ import { productPath } from "@/lib/slug";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Camera, Heart, MessageCircle, Plus, Check, RotateCcw, MoreHorizontal, Pencil, Trash2, X } from "lucide-react"; // POST1
+import { Camera, Heart, MessageCircle, Plus, Check, RotateCcw, MoreHorizontal, Pencil, Trash2, X, Flag, Ban } from "lucide-react"; // POST1+POST2
+import ReportModal from "@/components/ReportModal"; // POST2
 import { createClient } from "@/lib/supabase/client";
 
 const C = { brand: "#0E7E8C", brandTint: "#E7F2F3", ink: "#17181A", muted: "#80868D", line: "#E4E2DC", accent: "#D98A3D", danger: "#C24D42" };
@@ -129,7 +130,7 @@ function Composer({ user, myProducts, onPosted }) {
   );
 }
 
-function PostCard({ p, user, liked0, following0, onNeedLogin }) {
+function PostCard({ p, user, liked0, following0, onNeedLogin, blocks, onBlock }) {
   const supabase = createClient();
   const author = p.profiles || {};
   const isShop = !!author.is_shop;
@@ -147,6 +148,16 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
   const [pImgs, setPImgs] = useState(p.images?.length ? p.images : (p.image_url ? [p.image_url] : []));
   const [editedAt, setEditedAt] = useState(p.edited_at || null);
   const [menu, setMenu] = useState(false);
+  // POST2: รายงาน + บล็อก
+  const [reportOpen, setReportOpen] = useState(false);
+  const [cmReport, setCmReport] = useState(null); // {id, name} คอมเมนต์ที่กำลังรายงาน
+  const [blockOpen, setBlockOpen] = useState(false);
+  const doBlock = async () => {
+    const { error } = await supabase.from("user_blocks").insert({ blocker_id: user.id, blocked_id: p.author_id });
+    if (error && error.code !== "23505") { alert("บล็อกไม่สำเร็จ ลองใหม่อีกครั้ง"); return; }
+    setBlockOpen(false);
+    onBlock?.(p.author_id); // ฟีดกรองโพสต์/คอมเมนต์ของคนนี้ออกทันที
+  };
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState("");
   const [editImgs, setEditImgs] = useState([]);
@@ -235,7 +246,7 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
           </div>
           <div style={{ fontSize: 11, color: C.muted }}>{ago(p.created_at)}{editedAt ? " · แก้ไขแล้ว" : ""}</div>
         </div>
-        {isMine && (
+        {user && (
           <div style={{ position: "relative" }}>
             <button onClick={() => setMenu(m => !m)} aria-label="ตัวเลือกโพสต์"
               style={{ width: 30, height: 30, borderRadius: 999, border: `1px solid ${C.line}`, background: menu ? "#F1F3F4" : "#fff", display: "grid", placeItems: "center", cursor: "pointer", color: C.muted }}>
@@ -245,14 +256,25 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
               <>
                 <div onClick={() => setMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
                 <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, width: 158, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12, boxShadow: "0 10px 26px rgba(0,0,0,.12)", overflow: "hidden", zIndex: 50 }}>
-                  <div onClick={() => { setMenu(false); setEditText(pText); setEditImgs(pImgs); setEditing(true); }}
-                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", fontSize: 12.5, fontWeight: 600, color: C.ink, cursor: "pointer" }}>
-                    <Pencil size={14} /> แก้ไขโพสต์
-                  </div>
-                  <div onClick={() => { setMenu(false); setDelOpen(true); }}
-                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", fontSize: 12.5, fontWeight: 600, color: C.danger, cursor: "pointer", borderTop: `1px solid ${C.line}` }}>
-                    <Trash2 size={14} /> ลบโพสต์
-                  </div>
+                  {isMine ? (<>
+                    <div onClick={() => { setMenu(false); setEditText(pText); setEditImgs(pImgs); setEditing(true); }}
+                      style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", fontSize: 12.5, fontWeight: 600, color: C.ink, cursor: "pointer" }}>
+                      <Pencil size={14} /> แก้ไขโพสต์
+                    </div>
+                    <div onClick={() => { setMenu(false); setDelOpen(true); }}
+                      style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", fontSize: 12.5, fontWeight: 600, color: C.danger, cursor: "pointer", borderTop: `1px solid ${C.line}` }}>
+                      <Trash2 size={14} /> ลบโพสต์
+                    </div>
+                  </>) : (<>
+                    <div onClick={() => { setMenu(false); setReportOpen(true); }}
+                      style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", fontSize: 12.5, fontWeight: 600, color: C.ink, cursor: "pointer" }}>
+                      <Flag size={14} /> รายงานโพสต์
+                    </div>
+                    <div onClick={() => { setMenu(false); setBlockOpen(true); }}
+                      style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", fontSize: 12.5, fontWeight: 600, color: C.danger, cursor: "pointer", borderTop: `1px solid ${C.line}` }}>
+                      <Ban size={14} /> บล็อกผู้ใช้นี้
+                    </div>
+                  </>)}
                 </div>
               </>
             )}
@@ -299,6 +321,30 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
                 <button onClick={removePost} disabled={busy}
                   style={{ height: 36, padding: "0 18px", borderRadius: 999, border: "none", background: C.danger, color: "#fff", fontSize: 12.5, fontWeight: 800, cursor: "pointer" }}>
                   {busy ? "กำลังลบ..." : "ลบโพสต์"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* POST2: modal รายงาน (โพสต์/คอมเมนต์) + ยืนยันบล็อก */}
+        <ReportModal open={reportOpen} onClose={() => setReportOpen(false)}
+          targetType="post" targetId={p.id} targetLabel={`โพสต์ของ ${author.name || "ผู้ใช้"}`} />
+        <ReportModal open={!!cmReport} onClose={() => setCmReport(null)}
+          targetType="comment" targetId={cmReport?.id} targetLabel={`คอมเมนต์ของ ${cmReport?.name || "ผู้ใช้"}`} />
+        {blockOpen && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 70, background: "rgba(0,0,0,.42)", display: "grid", placeItems: "center", padding: 16 }}>
+            <div style={{ width: "100%", maxWidth: 380, background: "#fff", borderRadius: 16, padding: 18 }}>
+              <b style={{ fontSize: 15, color: C.ink }}>บล็อก {author.name || "ผู้ใช้"}?</b>
+              <div style={{ fontSize: 12.5, color: C.muted, marginTop: 6, lineHeight: 1.8 }}>
+                • คุณจะไม่เห็นโพสต์และคอมเมนต์ของเขาในฟีดอีก<br />
+                • สินค้าของเขาในตลาดยังแสดงตามปกติ<br />
+                • เขาจะไม่ได้รับแจ้งว่าถูกบล็อก · ปลดบล็อกได้ที่หน้าโปรไฟล์ของเขา
+              </div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
+                <button onClick={() => setBlockOpen(false)} style={{ height: 36, padding: "0 16px", borderRadius: 999, border: `1px solid ${C.line}`, background: "#fff", fontSize: 12.5, fontWeight: 700, color: C.muted, cursor: "pointer" }}>ยกเลิก</button>
+                <button onClick={doBlock}
+                  style={{ height: 36, padding: "0 18px", borderRadius: 999, border: "none", background: C.danger, color: "#fff", fontSize: 12.5, fontWeight: 800, cursor: "pointer" }}>
+                  บล็อก
                 </button>
               </div>
             </div>
@@ -369,6 +415,10 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
                       <span onClick={() => setReplyTo({ id: c.id, name: c.profiles?.name || "ผู้ใช้" })}
                         style={{ fontSize: 10.5, color: C.brand, fontWeight: 700, cursor: "pointer" }}>ตอบกลับ</span>
                     )}
+                    {(user && c.user_id !== user.id) && (
+                      <span onClick={() => setCmReport({ id: c.id, name: c.profiles?.name || "ผู้ใช้" })}
+                        style={{ fontSize: 10.5, color: C.muted, cursor: "pointer" }}>รายงาน</span>
+                    )}
                     {(user && (c.user_id === user.id || isMine)) && (
                       cmDelId === c.id ? (
                         <span style={{ fontSize: 10.5 }}>
@@ -383,8 +433,9 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
                 </div>
               </div>
             );
-            const tops = (cms || []).filter(c => !c.parent_id);
-            const kidsOf = id => (cms || []).filter(c => String(c.parent_id) === String(id));
+            const hidden = c => (blocks || []).includes(c.user_id); // POST2: ซ่อนคอมเมนต์คนที่บล็อก
+            const tops = (cms || []).filter(c => !c.parent_id && !hidden(c));
+            const kidsOf = id => (cms || []).filter(c => String(c.parent_id) === String(id) && !hidden(c));
             return tops.map(c => [rowUI(c, false), ...kidsOf(c.id).map(k => rowUI(k, true))]);
           })()}
           {user && (
@@ -408,16 +459,18 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
   );
 }
 
-export default function FeedClient({ posts, latest, user, myLikes, myFollows, myProducts }) {
+export default function FeedClient({ posts, latest, user, myLikes, myFollows, myProducts, myBlocks }) {
   const router = useRouter();
   const [filter, setFilter] = useState("ทั้งหมด");
+  const [blocks, setBlocks] = useState(myBlocks || []); // POST2: อัปเดตสดเมื่อกดบล็อกในฟีด
 
   const list = useMemo(() => posts.filter(p => {
+    if (blocks.includes(p.author_id)) return false; // POST2
     if (filter === "ติดตาม") return user && (myFollows.includes(p.author_id) || p.author_id === user.id);
     if (filter === "ร้านค้า") return !!p.profiles?.is_shop;
     if (filter === "ประกาศ") return p.is_announcement;
     return true;
-  }), [posts, filter, myFollows, user]);
+  }), [posts, filter, myFollows, user, blocks]);
 
   const chip = on => ({ padding: "8px 16px", borderRadius: 999, fontSize: 12.5, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
     border: `1.5px solid ${on ? C.brand : C.line}`, background: on ? C.brand : "#fff", color: on ? "#fff" : C.muted });
@@ -440,6 +493,7 @@ export default function FeedClient({ posts, latest, user, myLikes, myFollows, my
         {list.map(p => (
           <PostCard key={p.id} p={p} user={user}
             liked0={myLikes.includes(p.id)} following0={myFollows.includes(p.author_id)}
+            blocks={blocks} onBlock={id => setBlocks(b => [...b, id])}
             onNeedLogin={() => router.push("/login")} />
         ))}
       </div>

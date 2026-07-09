@@ -11,6 +11,7 @@ import { productPath } from "@/lib/slug";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, ShieldCheck, Fish, Share2, Link2, Check } from "lucide-react"; // SHARE1
+import ReportModal from "@/components/ReportModal"; // POST2
 import AddToCartBar from "@/components/AddToCartBar";
 import TimeLeft from "@/components/TimeLeft";
 import { COND_GRADES } from "@/lib/catalog";
@@ -18,10 +19,11 @@ import { COND_GRADES } from "@/lib/catalog";
 const C = { brand: "#0E7E8C", brandDk: "#0B5F6A", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7", shop: "#F0A500" };
 const baht = n => "฿" + Number(n || 0).toLocaleString();
 
-export default function ProductClient({ p, seller, views, canBuy, isOwner, similar }) {
+export default function ProductClient({ p, seller, views, canBuy, isOwner, similar, loggedIn }) {
   // SHARE1: แชร์สินค้า — มือถือ/แอพใช้ชีตแชร์ระบบ (Web Share API) · เดสก์ท็อป fallback เมนูคัดลอก/LINE/FB
   const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false); // POST2
   const shareUrl = typeof window !== "undefined" ? window.location.href : "";
   const shareTitle = `${p.name} · ${baht(p.price)} — ClubAngler`;
   const doShare = async () => {
@@ -212,6 +214,17 @@ export default function ProductClient({ p, seller, views, canBuy, isOwner, simil
             <div style={{ padding: 11, borderRadius: 9, background: C.brandTint, fontSize: 12, color: C.brandDk, lineHeight: 1.7 }}>
               🔒 <b>ปลอดภัยด้วย Escrow</b> — เงินของคุณถูกพักไว้กับแพลตฟอร์มจนกว่าจะได้รับสินค้า ผู้ขายได้เงินเมื่อคุณกดยืนยันรับของ
             </div>
+            {/* POST2: รายงานสินค้า — ไม่โชว์กับเจ้าของ · guest กดแล้วพาไป login */}
+            {!isOwner && (
+              <div style={{ textAlign: "center", marginTop: 10 }}>
+                <span onClick={() => { if (!loggedIn) { window.location.href = "/login"; return; } setReportOpen(true); }}
+                  style={{ fontSize: 12, color: C.muted, cursor: "pointer", textDecoration: "underline" }}>
+                  🚩 รายงานสินค้านี้
+                </span>
+              </div>
+            )}
+            <ReportModal open={reportOpen} onClose={() => setReportOpen(false)}
+              targetType="product" targetId={p.id} targetLabel={`สินค้า: ${p.name}`} />
           </div>
         </div>
 
