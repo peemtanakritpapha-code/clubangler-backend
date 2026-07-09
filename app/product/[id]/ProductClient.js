@@ -9,7 +9,7 @@
 // จอแคบ: grid ยุบเป็นคอลัมน์เดียวอัตโนมัติ (.prod-grid ใน <style> ด้านล่าง breakpoint 900px เดียวกับ shell)
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, ShieldCheck, Fish } from "lucide-react";
+import { ChevronRight, ShieldCheck, Fish, Share2, Link2, Check } from "lucide-react"; // SHARE1
 import AddToCartBar from "@/components/AddToCartBar";
 import TimeLeft from "@/components/TimeLeft";
 import { COND_GRADES } from "@/lib/catalog";
@@ -18,6 +18,25 @@ const C = { brand: "#0E7E8C", brandDk: "#0B5F6A", brandTint: "#E3F1F3", ink: "#1
 const baht = n => "฿" + Number(n || 0).toLocaleString();
 
 export default function ProductClient({ p, seller, views, canBuy, isOwner, similar }) {
+  // SHARE1: แชร์สินค้า — มือถือ/แอพใช้ชีตแชร์ระบบ (Web Share API) · เดสก์ท็อป fallback เมนูคัดลอก/LINE/FB
+  const [shareOpen, setShareOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const shareUrl = typeof window !== "undefined" ? window.location.href : "";
+  const shareTitle = `${p.name} · ${baht(p.price)} — ClubAngler`;
+  const doShare = async () => {
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try { await navigator.share({ title: shareTitle, text: shareTitle, url: shareUrl }); return; } catch {}
+      return; // ผู้ใช้กดยกเลิกชีตระบบ — ไม่ต้องเด้งเมนูซ้ำ
+    }
+    setShareOpen(o => !o);
+  };
+  const copyLink = async () => {
+    try { await navigator.clipboard.writeText(shareUrl); } catch {
+      const ta = document.createElement("textarea"); ta.value = shareUrl; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
+    }
+    setCopied(true);
+    setTimeout(() => { setCopied(false); setShareOpen(false); }, 1200);
+  };
   const imgs = p.images?.length ? p.images : [];
   const [imgIdx, setImgIdx] = useState(0);
   const [zoom, setZoom] = useState(false); // lightbox ดูรูปขยายใหญ่
@@ -90,7 +109,33 @@ export default function ProductClient({ p, seller, views, canBuy, isOwner, simil
 
           {/* ── ข้อมูลสินค้า ── */}
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 800, color: C.ink, lineHeight: 1.3, margin: "0 0 12px" }}>{p.name}</h1>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
+              <h1 style={{ fontSize: 20, fontWeight: 800, color: C.ink, lineHeight: 1.3, margin: 0, flex: 1, minWidth: 0 }}>{p.name}</h1>
+              <div style={{ position: "relative", flex: "none" }}>
+                <button onClick={doShare} aria-label="แชร์สินค้า" title="แชร์สินค้า"
+                  style={{ width: 38, height: 38, borderRadius: 999, border: `1px solid ${C.line}`, background: shareOpen ? C.brandTint : "#fff", display: "grid", placeItems: "center", cursor: "pointer", color: C.brand }}>
+                  <Share2 size={17} />
+                </button>
+                {shareOpen && (
+                  <>
+                    <div onClick={() => setShareOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                    <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, width: 210, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12, boxShadow: "0 10px 26px rgba(0,0,0,.12)", overflow: "hidden", zIndex: 50 }}>
+                      <div onClick={copyLink} style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 13px", fontSize: 12.5, fontWeight: 600, color: copied ? C.brand : C.ink, cursor: "pointer" }}>
+                        {copied ? <Check size={15} /> : <Link2 size={15} />} {copied ? "คัดลอกลิงก์แล้ว!" : "คัดลอกลิงก์"}
+                      </div>
+                      <a href={"https://social-plugins.line.me/lineit/share?url=" + encodeURIComponent(shareUrl)} target="_blank" rel="noreferrer"
+                        style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 13px", fontSize: 12.5, fontWeight: 600, color: C.ink, textDecoration: "none", borderTop: `1px solid ${C.line}` }}>
+                        <span style={{ width: 15, textAlign: "center", color: "#06C755", fontWeight: 900 }}>L</span> แชร์ไป LINE
+                      </a>
+                      <a href={"https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(shareUrl)} target="_blank" rel="noreferrer"
+                        style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 13px", fontSize: 12.5, fontWeight: 600, color: C.ink, textDecoration: "none", borderTop: `1px solid ${C.line}` }}>
+                        <span style={{ width: 15, textAlign: "center", color: "#1877F2", fontWeight: 900 }}>f</span> แชร์ไป Facebook
+                      </a>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
             <div style={{ fontSize: 28, fontWeight: 900, color: C.brand, marginBottom: 16 }}>{baht(p.price)}</div>
 
             {/* ปุ่มซื้อ — flow จริงของ A3 (ใส่ตะกร้า/ซื้อเลย → /checkout) */}

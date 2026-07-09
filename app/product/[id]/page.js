@@ -5,6 +5,23 @@ import ProductClient from "./ProductClient";
 
 export const dynamic = "force-dynamic";
 
+// SHARE1: Open Graph — แชร์ไป LINE/FB/ชีตระบบ แล้วขึ้นการ์ดรูป+ชื่อ+ราคา (ไม่ใช่ลิงก์โล้นๆ)
+export async function generateMetadata({ params }) {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data: p } = await supabase.from("products").select("name, price, detail, images").eq("id", id).single();
+  if (!p) return { title: "ไม่พบสินค้า — ClubAngler" };
+  const title = `${p.name} · ฿${Number(p.price || 0).toLocaleString()} — ClubAngler`;
+  const description = (p.detail || "ตลาดอุปกรณ์ตกปลามือสอง ซื้อขายปลอดภัยผ่านระบบเงินฝากคนกลาง").slice(0, 150);
+  const images = p.images?.length ? [p.images[0]] : [];
+  return {
+    title,
+    description,
+    openGraph: { title, description, images, type: "website", siteName: "ClubAngler" },
+    twitter: { card: "summary_large_image", title, description, images },
+  };
+}
+
 export default async function ProductPage({ params }) {
   const { id } = await params;
   const supabase = await createClient();
