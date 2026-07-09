@@ -10,6 +10,20 @@ export default async function SellPage({ searchParams }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  // POST3.3: คนโดนแบนลงขาย/แก้ประกาศไม่ได้
+  const { data: banProf } = await supabase.from("profiles").select("banned_at").eq("id", user.id).single();
+  if (banProf?.banned_at) {
+    return (
+      <div style={{ maxWidth: 480, margin: "70px auto", textAlign: "center", padding: 20 }}>
+        <div style={{ fontSize: 42 }}>⛔</div>
+        <div style={{ fontSize: 17, fontWeight: 800, marginTop: 10, color: "#17181A" }}>บัญชีของคุณถูกระงับการลงขายชั่วคราว</div>
+        <div style={{ fontSize: 13, color: "#80868D", marginTop: 8, lineHeight: 1.8 }}>
+          ออเดอร์เดิมยังเข้าดูและดำเนินการต่อได้ตามปกติ<br />หากคิดว่าเป็นความผิดพลาด กรุณาติดต่อทีมงาน
+        </div>
+      </div>
+    );
+  }
   const { data: tiers } = await supabase.from("fee_tiers").select("*").order("min");
 
   // โหมดแก้ไข: ดึงเฉพาะสินค้าของตัวเอง — ไม่ใช่ของเรา/ไม่มี = เด้งกลับ

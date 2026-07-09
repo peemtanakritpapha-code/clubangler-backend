@@ -29,7 +29,7 @@ export default async function AdminPage() {
 
   // AD1: รายชื่อผู้ใช้ทั้งหมด (จัดการผู้ใช้ — spec แอดมิน §4)
   const { data: users } = await supabase.from("profiles")
-    .select("id, name, email, phone, promptpay, bank, kyc_status, kyc_submitted_at, kyc_reject_reason, id_card_path, bank_book_path, is_admin, is_shop, avatar_path, created_at")
+    .select("id, name, email, phone, promptpay, bank, kyc_status, kyc_submitted_at, kyc_reject_reason, id_card_path, bank_book_path, is_admin, is_shop, avatar_path, created_at, banned_at, banned_reason")
     .order("created_at", { ascending: false }).limit(300);
 
   const { data: kycQueue } = await supabase.from("profiles")
@@ -69,6 +69,26 @@ export default async function AdminPage() {
   ])].filter(Boolean);
   const { data: ppl } = pplIds.length
     ? await adminDb.from("profiles").select("id, name, banned_at").in("id", pplIds) : { data: [] };
+
+  // POST3.3: โพสต์ทั้งระบบสำหรับหน้าจัดการโพสต์ (pending/removed ของคนอื่นมองผ่าน RLS ไม่เห็น — ต้อง service key)
+  const { data: modPostRows } = await adminDb.from("posts")
+    .select("id, text, images, product_id, is_announcement, status, created_at, author_id, removed_reason, removed_by, removed_at")
+    .order("created_at", { ascending: false }).limit(200);
+  const mp = modPostRows || [];
+  const mpPplIds = [...new Set(mp.flatMap(p => [p.author_id, p.removed_by]))].filter(Boolean);
+  const mpProdIds = [...new Set(mp.map(p => p.product_id))].filter(Boolean);
+  const [{ data: mpPpl }, { data: mpProds }] = await Promise.all([
+    mpPplIds.length ? adminDb.from("profiles").select("id, name").in("id", mpPplIds) : { data: [] },
+    mpProdIds.length ? adminDb.from("products").select("id, name").in("id", mpProdIds) : { data: [] },
+  ]);
+  const mpMap = Object.fromEntries((mpPpl || []).map(x => [x.id, x.name]));
+  const mpProdMap = Object.fromEntries((mpProds || []).map(x => [x.id, x.name]));
+  const modPosts = mp.map(p => ({
+    ...p,
+    authorName: mpMap[p.author_id] || "ผู้ใช้",
+    removerName: p.removed_by ? (mpMap[p.removed_by] || "แอดมิน") : null,
+    productName: p.product_id ? (mpProdMap[p.product_id] || null) : null,
+  }));
   const pplMap = Object.fromEntries((ppl || []).map(x => [x.id, x]));
   const reports = rp.map(r => {
     const t = r.target_type === "post" ? (rPosts || []).find(x => x.id === r.target_id)
@@ -90,5 +110,5 @@ export default async function AdminPage() {
   };
 
   return <AdminClient orders={orders || []} sellers={sellers || []} buyers={buyers || []} userId={user.id}
-    kycQueue={kycQueue || []} users={users || []} products={products || []} stats={stats} config={config || null} tiers={tiers || []} reports={reports} />;
+    kycQueue={kycQueue || []} users={users || []} products={products || []} stats={stats} config={config || null} tiers={tiers || []} reports={reports} modPosts={modPosts} />;
 }

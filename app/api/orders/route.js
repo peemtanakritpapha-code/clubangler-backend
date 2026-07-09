@@ -14,6 +14,12 @@ export async function POST(req) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบ" }, { status: 401 });
 
+  // POST3.3: คนโดนแบนสั่งซื้อไม่ได้ (ออเดอร์เดิมยังดู/ดำเนินต่อได้ตามสเปคแบน)
+  const banAdmin = createAdminClient();
+  const { data: banChk } = await banAdmin.from("profiles").select("banned_at").eq("id", user.id).single();
+  if (banChk?.banned_at)
+    return NextResponse.json({ error: "บัญชีของคุณถูกระงับ ไม่สามารถสั่งซื้อได้ชั่วคราว" }, { status: 403 });
+
   const body = await req.json();
   const { shipTo } = body || {};
   // รับได้ทั้ง items: [id, ...] (ตะกร้า) และ productId เดี่ยว (ซื้อเลย)

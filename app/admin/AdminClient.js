@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import ReturnSteps from "@/components/ReturnSteps";
-import { BarChart3, Package, ShoppingBag, Wallet, Percent, Settings, LayoutGrid, ChevronRight, CheckCircle, RotateCcw, AlertTriangle, Truck, Users, ShieldCheck, ReceiptText, Search, Flag } from "lucide-react";
+import { BarChart3, Package, ShoppingBag, Wallet, Percent, Settings, LayoutGrid, ChevronRight, CheckCircle, RotateCcw, AlertTriangle, Truck, Users, ShieldCheck, ReceiptText, Search, Flag, FileText } from "lucide-react";
 import ReportsPanel from "./ReportsPanel"; // POST3.2
+import PostsPanel from "./PostsPanel"; // POST3.3
 import { feeFor, netPayout } from "@/lib/fees";
 
 /* ค่าธรรมเนียม — ตารางเรทตามช่วงราคา ค้นหา/แบ่งหน้า 50 แถว/ปรับทั้งตาราง ±2% (prototype AdminFees 5437–5565) */
@@ -472,14 +473,14 @@ function SystemSettings({ config, onError }) {
   );
 }
 
-export default function AdminClient({ orders, sellers, buyers, userId, kycQueue = [], users = [], products = [], stats = {}, config = null, tiers = [], reports = [] }) {
+export default function AdminClient({ orders, sellers, buyers, userId, kycQueue = [], users = [], products = [], stats = {}, config = null, tiers = [], reports = [], modPosts = [] }) {
   const router = useRouter();
   const supabase = createClient();
   const [tab, setTab] = useState("overview");
   // AD5: เปิดแท็บตรงจาก URL (?tab=...) — รองรับลิงก์จากแจ้งเตือนแอดมิน
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
-    if (["overview", "users", "verify", "returns", "payout", "kyc", "products", "payment", "fees", "settings", "reports"].includes(t)) setTab(t);
+    if (["overview", "users", "verify", "returns", "payout", "kyc", "products", "payment", "fees", "settings", "reports", "posts"].includes(t)) setTab(t);
   }, []);
   const [slipUrls, setSlipUrls] = useState({});
   const [reject, setReject] = useState(null);       // orderId ที่กำลังปฏิเสธ
@@ -618,7 +619,8 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
   const qDisputed = useMemo(() => orders.filter(o => o.status === "disputed"), [orders]);
   const qReturnFlow = useMemo(() => orders.filter(o => o.status === "return_shipped"), [orders]);
   const reportsQ = useMemo(() => reports.filter(r => r.status === "open").map(r => ({ ...r, name: r.reason })), [reports]); // POST3.2
-  const totalTasks = verifyQ.length + returnQ.length + payoutQ.length + refundQ.length + kycQueue.length + reportsQ.length;
+  const pendingPostsQ = useMemo(() => modPosts.filter(p => p.status === "pending").map(p => ({ ...p, name: p.authorName })), [modPosts]); // POST3.3
+  const totalTasks = verifyQ.length + returnQ.length + payoutQ.length + refundQ.length + kycQueue.length + reportsQ.length + pendingPostsQ.length;
 
   // เมนู sidebar (prototype AdminSidebar บรรทัด 4269–4327 — ตัดเมนูที่ยังไม่มีระบบ)
   const MENU = [
@@ -627,6 +629,7 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
     { k: "verify", icon: ReceiptText, label: "ตรวจสลิป", n: verifyQ.length },
     { k: "returns", icon: RotateCcw, label: "คืนของ/พิพาท", n: returnQ.length },
     { k: "reports", icon: Flag, label: "รายงาน", n: reportsQ.length }, // POST3.2
+    { k: "posts", icon: FileText, label: "จัดการโพสต์", n: pendingPostsQ.length }, // POST3.3
     { k: "payout", icon: Wallet, label: "โอนเงิน/คืนเงิน", n: payoutQ.length + refundQ.length },
     { k: "kyc", icon: Users, label: "ยืนยันตัวตน (KYC)", n: kycQueue.length },
     { k: "products", icon: Package, label: "จัดการสินค้า" },
@@ -638,6 +641,7 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
   // การ์ดคิวหน้าภาพรวม: [label, รายการ, แท็บปลายทาง, SLA, สี bg, สี fg, ไอคอน]
   const QCARDS = [
     ["รายงานเนื้อหา", reportsQ, "reports", "SLA 24 ชม.", "#FBEAE8", "#C24D42", Flag], // POST3.2
+    ["โพสต์รออนุมัติ", pendingPostsQ, "posts", "SLA 12 ชม.", "#FEF3C7", "#B45309", FileText], // POST3.3
     ["รอตรวจสลิป", verifyQ, "verify", "SLA 4 ชม.", "#FBEEDD", "#B45309", CheckCircle],
     ["รออนุมัติการคืน", qReturnReq, "returns", "SLA 24 ชม.", "#FFF1EA", "#C2410C", RotateCcw],
     ["ข้อพิพาท", qDisputed, "returns", "SLA 24 ชม.", "#FBEAE8", "#B91C1C", AlertTriangle],
@@ -761,6 +765,9 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
 
         {/* ── คิวรายงาน (POST3.2) ── */}
         {tab === "reports" && <ReportsPanel reports={reports} onError={setErr} />}
+
+        {/* ── จัดการโพสต์ (POST3.3) ── */}
+        {tab === "posts" && <PostsPanel posts={modPosts} onError={setErr} />}
 
         {/* ── ค่าธรรมเนียม (A5 ก้าว 4) ── */}
         {tab === "fees" && <FeesSettings tiers={tiers} onError={setErr} />}
@@ -1019,6 +1026,7 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
                         {u.name || "(ไม่มีชื่อ)"}
                         {u.is_admin && <span style={{ marginLeft: 6, fontSize: 9.5, fontWeight: 800, color: "#fff", background: C.ink, padding: "2px 7px", borderRadius: 999 }}>ADMIN</span>}
                         {u.is_shop && <span style={{ marginLeft: 6, fontSize: 9.5, fontWeight: 800, color: "#92400E", background: "#FEF6E7", padding: "2px 7px", borderRadius: 999 }}>ร้านค้า</span>}
+                        {u.banned_at && <span style={{ marginLeft: 6, fontSize: 9.5, fontWeight: 800, color: "#B91C1C", background: "#FBEAE8", padding: "2px 7px", borderRadius: 999 }}>⛔ ถูกแบน</span>}
                       </div>
                       <div style={{ fontSize: 11.5, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email || "-"}{u.phone ? ` · ${u.phone}` : ""} · สมัคร {u.created_at ? new Date(u.created_at).toLocaleDateString("th-TH") : "-"}</div>
                     </div>
@@ -1313,6 +1321,23 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
               </span>
               <span style={{ fontSize: 10.5, color: C.muted, padding: "3px 0" }}>สมัคร {selUser.created_at ? new Date(selUser.created_at).toLocaleDateString("th-TH") : "-"}</span>
             </div>
+            {/* POST3.3: สถานะแบน + ปลดแบน */}
+            {selUser.banned_at && (
+              <div style={{ background: "#FBEAE8", border: "1px solid #F1C4BE", borderRadius: 10, padding: "10px 12px", marginTop: 10 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 800, color: "#B91C1C" }}>⛔ ถูกแบน · {new Date(selUser.banned_at).toLocaleDateString("th-TH")}</div>
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>เหตุผล: {selUser.banned_reason || "-"}</div>
+                <button onClick={async () => {
+                  setErr("");
+                  const res = await fetch("/api/admin/user-ban", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "unban", userId: selUser.id }) });
+                  const j = await res.json();
+                  if (!res.ok) { setErr(j.error || "ปลดแบนไม่สำเร็จ"); return; }
+                  setSelUser(null); window.location.href = "/admin?tab=users";
+                }}
+                  style={{ marginTop: 8, height: 34, padding: "0 16px", borderRadius: 9, border: "1.5px solid #0E7E5C", background: "#fff", color: "#0E7E5C", fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  ปลดแบน — กลับมาใช้งานได้ปกติ
+                </button>
+              </div>
+            )}
             {selUser.kyc_status === "rejected" && selUser.kyc_reject_reason && (
               <div style={{ fontSize: 12, color: C.danger, background: "#FBEAE8", borderRadius: 8, padding: "8px 12px", marginBottom: 10 }}>เหตุผลที่ไม่ผ่านล่าสุด: {selUser.kyc_reject_reason}</div>
             )}
