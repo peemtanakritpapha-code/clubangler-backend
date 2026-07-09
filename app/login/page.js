@@ -43,6 +43,8 @@ export default function LoginPage() {
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "grid", placeItems: "center", padding: 20, fontFamily: "inherit" }}>
       <div style={{ width: "100%", maxWidth: 400, background: "#fff", borderRadius: 16, padding: 28, boxShadow: "0 8px 30px rgba(0,0,0,.06)" }}>
+        {/* NAV4: ทางกลับหน้าแรกสำหรับ guest — หน้า login ไม่มีเปลือก AppShell (แถบแท็บ/โลโก้) เลยต้องมีลิงก์เอง */}
+        <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12.5, fontWeight: 700, color: C.muted, textDecoration: "none", marginBottom: 6 }}>‹ กลับหน้าแรก</Link>
         <div style={{ textAlign: "center", marginBottom: 20 }}>
           <div style={{ fontSize: 34 }}>🎣</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: C.brand }}>ClubAngler</div>
