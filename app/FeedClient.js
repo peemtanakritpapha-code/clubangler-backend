@@ -152,6 +152,7 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
   const [delOpen, setDelOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [cmDelId, setCmDelId] = useState(null);
+  const [replyTo, setReplyTo] = useState(null); // CM3: {id, name} คอมเมนต์ที่กำลังตอบ
 
   const toggleLike = async () => {
     if (!user) return onNeedLogin();
@@ -171,15 +172,17 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
       setCms(data || []);
     }
   };
-  const addComment = async () => {
+  const addComment = async () => { // CM2: ผ่าน API เพื่อยิงแจ้งเตือนด้วย service key
     if (!user) return onNeedLogin();
     const t = cmText.trim();
     if (!t) return;
     setCmText("");
-    const { data } = await supabase.from("post_comments")
-      .insert({ post_id: p.id, user_id: user.id, text: t })
-      .select("*, profiles(name, is_shop, avatar_path)").single();
-    if (data) { setCms(c => [...(c || []), data]); setCmN(n => n + 1); }
+    const res = await fetch("/api/posts/comment", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ postId: p.id, text: t, parentId: replyTo?.id || null }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (j.comment) { setCms(c => [...(c || []), j.comment]); setCmN(n => n + 1); setReplyTo(null); }
   };
 
   // POST1: บันทึกแก้ไข (ข้อความ+ถอดรูป) — ตีตรา edited_at
@@ -206,9 +209,14 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
     setBusy(false);
     if (!error) { setDelOpen(false); setGone(true); }
   };
-  const delComment = async c => {
+  const delComment = async c => { // CM1: เจ้าของคอมเมนต์ หรือเจ้าของโพสต์ (policy ฝั่ง DB คุมสิทธิ์จริง)
     const { error } = await supabase.from("post_comments").delete().eq("id", c.id);
-    if (!error) { setCms(list => (list || []).filter(x => x.id !== c.id)); setCmN(n => Math.max(0, n - 1)); setCmDelId(null); }
+    if (!error) {
+      const rest = (cms || []).filter(x => x.id !== c.id && String(x.parent_id) !== String(c.id));
+      setCms(rest);
+      setCmN(rest.length);
+      setCmDelId(null);
+    }
   };
   if (gone) return null;
 
@@ -345,35 +353,52 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
       {showCm && (
         <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 10, paddingTop: 10, display: "grid", gap: 8 }}>
           {cms === null && <div style={{ fontSize: 12, color: C.muted }}>กำลังโหลด...</div>}
-          {(cms || []).map(c => (
-            <div key={c.id} style={{ display: "flex", gap: 8 }}>
-              <span style={{ width: 28, height: 28, borderRadius: 999, flex: "none", background: c.profiles?.is_shop ? C.accent : C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 800, overflow: "hidden" }}>
-                {c.profiles?.avatar_path ? <img src={c.profiles.avatar_path} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (c.profiles?.name || "?").charAt(0).toUpperCase()}
-              </span>
-              <div style={{ background: "#FAFAF8", borderRadius: 10, padding: "7px 11px", flex: 1 }}>
-                <b style={{ fontSize: 11.5, color: C.ink }}>{c.profiles?.name || "ผู้ใช้"}</b>
-                <span style={{ fontSize: 10, color: C.muted, marginLeft: 6 }}>{ago(c.created_at)}</span>
-                <div style={{ fontSize: 12.5, color: C.ink, marginTop: 1 }}>{c.text}</div>
-                {user && c.user_id === user.id && (
-                  <div style={{ marginTop: 3 }}>
-                    {cmDelId === c.id ? (
-                      <span style={{ fontSize: 10.5 }}>
-                        <span onClick={() => delComment(c)} style={{ color: C.danger, fontWeight: 800, cursor: "pointer" }}>ยืนยันลบ</span>
-                        <span onClick={() => setCmDelId(null)} style={{ color: C.muted, marginLeft: 10, cursor: "pointer" }}>ยกเลิก</span>
-                      </span>
-                    ) : (
-                      <span onClick={() => setCmDelId(c.id)} style={{ fontSize: 10.5, color: C.muted, cursor: "pointer" }}>ลบ</span>
+          {(() => { // CM3: เธรด 1 ชั้น — หลักก่อน แล้วตามด้วยตอบกลับ (ย่อหน้า)
+            const rowUI = (c, isReply) => (
+              <div key={c.id} style={{ display: "flex", gap: 8, marginLeft: isReply ? 34 : 0 }}>
+                <span style={{ width: isReply ? 24 : 28, height: isReply ? 24 : 28, borderRadius: 999, flex: "none", background: c.profiles?.is_shop ? C.accent : C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 800, overflow: "hidden" }}>
+                  {c.profiles?.avatar_path ? <img src={c.profiles.avatar_path} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (c.profiles?.name || "?").charAt(0).toUpperCase()}
+                </span>
+                <div style={{ background: "#FAFAF8", borderRadius: 10, padding: "7px 11px", flex: 1 }}>
+                  <b style={{ fontSize: 11.5, color: C.ink }}>{c.profiles?.name || "ผู้ใช้"}</b>
+                  <span style={{ fontSize: 10, color: C.muted, marginLeft: 6 }}>{ago(c.created_at)}</span>
+                  <div style={{ fontSize: 12.5, color: C.ink, marginTop: 1 }}>{c.text}</div>
+                  <div style={{ marginTop: 3, display: "flex", gap: 14, alignItems: "center" }}>
+                    {(user && !isReply) && (
+                      <span onClick={() => setReplyTo({ id: c.id, name: c.profiles?.name || "ผู้ใช้" })}
+                        style={{ fontSize: 10.5, color: C.brand, fontWeight: 700, cursor: "pointer" }}>ตอบกลับ</span>
+                    )}
+                    {(user && (c.user_id === user.id || isMine)) && (
+                      cmDelId === c.id ? (
+                        <span style={{ fontSize: 10.5 }}>
+                          <span onClick={() => delComment(c)} style={{ color: C.danger, fontWeight: 800, cursor: "pointer" }}>ยืนยันลบ</span>
+                          <span onClick={() => setCmDelId(null)} style={{ color: C.muted, marginLeft: 10, cursor: "pointer" }}>ยกเลิก</span>
+                        </span>
+                      ) : (
+                        <span onClick={() => setCmDelId(c.id)} style={{ fontSize: 10.5, color: C.muted, cursor: "pointer" }}>ลบ</span>
+                      )
                     )}
                   </div>
-                )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+            const tops = (cms || []).filter(c => !c.parent_id);
+            const kidsOf = id => (cms || []).filter(c => String(c.parent_id) === String(id));
+            return tops.map(c => [rowUI(c, false), ...kidsOf(c.id).map(k => rowUI(k, true))]);
+          })()}
           {user && (
+            <div style={{ display: "grid", gap: 6 }}>
+              {replyTo && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11, color: C.brand, fontWeight: 700 }}>
+                  <span>↩ กำลังตอบกลับ {replyTo.name}</span>
+                  <span onClick={() => setReplyTo(null)} style={{ color: C.muted, cursor: "pointer", fontWeight: 800 }}>✕ ยกเลิก</span>
+                </div>
+              )}
             <div style={{ display: "flex", gap: 8 }}>
               <input value={cmText} onChange={e => setCmText(e.target.value)} onKeyDown={e => e.key === "Enter" && addComment()}
-                placeholder="แสดงความคิดเห็น..." style={{ flex: 1, height: 36, border: `1.5px solid ${C.line}`, borderRadius: 999, padding: "0 14px", fontSize: 12.5, outline: "none" }} />
+                placeholder={replyTo ? ("ตอบกลับ " + replyTo.name + "...") : "แสดงความคิดเห็น..."} style={{ flex: 1, height: 36, border: `1.5px solid ${C.line}`, borderRadius: 999, padding: "0 14px", fontSize: 12.5, outline: "none" }} />
               <button onClick={addComment} style={{ height: 36, padding: "0 16px", border: "none", borderRadius: 999, background: C.brand, color: "#fff", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>ส่ง</button>
+              </div>
             </div>
           )}
         </div>
