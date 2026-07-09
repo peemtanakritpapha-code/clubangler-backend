@@ -45,5 +45,29 @@ export default async function ProductPage({ params }) {
       .order("created_at", { ascending: false }).limit(8),
   ]);
 
-  return <ProductClient p={p} seller={seller} views={views} canBuy={canBuy} isOwner={isOwner} similar={similar || []} />;
+  // SEO1: JSON-LD Product schema — ให้ Google โชว์ราคา/สถานะสินค้าในผลค้นหา (rich result)
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: p.name,
+    image: p.images || [],
+    description: (p.detail || "").slice(0, 300),
+    ...(p.brand ? { brand: { "@type": "Brand", name: p.brand } } : {}),
+    itemCondition: p.cond === "ของใหม่"
+      ? "https://schema.org/NewCondition" : "https://schema.org/UsedCondition",
+    offers: {
+      "@type": "Offer",
+      url: `https://clubangler.com/product/${p.id}`,
+      priceCurrency: "THB",
+      price: Number(p.price || 0),
+      availability: p.status === "active" ? "https://schema.org/InStock" : "https://schema.org/SoldOut",
+    },
+  };
+
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <ProductClient p={p} seller={seller} views={views} canBuy={canBuy} isOwner={isOwner} similar={similar || []} />
+    </>
+  );
 }

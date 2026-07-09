@@ -4,6 +4,12 @@ import MarketClient from "./MarketClient";
 
 export const dynamic = "force-dynamic";
 
+// SEO1: title/description เฉพาะหน้าตลาด (เดิมใช้ title กลางจาก layout ซ้ำทุกหน้า)
+export const metadata = {
+  title: "ตลาดสินค้า — ClubAngler ซื้อขายอุปกรณ์ตกปลา มือหนึ่ง/มือสอง",
+  description: "รวมคันเบ็ด รอก เหยื่อปลอม และอุปกรณ์ตกปลาทุกชนิด ซื้อขายปลอดภัยผ่านระบบเงินฝากคนกลาง (escrow)",
+};
+
 export default async function MarketPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
