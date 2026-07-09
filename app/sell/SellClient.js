@@ -120,6 +120,15 @@ export default function SellClient({ userId, tiers, editProduct = null }) {
         if (error) throw error;
         allImgs.push(supabase.storage.from("products").getPublicUrl(path).data.publicUrl);
       }
+      // AUTO1: ตรวจชื่อ+รายละเอียดสินค้าผ่าน API (client อ่านคลังคำตรงไม่ได้ — จงใจ)
+      // ⚠️ ชั้นนี้กันคนทั่วไป — ชั้น server เต็มรูปแบบจะมาพร้อมงาน "ย้ายลงขายเข้า API" ในคิว
+      const chkRes = await fetch("/api/content-check", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: `${f.name}\n${f.description || ""}` }),
+      });
+      const chk = await chkRes.json();
+      if (!chk.ok) throw new Error(chk.message || chk.error || "เนื้อหาไม่ผ่านการตรวจ");
+
       const cond = f.isNew ? "ของใหม่" : `มือสอง · ${f.grade}`;
       const row = {
         name: f.name.trim(),

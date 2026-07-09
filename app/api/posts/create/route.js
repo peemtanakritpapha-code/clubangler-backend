@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkContent, filterMessage } from "@/lib/contentFilter"; // AUTO1
 
 export async function POST(req) {
   const supabase = await createClient();
@@ -28,6 +29,11 @@ export async function POST(req) {
     return NextResponse.json({ error: "พิมพ์ข้อความหรือแนบรูปอย่างน้อย 1 อย่าง" }, { status: 400 });
   if (text.length > 5000)
     return NextResponse.json({ error: "ข้อความยาวเกินไป (สูงสุด 5,000 ตัวอักษร)" }, { status: 400 });
+
+  // AUTO1: ตัวกรองเนื้อหา — เบอร์โทร/ไลน์ (regex ในโค้ด) + คลังคำต้องห้าม (DB แอดมินจัดการเอง)
+  const { data: bw } = await admin.from("banned_words").select("word");
+  const chk = checkContent(text, (bw || []).map(x => x.word));
+  if (!chk.ok) return NextResponse.json({ error: filterMessage(chk.hits) }, { status: 400 });
 
   // แนบสินค้า: ต้องเป็นสินค้าของตัวเองจริง (กันยิง id สินค้าคนอื่น)
   if (productId) {

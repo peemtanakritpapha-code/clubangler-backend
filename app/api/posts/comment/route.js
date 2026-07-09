@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkContent, filterMessage } from "@/lib/contentFilter"; // AUTO1
 
 export async function POST(req) {
   const supabase = await createClient();
@@ -22,6 +23,11 @@ export async function POST(req) {
   const { data: banChk } = await admin.from("profiles").select("banned_at").eq("id", user.id).single();
   if (banChk?.banned_at)
     return NextResponse.json({ error: "บัญชีของคุณถูกระงับการใช้งานชุมชน" }, { status: 403 });
+  // AUTO1: ตัวกรองเนื้อหา — เบอร์โทร/ไลน์ + คลังคำต้องห้าม
+  const { data: bw } = await admin.from("banned_words").select("word");
+  const chk = checkContent(text, (bw || []).map(x => x.word));
+  if (!chk.ok) return NextResponse.json({ error: filterMessage(chk.hits) }, { status: 400 });
+
   const { data: post } = await admin.from("posts").select("id, author_id").eq("id", postId).single();
   if (!post) return NextResponse.json({ error: "ไม่พบโพสต์" }, { status: 404 });
 

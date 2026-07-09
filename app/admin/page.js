@@ -89,6 +89,9 @@ export default async function AdminPage() {
     removerName: p.removed_by ? (mpMap[p.removed_by] || "แอดมิน") : null,
     productName: p.product_id ? (mpProdMap[p.product_id] || null) : null,
   }));
+
+  // AUTO1: คลังคำต้องห้าม (client policy ไม่มี — อ่านด้วย service key)
+  const { data: bannedWords } = await adminDb.from("banned_words").select("*").order("created_at", { ascending: false });
   const pplMap = Object.fromEntries((ppl || []).map(x => [x.id, x]));
   const reports = rp.map(r => {
     const t = r.target_type === "post" ? (rPosts || []).find(x => x.id === r.target_id)
@@ -110,5 +113,5 @@ export default async function AdminPage() {
   };
 
   return <AdminClient orders={orders || []} sellers={sellers || []} buyers={buyers || []} userId={user.id}
-    kycQueue={kycQueue || []} users={users || []} products={products || []} stats={stats} config={config || null} tiers={tiers || []} reports={reports} modPosts={modPosts} />;
+    kycQueue={kycQueue || []} users={users || []} products={products || []} stats={stats} config={config || null} tiers={tiers || []} reports={reports} modPosts={modPosts} bannedWords={bannedWords || []} />;
 }
