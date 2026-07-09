@@ -68,6 +68,14 @@ function MenuRow({ icon: Icon, label, href, onClick, badge, danger, dark }) {
     : <div onClick={onClick} style={rowStyle}>{inner}</div>;
 }
 
+// NAV5: หน้าโปรไฟล์ในวงกลม — มีรูป (user.avatar จาก layout) ใช้รูป ไม่มีใช้อักษรย่อ
+// ใช้ซ้ำ 4 จุด: ปุ่มมุมขวาบนเว็บ / หัว dropdown / ปุ่มมุมขวาบนมือถือ / หัว bottom sheet
+function AvatarFace({ user }) {
+  return user?.avatar
+    ? <img src={user.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 999 }} />
+    : (user?.name || "?").trim().charAt(0).toUpperCase();
+}
+
 export default function AppShell({ user, banner, children, buyCount = 0, sellCount = 0 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -140,7 +148,7 @@ export default function AppShell({ user, banner, children, buyCount = 0, sellCou
             {/* อวตาร + ˅ เปิดเมนูโปรไฟล์ (prototype) */}
             <div onClick={() => setMenuOpen(o => !o)} style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", background: menuOpen ? C.brandTint : "transparent", borderRadius: 999, padding: "4px 8px 4px 4px" }}>
               <span style={{ width: 34, height: 34, borderRadius: 999, background: C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 13.5, fontWeight: 800 }}>
-                {(user.name || "?").trim().charAt(0).toUpperCase()}
+                <AvatarFace user={user} />
               </span>
               <ChevronDown size={15} color={C.muted} style={{ transform: menuOpen ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
             </div>
@@ -153,7 +161,7 @@ export default function AppShell({ user, banner, children, buyCount = 0, sellCou
                   {/* หัวการ์ด: ชื่อ + ดูโปรไฟล์สาธารณะ */}
                   <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 14px 12px" }}>
                     <span style={{ width: 46, height: 46, borderRadius: 999, background: C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 18, fontWeight: 800, flex: "none" }}>
-                      {(user.name || "?").trim().charAt(0).toUpperCase()}
+                      <AvatarFace user={user} />
                     </span>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 14.5, fontWeight: 800, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name}</div>
@@ -193,7 +201,7 @@ export default function AppShell({ user, banner, children, buyCount = 0, sellCou
               {/* NAV1 (M4): avatar มุมขวาบน ทุกหน้า — บอกสถานะล็อกอิน + เปิดเมนูบัญชี */}
               <button onClick={() => setSheetOpen(true)} aria-label="เมนูบัญชี"
                 style={{ width: 36, height: 36, borderRadius: 999, background: C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 14, fontWeight: 800, border: "none", padding: 0, cursor: "pointer" }}>
-                {(user.name || "?").trim().charAt(0).toUpperCase()}
+                <AvatarFace user={user} />
               </button>
             </>
           ) : (
@@ -217,7 +225,7 @@ export default function AppShell({ user, banner, children, buyCount = 0, sellCou
             {/* หัวการ์ด: ชื่อ + ดูโปรไฟล์สาธารณะ (ชุดเดียวกับ dropdown เว็บ) */}
             <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px 12px" }}>
               <span style={{ width: 46, height: 46, borderRadius: 999, background: C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 18, fontWeight: 800, flex: "none" }}>
-                {(user.name || "?").trim().charAt(0).toUpperCase()}
+                <AvatarFace user={user} />
               </span>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 14.5, fontWeight: 800, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name}</div>
