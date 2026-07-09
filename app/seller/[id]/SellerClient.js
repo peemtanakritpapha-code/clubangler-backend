@@ -95,7 +95,7 @@ export default function SellerClient({ seller: s, products, posts, followers: fo
 
           <div style={{ padding: "0 20px 16px" }}>
             <div style={{ marginTop: -42, position: "relative", zIndex: 1 }}>{/* NAV3: avatar คร่อมขอบปกซ้าย ชื่ออยู่ใต้ */}
-              <div style={{ position: "relative", flex: "none" }}>
+              <div style={{ position: "relative", width: 92, height: 92 }}>{/* NAV3.1: ล็อกกว้างเท่า avatar ให้ปุ่มกล้องเกาะขอบรูปถูกตำแหน่ง */}
                 <div style={{ width: 92, height: 92, borderRadius: "50%", background: s.is_shop ? C.shop : C.brand, border: "4px solid #fff", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 28, fontWeight: 700, overflow: "hidden" }}>
                   {avatarUrl ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : avatar}
                 </div>
