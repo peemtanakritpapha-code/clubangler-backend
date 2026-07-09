@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Camera, Heart, MessageCircle, Plus, Check, RotateCcw } from "lucide-react";
+import { Camera, Heart, MessageCircle, Plus, Check, RotateCcw, MoreHorizontal, Pencil, Trash2, X } from "lucide-react"; // POST1
 import { createClient } from "@/lib/supabase/client";
 
 const C = { brand: "#0E7E8C", brandTint: "#E7F2F3", ink: "#17181A", muted: "#80868D", line: "#E4E2DC", accent: "#D98A3D", danger: "#C24D42" };
@@ -140,6 +140,18 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
   const [cms, setCms] = useState(null);           // null = ยังไม่โหลด
   const [cmN, setCmN] = useState(p.post_comments?.[0]?.count || 0);
   const [cmText, setCmText] = useState("");
+  // POST1: แก้ไข/ลบโพสต์ตัวเอง + ลบคอมเมนต์ตัวเอง
+  const [gone, setGone] = useState(false);
+  const [pText, setPText] = useState(p.text);
+  const [pImgs, setPImgs] = useState(p.images?.length ? p.images : (p.image_url ? [p.image_url] : []));
+  const [editedAt, setEditedAt] = useState(p.edited_at || null);
+  const [menu, setMenu] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState("");
+  const [editImgs, setEditImgs] = useState([]);
+  const [delOpen, setDelOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [cmDelId, setCmDelId] = useState(null);
 
   const toggleLike = async () => {
     if (!user) return onNeedLogin();
@@ -170,6 +182,36 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
     if (data) { setCms(c => [...(c || []), data]); setCmN(n => n + 1); }
   };
 
+  // POST1: บันทึกแก้ไข (ข้อความ+ถอดรูป) — ตีตรา edited_at
+  const saveEdit = async () => {
+    const t = editText.trim();
+    if (!t || busy) return;
+    setBusy(true);
+    const stamp = new Date().toISOString();
+    const { error } = await supabase.from("posts")
+      .update({ text: t, images: editImgs, image_url: editImgs[0] || null, edited_at: stamp })
+      .eq("id", p.id);
+    setBusy(false);
+    if (!error) { setPText(t); setPImgs(editImgs); setEditedAt(stamp); setEditing(false); }
+  };
+  // POST1: ลบโพสต์จริง (เจ้าของลบเอง) — เก็บกวาดรูปใน storage แบบ best-effort แล้วลบแถว (ไลก์/คอมเมนต์หายตาม cascade)
+  const removePost = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const paths = pImgs.map(u => { const i = u.indexOf("/products/"); return i >= 0 ? decodeURIComponent(u.slice(i + 10)) : null; }).filter(Boolean);
+      if (paths.length) await supabase.storage.from("products").remove(paths);
+    } catch {}
+    const { error } = await supabase.from("posts").delete().eq("id", p.id);
+    setBusy(false);
+    if (!error) { setDelOpen(false); setGone(true); }
+  };
+  const delComment = async c => {
+    const { error } = await supabase.from("post_comments").delete().eq("id", c.id);
+    if (!error) { setCms(list => (list || []).filter(x => x.id !== c.id)); setCmN(n => Math.max(0, n - 1)); setCmDelId(null); }
+  };
+  if (gone) return null;
+
   const badge = (txt, bg, fg) => <span style={{ fontSize: 10.5, fontWeight: 800, background: bg, color: fg, borderRadius: 999, padding: "3px 9px" }}>{txt}</span>;
 
   return (
@@ -182,8 +224,77 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
             {isShop && badge("ร้านค้า", "#FBF1E6", C.accent)}
             {p.is_announcement && badge("ประกาศ", C.brandTint, C.brand)}
           </div>
-          <div style={{ fontSize: 11, color: C.muted }}>{ago(p.created_at)}</div>
+          <div style={{ fontSize: 11, color: C.muted }}>{ago(p.created_at)}{editedAt ? " · แก้ไขแล้ว" : ""}</div>
         </div>
+        {isMine && (
+          <div style={{ position: "relative" }}>
+            <button onClick={() => setMenu(m => !m)} aria-label="ตัวเลือกโพสต์"
+              style={{ width: 30, height: 30, borderRadius: 999, border: `1px solid ${C.line}`, background: menu ? "#F1F3F4" : "#fff", display: "grid", placeItems: "center", cursor: "pointer", color: C.muted }}>
+              <MoreHorizontal size={16} />
+            </button>
+            {menu && (
+              <>
+                <div onClick={() => setMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, width: 158, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12, boxShadow: "0 10px 26px rgba(0,0,0,.12)", overflow: "hidden", zIndex: 50 }}>
+                  <div onClick={() => { setMenu(false); setEditText(pText); setEditImgs(pImgs); setEditing(true); }}
+                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", fontSize: 12.5, fontWeight: 600, color: C.ink, cursor: "pointer" }}>
+                    <Pencil size={14} /> แก้ไขโพสต์
+                  </div>
+                  <div onClick={() => { setMenu(false); setDelOpen(true); }}
+                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", fontSize: 12.5, fontWeight: 600, color: C.danger, cursor: "pointer", borderTop: `1px solid ${C.line}` }}>
+                    <Trash2 size={14} /> ลบโพสต์
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+        {editing && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 70, background: "rgba(0,0,0,.42)", display: "grid", placeItems: "center", padding: 16 }}>
+            <div style={{ width: "100%", maxWidth: 460, background: "#fff", borderRadius: 16, padding: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <b style={{ fontSize: 15, color: C.ink }}>แก้ไขโพสต์</b>
+                <button onClick={() => setEditing(false)} style={{ width: 30, height: 30, borderRadius: 999, border: `1px solid ${C.line}`, background: "#fff", display: "grid", placeItems: "center", cursor: "pointer", color: C.muted }}><X size={15} /></button>
+              </div>
+              <textarea value={editText} onChange={e => setEditText(e.target.value)} rows={4}
+                style={{ width: "100%", border: `1.5px solid ${C.line}`, borderRadius: 12, padding: 12, fontSize: 13.5, outline: "none", resize: "vertical", fontFamily: "inherit", boxSizing: "border-box" }} />
+              {editImgs.length > 0 && (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                  {editImgs.map((u, i) => (
+                    <div key={i} style={{ position: "relative" }}>
+                      <img src={u} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 10, border: `1px solid ${C.line}`, display: "block" }} />
+                      <button type="button" onClick={() => setEditImgs(a => a.filter((_, j) => j !== i))} aria-label="ถอดรูปนี้"
+                        style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", border: "none", background: C.danger, color: "#fff", fontSize: 11, fontWeight: 800, cursor: "pointer", lineHeight: 1 }}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ fontSize: 10.5, color: C.muted, marginTop: 8 }}>ถอดรูปได้ แต่เพิ่มรูปใหม่ให้ลบแล้วโพสต์ใหม่ · โพสต์จะติดป้าย "แก้ไขแล้ว"</div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
+                <button onClick={() => setEditing(false)} style={{ height: 36, padding: "0 16px", borderRadius: 999, border: `1px solid ${C.line}`, background: "#fff", fontSize: 12.5, fontWeight: 700, color: C.muted, cursor: "pointer" }}>ยกเลิก</button>
+                <button onClick={saveEdit} disabled={busy || !editText.trim()}
+                  style={{ height: 36, padding: "0 18px", borderRadius: 999, border: "none", background: editText.trim() ? C.brand : "#C9D6D8", color: "#fff", fontSize: 12.5, fontWeight: 800, cursor: "pointer" }}>
+                  {busy ? "กำลังบันทึก..." : "บันทึก"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {delOpen && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 70, background: "rgba(0,0,0,.42)", display: "grid", placeItems: "center", padding: 16 }}>
+            <div style={{ width: "100%", maxWidth: 380, background: "#fff", borderRadius: 16, padding: 18 }}>
+              <b style={{ fontSize: 15, color: C.ink }}>ลบโพสต์นี้?</b>
+              <div style={{ fontSize: 12.5, color: C.muted, marginTop: 6, lineHeight: 1.7 }}>โพสต์ รูปภาพ ไลก์ และความคิดเห็นทั้งหมดจะถูกลบถาวร กู้คืนไม่ได้</div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
+                <button onClick={() => setDelOpen(false)} style={{ height: 36, padding: "0 16px", borderRadius: 999, border: `1px solid ${C.line}`, background: "#fff", fontSize: 12.5, fontWeight: 700, color: C.muted, cursor: "pointer" }}>ยกเลิก</button>
+                <button onClick={removePost} disabled={busy}
+                  style={{ height: 36, padding: "0 18px", borderRadius: 999, border: "none", background: C.danger, color: "#fff", fontSize: 12.5, fontWeight: 800, cursor: "pointer" }}>
+                  {busy ? "กำลังลบ..." : "ลบโพสต์"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {!isMine && user && (
           <button onClick={toggleFollow}
             style={{ height: 30, padding: "0 12px", borderRadius: 999, fontSize: 11.5, fontWeight: 800, cursor: "pointer",
@@ -193,9 +304,9 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
         )}
       </div>
 
-      <div style={{ fontSize: 13.5, color: C.ink, lineHeight: 1.65, margin: "10px 0 0", whiteSpace: "pre-wrap" }}>{p.text}</div>
+      <div style={{ fontSize: 13.5, color: C.ink, lineHeight: 1.65, margin: "10px 0 0", whiteSpace: "pre-wrap" }}>{pText}</div>
       {(() => { // W5.6b: โพสต์หลายรูป — โพสต์เก่ามีแต่ image_url ก็ยังแสดงได้
-        const pics = p.images?.length ? p.images : (p.image_url ? [p.image_url] : []);
+        const pics = pImgs; // POST1: ใช้ state เพื่อสะท้อนการแก้ไขทันที
         if (!pics.length) return null;
         if (pics.length === 1) return <img src={pics[0]} alt="" style={{ width: "100%", borderRadius: 12, marginTop: 10, border: `1px solid ${C.line}` }} />;
         return (
@@ -243,6 +354,18 @@ function PostCard({ p, user, liked0, following0, onNeedLogin }) {
                 <b style={{ fontSize: 11.5, color: C.ink }}>{c.profiles?.name || "ผู้ใช้"}</b>
                 <span style={{ fontSize: 10, color: C.muted, marginLeft: 6 }}>{ago(c.created_at)}</span>
                 <div style={{ fontSize: 12.5, color: C.ink, marginTop: 1 }}>{c.text}</div>
+                {user && c.user_id === user.id && (
+                  <div style={{ marginTop: 3 }}>
+                    {cmDelId === c.id ? (
+                      <span style={{ fontSize: 10.5 }}>
+                        <span onClick={() => delComment(c)} style={{ color: C.danger, fontWeight: 800, cursor: "pointer" }}>ยืนยันลบ</span>
+                        <span onClick={() => setCmDelId(null)} style={{ color: C.muted, marginLeft: 10, cursor: "pointer" }}>ยกเลิก</span>
+                      </span>
+                    ) : (
+                      <span onClick={() => setCmDelId(c.id)} style={{ fontSize: 10.5, color: C.muted, cursor: "pointer" }}>ลบ</span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           ))}
