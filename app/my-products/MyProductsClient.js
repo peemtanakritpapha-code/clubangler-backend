@@ -9,14 +9,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MoreHorizontal, ChevronLeft, Fish } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 
 const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7", danger: "#C0392B" };
 const baht = n => "฿" + Number(n || 0).toLocaleString();
 
 export default function MyProductsClient({ products, userId }) {
   const router = useRouter();
-  const supabase = createClient();
   const [tab, setTab] = useState("active");
   const [menuFor, setMenuFor] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -27,12 +25,18 @@ export default function MyProductsClient({ products, userId }) {
   const sold = products.filter(p => p.status === "sold");
   const list = tab === "active" ? active : tab === "review" ? review : sold;
 
-  // ทำเครื่องหมายขายแล้ว ↔ ย้ายกลับไปกำลังขาย (อัปเดตสินค้าของตัวเอง)
+  // ทำเครื่องหมายขายแล้ว ↔ ย้ายกลับไปกำลังขาย — ผ่าน API (SELL-API: RLS เขียนตรงถูกถอนแล้ว)
   const setStatus = async (p, status) => {
     setMenuFor(null); setErr(""); setBusy(true);
-    const { error } = await supabase.from("products").update({ status }).eq("id", p.id).eq("seller_id", userId);
-    if (error) setErr(error.message || "อัปเดตไม่สำเร็จ");
-    else router.refresh();
+    try {
+      const res = await fetch("/api/products/set-status", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: p.id, status }),
+      });
+      const out = await res.json();
+      if (!res.ok || !out.ok) throw new Error(out.error || "อัปเดตไม่สำเร็จ");
+      router.refresh();
+    } catch (e) { setErr(e.message || "อัปเดตไม่สำเร็จ"); }
     setBusy(false);
   };
 

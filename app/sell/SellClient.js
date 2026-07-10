@@ -120,39 +120,24 @@ export default function SellClient({ userId, tiers, editProduct = null }) {
         if (error) throw error;
         allImgs.push(supabase.storage.from("products").getPublicUrl(path).data.publicUrl);
       }
-      // AUTO1: ตรวจชื่อ+รายละเอียดสินค้าผ่าน API (client อ่านคลังคำตรงไม่ได้ — จงใจ)
-      // ⚠️ ชั้นนี้กันคนทั่วไป — ชั้น server เต็มรูปแบบจะมาพร้อมงาน "ย้ายลงขายเข้า API" ในคิว
-      const chkRes = await fetch("/api/content-check", {
+      // SELL-API: บันทึกผ่าน API — server ตรวจตัวกรอง/แบน/สิทธิ์/status เองทั้งหมด
+      // (RLS ฝั่ง client ถูกถอนแล้ว — insert/update ตรงจากหน้านี้ทำไม่ได้อีก)
+      const res = await fetch("/api/products/save", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: `${f.name}\n${f.description || ""}` }),
+        body: JSON.stringify({
+          editId: isEdit ? editProduct.id : null,
+          name: f.name, description: f.description, price,
+          catPath, brand: f.brand,
+          isNew: f.isNew, grade: f.grade, condNote: f.condNote,
+          issues: f.isNew ? [] : f.issues,
+          location: f.location, stock: f.stock,
+          shipMode: f.shipMode, shipFee: f.shipFee,
+          images: allImgs, ratio: f.ratio,
+        }),
       });
-      const chk = await chkRes.json();
-      if (!chk.ok) throw new Error(chk.message || chk.error || "เนื้อหาไม่ผ่านการตรวจ");
-
-      const cond = f.isNew ? "ของใหม่" : `มือสอง · ${f.grade}`;
-      const row = {
-        name: f.name.trim(),
-        description: f.description.trim(),
-        price,
-        cat_main: catPath[0],
-        cat_sub: catPath.slice(1).join(" › ") || null,
-        brand: f.brand.trim() || null,
-        cond, cond_label: f.isNew ? null : f.grade,
-        cond_note: f.condNote.trim() || null,
-        issues: f.isNew ? [] : f.issues,
-        location: f.location.trim() || null,
-        stock: Number(f.stock) || 1,
-        shipping: f.shipMode === "free" ? { mode: "free", label: "ส่งฟรี" } : { mode: "paid", fee: Number(f.shipFee) || 0, label: `ค่าส่ง ${baht(f.shipFee)}` },
-        images: allImgs,
-        image_ratio: f.ratio,
-        // แบรนด์ใหม่/หมวดใหม่ → รอตรวจเสมอ · แก้ไข = คงสถานะเดิม · ลงใหม่ = active
-        status: needsReview ? "review" : (isEdit ? editProduct.status : "active"),
-      };
-      const { error } = isEdit
-        ? await supabase.from("products").update(row).eq("id", editProduct.id).eq("seller_id", userId)
-        : await supabase.from("products").insert({ seller_id: userId, ...row });
-      if (error) throw error;
-      router.push(isEdit || needsReview ? "/my-products" : "/market");
+      const out = await res.json();
+      if (!res.ok || !out.ok) throw new Error(out.error || "บันทึกไม่สำเร็จ");
+      router.push(isEdit || out.needsReview ? "/my-products" : "/market");
       router.refresh();
     } catch (e) {
       setErr("บันทึกไม่สำเร็จ: " + (e.message || e));
