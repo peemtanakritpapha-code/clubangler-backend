@@ -29,6 +29,21 @@ export default function PayClient({ order: o, groupOrders, config, userId }) {
   const [qrFail, setQrFail] = useState(false); // โหลด QR ไม่ได้ → โชว์เลขพร้อมเพย์ตามเดิม
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  // ยกเลิกการสั่งซื้อ (เฉพาะก่อนแนบสลิป — API กันชั้นสุดท้ายอีกที) · กลุ่มชำระ = ยกเลิกทุกใบที่ยังรอชำระ
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const cancelAll = async () => {
+    setErr(""); setCancelBusy(true);
+    try {
+      for (const x of pending) {
+        const res = await fetch(`/api/orders/${x.id}/cancel`, { method: "POST" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "ยกเลิกไม่สำเร็จ");
+      }
+      router.push("/orders");
+      router.refresh();
+    } catch (e) { setErr(e.message || String(e)); setCancelBusy(false); setCancelOpen(false); }
+  };
 
   // บันทึกรูป QR ลงเครื่อง (มือถือ: เซฟแล้วเปิดแอปธนาคาร → สแกนจากรูป)
   const qrUrl = config?.promptpay_id
@@ -211,6 +226,31 @@ export default function PayClient({ order: o, groupOrders, config, userId }) {
                 style={{ marginTop: 12, width: "100%", height: 48, border: "none", borderRadius: 10, background: C.brand, color: "#fff", fontWeight: 800, fontSize: 15, cursor: "pointer", opacity: busy ? .6 : 1 }}>
                 {busy ? "กำลังส่งสลิป..." : "ส่งสลิปให้ตรวจสอบ"}
               </button>
+              {/* ยกเลิกการสั่งซื้อ — ทำได้เฉพาะตอนยังไม่แนบสลิป (แนบแล้วต้องรอผลตรวจ) */}
+              {!cancelOpen ? (
+                <button type="button" onClick={() => setCancelOpen(true)} disabled={busy || cancelBusy}
+                  style={{ marginTop: 10, width: "100%", height: 40, border: "none", borderRadius: 10, background: "transparent", color: C.danger, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                  ยกเลิกการสั่งซื้อ
+                </button>
+              ) : (
+                <div style={{ marginTop: 12, border: `1.5px solid #F3D6D2`, background: "#FDF6F5", borderRadius: 12, padding: "12px 14px" }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: C.danger, marginBottom: 4 }}>ยืนยันยกเลิกการสั่งซื้อ?</div>
+                  <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6, marginBottom: 10 }}>
+                    {isGroup ? `จะยกเลิกทั้ง ${pending.length} รายการที่ยังไม่ชำระในกลุ่มนี้` : "คำสั่งซื้อนี้จะถูกยกเลิก"} — สินค้าจะกลับมาว่างให้คนอื่นซื้อได้ทันที
+                    {" "}หากโอนเงินไปแล้ว อย่ายกเลิก ให้แนบสลิปแทน
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button type="button" disabled={cancelBusy} onClick={() => setCancelOpen(false)}
+                      style={{ flex: 1, height: 40, borderRadius: 9, border: `1.5px solid ${C.line}`, background: "#fff", color: C.ink, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                      กลับไปชำระ
+                    </button>
+                    <button type="button" disabled={cancelBusy} onClick={cancelAll}
+                      style={{ flex: 1, height: 40, borderRadius: 9, border: "none", background: C.danger, color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit", opacity: cancelBusy ? .6 : 1 }}>
+                      {cancelBusy ? "กำลังยกเลิก..." : "ยืนยันยกเลิก"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}

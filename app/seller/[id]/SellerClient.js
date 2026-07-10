@@ -256,10 +256,12 @@ export default function SellerClient({ seller: s, products, posts, followers: fo
                               <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.2)" }} />
                               <div style={{ position: "absolute", top: 6, left: 6, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
                                 <span style={{ background: C.brand, color: "#fff", fontSize: 10.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999, display: "flex", alignItems: "center", gap: 5 }}>🔒 มีคนกำลังซื้อ</span>
-                                {holds[p.id].until && (
+                                {holds[p.id].until ? (
                                   <span style={{ color: "#fff", fontSize: 10.5, fontWeight: 700, paddingLeft: 4, textShadow: "0 1px 3px rgba(0,0,0,.6)" }}>
                                     <TimeLeft startIso={holds[p.id].until} prefix="หมดเวลาใน" clock overdueText="กำลังปลดล็อก..." style={{ color: "#fff" }} />
                                   </span>
+                                ) : (
+                                  <span style={{ color: "#fff", fontSize: 10.5, fontWeight: 700, paddingLeft: 4, textShadow: "0 1px 3px rgba(0,0,0,.6)" }}>รอยืนยันการชำระ</span>
                                 )}
                               </div>
                             </>
