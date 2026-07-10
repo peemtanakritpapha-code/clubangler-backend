@@ -17,8 +17,14 @@ export const metadata = {
 };
 
 // สีแถบเบราว์เซอร์บนมือถือ = สีแบรนด์ (มาตรฐาน PWA)
+// APPFIX1: maximumScale=1 กัน iOS auto-zoom ตอนแตะ input ตัวหนังสือ <16px (ต้นเหตุจอซูมค้าง/โดนตัดข้างใน App Review)
+//   — ตั้งแต่ iOS 10 ค่านี้ไม่ปิดการถ่างนิ้วซูมของผู้ใช้ ปิดแค่ auto-zoom · viewportFit=cover เปิดใช้ env(safe-area-inset-*)
 export const viewport = {
   themeColor: "#0E7E8C",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
 };
 
 export default async function RootLayout({ children }) {

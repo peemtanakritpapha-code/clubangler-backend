@@ -6,6 +6,8 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); }
+/* APPFIX1: กันหน้าเลื่อนแนวนอน (element กว้างเกินจอจะถูกตัดแทนที่จะดันทั้งหน้า) */
+html, body { overflow-x: clip; }
 a { color: inherit; }
 /* แบนเนอร์ตัววิ่ง (marqueeX จาก prototype) */
 @keyframes marqueeX { from { transform: translateX(0); } to { transform: translateX(-50%); } }
