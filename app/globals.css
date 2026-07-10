@@ -8,6 +8,10 @@
 html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); }
 /* APPFIX1: กันหน้าเลื่อนแนวนอน (element กว้างเกินจอจะถูกตัดแทนที่จะดันทั้งหน้า) */
 html, body { overflow-x: clip; }
+/* APPFIX2: safe area บน iOS (แอป Capacitor วาดเต็มจอ) — ดันเนื้อหาลงใต้แถบสถานะ
+   + แถบขาวปิดหลังนาฬิกา · บนเบราว์เซอร์ env() = 0 ทุกอย่างหายไปเอง ไม่กระทบเว็บ */
+body { padding-top: env(safe-area-inset-top); }
+.safe-top-strip { position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: #fff; z-index: 100; }
 a { color: inherit; }
 /* แบนเนอร์ตัววิ่ง (marqueeX จาก prototype) */
 @keyframes marqueeX { from { transform: translateX(0); } to { transform: translateX(-50%); } }

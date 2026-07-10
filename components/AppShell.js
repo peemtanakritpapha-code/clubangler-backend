@@ -127,8 +127,10 @@ export default function AppShell({ user, banner, children, buyCount = 0, sellCou
   return (
     <>
       <PullToRefresh />
+      {/* APPFIX2: แถบขาวปิดหลังแถบสถานะ iOS (สูง 0 บนเบราว์เซอร์) */}
+      <div className="safe-top-strip" />
       {/* ── ทรงเว็บ (จอกว้าง) ── */}
-      <div className="shell-web" style={{ position: "sticky", top: 0, zIndex: 30, background: "#fff", borderBottom: `1px solid ${C.line}`, alignItems: "center", gap: 14, padding: "10px 22px" }}>
+      <div className="shell-web" style={{ position: "sticky", top: "env(safe-area-inset-top)", zIndex: 30, background: "#fff", borderBottom: `1px solid ${C.line}`, alignItems: "center", gap: 14, padding: "10px 22px" }}>
         <Logo size={19} />
         {/* W3: nav ลอยกึ่งกลางบราวเซอร์ตาม prototype */}
         <nav style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", display: "flex", gap: 4 }}>
@@ -192,7 +194,7 @@ export default function AppShell({ user, banner, children, buyCount = 0, sellCou
       </div>
 
       {/* ── ทรงแอป: header บน (จอแคบ) ── */}
-      <div className="shell-mobile-top" style={{ position: "sticky", top: 0, zIndex: 30, background: "#fff", borderBottom: `1px solid ${C.line}`, alignItems: "center", justifyContent: "space-between", padding: "10px 14px" }}>
+      <div className="shell-mobile-top" style={{ position: "sticky", top: "env(safe-area-inset-top)", zIndex: 30, background: "#fff", borderBottom: `1px solid ${C.line}`, alignItems: "center", justifyContent: "space-between", padding: "10px 14px" }}>
         <Logo size={17} />
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {user ? (

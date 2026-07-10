@@ -681,7 +681,7 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "inherit", display: "flex", flexDirection: narrow ? "column" : "row" }}>
       {/* ── Sidebar (prototype AdminSidebar) — จอแคบยุบเป็นแถบบนเลื่อนข้าง ── */}
       <div style={narrow
-        ? { background: "#101314", color: "#fff", display: "flex", gap: 4, padding: "10px 10px", overflowX: "auto", position: "sticky", top: 0, zIndex: 40 }
+        ? { background: "#101314", color: "#fff", display: "flex", gap: 4, padding: "10px 10px", overflowX: "auto", position: "sticky", top: "env(safe-area-inset-top)", zIndex: 40 }
         : { width: 232, flex: "none", background: "#101314", color: "#fff", display: "flex", flexDirection: "column", padding: "20px 14px", minHeight: "100vh", position: "sticky", top: 0, alignSelf: "flex-start", height: "100vh", overflowY: "auto", boxSizing: "border-box" }}>
         {!narrow && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 8px 22px" }}>
