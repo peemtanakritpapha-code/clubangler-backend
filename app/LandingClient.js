@@ -44,10 +44,12 @@ function LandingCard({ p, hold }) {
             <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.2)" }} />
             <div style={{ position: "absolute", top: 8, left: 8, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
               <span style={{ background: C.brand, color: "#fff", fontSize: 10.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999, display: "flex", alignItems: "center", gap: 5 }}>🔒 มีคนกำลังซื้อ</span>
-              {hold.until && (
+              {hold.until ? (
                 <span style={{ color: "#fff", fontSize: 11, fontWeight: 700, paddingLeft: 4, textShadow: "0 1px 3px rgba(0,0,0,.6)" }}>
                   <TimeLeft startIso={hold.until} prefix="หมดเวลาใน" clock overdueText="กำลังปลดล็อก..." style={{ color: "#fff" }} />
                 </span>
+              ) : (
+                <span style={{ color: "#fff", fontSize: 11, fontWeight: 700, paddingLeft: 4, textShadow: "0 1px 3px rgba(0,0,0,.6)" }}>รอยืนยันการชำระ</span>
               )}
             </div>
           </>

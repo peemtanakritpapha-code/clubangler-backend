@@ -41,10 +41,12 @@ function MasonryCard({ p, idx, router, hold }) {
             <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.2)" }} />
             <div style={{ position: "absolute", top: 8, left: 8, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
               <span style={{ background: C.brand, color: "#fff", fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999, display: "flex", alignItems: "center", gap: 5 }}>🔒 มีคนกำลังซื้อ</span>
-              {hold.until && (
+              {hold.until ? (
                 <span style={{ color: "#fff", fontSize: 11.5, fontWeight: 700, paddingLeft: 4, textShadow: "0 1px 3px rgba(0,0,0,.6)" }}>
                   <TimeLeft startIso={hold.until} prefix="หมดเวลาใน" clock overdueText="กำลังปลดล็อก..." style={{ color: "#fff" }} />
                 </span>
+              ) : (
+                <span style={{ color: "#fff", fontSize: 11.5, fontWeight: 700, paddingLeft: 4, textShadow: "0 1px 3px rgba(0,0,0,.6)" }}>รอยืนยันการชำระ</span>
               )}
             </div>
           </>
@@ -53,9 +55,7 @@ function MasonryCard({ p, idx, router, hold }) {
         <div style={{ position: "absolute", bottom: 8, left: 8, background: "rgba(0,0,0,.30)", backdropFilter: "blur(6px)", borderRadius: 999, padding: "5px 12px" }}>
           <span style={{ fontSize: 12.5, fontWeight: 700, color: "#fff" }}>THB {Number(p.price || 0).toLocaleString()}</span>
         </div>
-        {p.shipping?.mode === "free" && (
-          <span style={{ position: "absolute", top: 6, left: 6, background: C.brand, color: "#fff", fontSize: 7.5, fontWeight: 800, padding: "2px 6px", borderRadius: 999 }}>ส่งฟรี</span>
-        )}
+        {/* ป้ายส่งฟรีย้ายไปเป็น chip ข้างป้ายสภาพด้านล่าง — ไม่บังรูป/ตัวหนังสือในภาพสินค้า */}
       </div>
       {/* ข้อมูล */}
       <div style={{ padding: "7px 9px 9px" }}>
@@ -64,6 +64,9 @@ function MasonryCard({ p, idx, router, hold }) {
           {p.cond && p.cond !== "ของใหม่"
             ? <span style={{ fontSize: 9.5, color: C.muted, background: C.bg2, padding: "2px 7px", borderRadius: 999 }}>มือสอง{p.cond_label ? ` · ${p.cond_label}` : ""}</span>
             : <span style={{ fontSize: 9.5, color: C.brand, background: C.brandTint, padding: "2px 7px", borderRadius: 999, fontWeight: 600 }}>ของใหม่</span>}
+          {p.shipping?.mode === "free" && (
+            <span style={{ fontSize: 9.5, color: "#fff", background: C.brand, padding: "2px 7px", borderRadius: 999, fontWeight: 600 }}>ส่งฟรี</span>
+          )}
         </div>
         {/* ผู้ขาย — กดเข้าหน้าร้าน (prototype บรรทัด 753–767) */}
         <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 5 }}>
