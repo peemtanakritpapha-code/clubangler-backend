@@ -30,7 +30,7 @@ export default function SellClient({ userId, tiers, editProduct = null }) {
     brand: ep.brand || "", isNew: isEdit ? ep.cond === "ของใหม่" : true, grade: ep.cond_label || "",
     issues: ep.issues || [], condNote: ep.cond_note || "", location: ep.location || "",
     shipMode: ep.shipping?.mode === "paid" ? "paid" : "free", shipFee: ep.shipping?.fee != null ? String(ep.shipping.fee) : "",
-    stock: ep.stock || 1, ratio: ep.image_ratio || "1/1",
+    stock: ep.stock ?? 1,  // ?? ไม่ใช่ || — สต๊อค 0 ต้องโชว์ 0 (|| จะเหมาว่า 0 = ไม่มีค่า แล้วเด้งเป็น 1) ratio: ep.image_ratio || "1/1",
   });
   const set = (k, v) => setF(p => ({ ...p, [k]: v }));
   const [catPath, setCatPath] = useState(isEdit && ep.cat_main ? [ep.cat_main, ...(ep.cat_sub ? ep.cat_sub.split(" › ") : [])] : []);
@@ -107,6 +107,9 @@ export default function SellClient({ userId, tiers, editProduct = null }) {
     if (!catPath.length) return setErr("เลือกหมวดหมู่สินค้า");
     if (!f.isNew && !f.grade) return setErr("สินค้ามือสองต้องเลือกเกรดสภาพ");
     if (totalImgs === 0) return setErr("ใส่รูปสินค้าอย่างน้อย 1 รูป");
+    const stockNum = Math.round(Number(f.stock));
+    if (!Number.isFinite(stockNum) || stockNum < 1 || stockNum > 999)
+      return setErr('จำนวนสต็อกต้องเป็น 1–999 — ต้องการปิดการขาย ใช้ปุ่ม "ทำเครื่องหมายขายแล้ว" ในหน้าสินค้าที่ลงขาย');
     if (f.shipMode === "paid" && !(Number(f.shipFee) >= 0)) return setErr("กรอกค่าส่ง");
     setBusy(true);
     try {
@@ -393,6 +396,12 @@ export default function SellClient({ userId, tiers, editProduct = null }) {
             style={{ marginTop: 16, width: "100%", height: 50, border: "none", borderRadius: 12, background: C.brand, color: "#fff", fontWeight: 800, fontSize: 15, cursor: "pointer", opacity: busy ? .6 : 1 }}>
             {busy ? "กำลังบันทึก..." : isEdit ? "บันทึกการแก้ไข" : "ลงขายสินค้า"}
           </button>
+          {isEdit && (
+            <button type="button" onClick={() => router.back()} disabled={busy}
+              style={{ marginTop: 10, width: "100%", height: 44, borderRadius: 12, border: `1.5px solid ${C.line}`, background: "#fff", color: C.muted, fontWeight: 700, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit" }}>
+              ยกเลิกการเปลี่ยนแปลง — กลับโดยไม่บันทึก
+            </button>
+          )}
         </div>
       </div>
 

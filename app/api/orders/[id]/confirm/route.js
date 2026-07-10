@@ -16,10 +16,11 @@ export async function POST(req, { params }) {
   if (o.status !== "shipped")
     return NextResponse.json({ error: "ออเดอร์ยังไม่อยู่ในขั้นจัดส่ง" }, { status: 400 });
 
-  const { error } = await admin.from("orders").update({
+  const { data: upd, error } = await admin.from("orders").update({
     delivered_at: new Date().toISOString(), status: "delivered",
-  }).eq("id", id);
+  }).eq("id", id).eq("status", "shipped").select("id"); // กันชน: ชนกับระบบยืนยันอัตโนมัติ
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!upd?.length) return NextResponse.json({ error: "สถานะออเดอร์เปลี่ยนไปแล้ว — รีเฟรชหน้าแล้วดูสถานะล่าสุด" }, { status: 409 });
 
   await admin.from("notifications").insert({
     to_user: o.seller_id, icon: "✅", title: "ผู้ซื้อยืนยันรับสินค้าแล้ว",

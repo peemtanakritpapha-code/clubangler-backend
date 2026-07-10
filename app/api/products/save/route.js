@@ -39,13 +39,18 @@ export async function POST(req) {
   const issues = (Array.isArray(body?.issues) ? body.issues : [])
     .map(s => String(s).trim().slice(0, 100)).filter(Boolean).slice(0, 10);
   const location = String(body?.location || "").trim().slice(0, 200);
-  const stock = Math.min(Math.max(Math.round(Number(body?.stock)) || 1, 1), 999);
+  const editId = body?.editId ? Number(body.editId) : null; // ประกาศก่อนใช้ (บล็อกสต๊อคด้านล่างต้องรู้ว่าเป็นการแก้ไขไหม)
+  // สต๊อค: ลงใหม่ขั้นต่ำ 1 · แก้ไขยอมให้ 0 ได้ (ของหมดคือหมด — ห้ามใช้ || เพราะจะเหมา 0 เป็น "ไม่มีค่า" แล้วเด้งเป็น 1)
+  // สต๊อคผู้ขายกรอกเอง = อย่างน้อย 1 เสมอ ทุกโหมด — เลข 0 เป็นของระบบเท่านั้น (ตัดตอนขายจริงผ่าน escrow)
+  // ต้องการปิดการขาย → ปุ่ม "ทำเครื่องหมายขายแล้ว" (ประตูเดียวต่อหนึ่งงาน)
+  const stock = Math.round(Number(body?.stock));
+  if (!Number.isFinite(stock) || stock < 1 || stock > 999)
+    return bad('จำนวนสต็อกต้องเป็น 1–999 — ต้องการปิดการขาย ใช้ปุ่ม "ทำเครื่องหมายขายแล้ว"');
   const shipMode = body?.shipMode === "free" ? "free" : "paid";
   const shipFee = Math.min(Math.max(Math.round(Number(body?.shipFee)) || 0, 0), 100000);
   const images = (Array.isArray(body?.images) ? body.images : [])
     .filter(u => typeof u === "string").slice(0, 10);
   const ratio = ["1/1", "3/4", "4/3"].includes(body?.ratio) ? body.ratio : "1/1";
-  const editId = body?.editId ? Number(body.editId) : null;
 
   // ── validate ชุดเดียวกับฟอร์ม แต่บังคับจริงฝั่ง server ──
   if (!name) return bad("กรอกชื่อสินค้า");

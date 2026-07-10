@@ -42,7 +42,7 @@ async function run(req) {
 
   const now = Date.now();
   const nowIso = new Date().toISOString();
-  const result = { stamped: 0, buyer_confirmed: [], seller_received: [], return_expired: [], cancelled: [], expired: [] };
+  const result = { stamped: 0, buyer_confirmed: [], seller_received: [], return_expired: [], cancelled: [], expired: [], slip_expired: [] };
 
   /* ── 0) ประทับเวลา self-healing ── */
   for (const [status, col] of [["shipped", "shipped_at"], ["return_shipped", "return_shipped_at"],
@@ -144,6 +144,24 @@ async function run(req) {
       { to_user: o.seller_id, icon: "⏳", title: "ออเดอร์หมดอายุ — ผู้ซื้อไม่ชำระ", body: `${o.item} — สินค้ายังลงขายตามปกติ`, ref: o.order_no },
     ]);
     result.expired.push(o.order_no);
+  }
+
+  /* ── F) แอดมินขอสลิปใหม่แล้วผู้ซื้อไม่แนบภายในกำหนด → การซื้อไม่สำเร็จ ──
+     (สถานะยังเป็น pending_verification อยู่ — สิทธิ์จองถูกค้ำไว้ระหว่างรอ · แนบใหม่ทันเวลา = เส้นตายถูกล้างเอง) */
+  const { data: candF } = await admin.from("orders")
+    .select("id, order_no, item, buyer_id, seller_id")
+    .eq("status", "pending_verification").not("reslip_deadline", "is", null)
+    .lt("reslip_deadline", nowIso).limit(200);
+  for (const o of candF || []) {
+    const { error } = await admin.from("orders")
+      .update({ status: "expired", cancelled_at: nowIso, cancel_reason: "ไม่แนบสลิปใหม่ภายในกำหนด — การซื้อไม่สำเร็จ" })
+      .eq("id", o.id).eq("status", "pending_verification").lt("reslip_deadline", nowIso); // กันชนกับผู้ซื้อที่เพิ่งแนบทัน
+    if (error) continue;
+    await admin.from("notifications").insert([
+      { to_user: o.buyer_id, icon: "⛔", title: "การซื้อไม่สำเร็จ — ไม่ได้แนบสลิปใหม่ในเวลา", body: `${o.item} — หากคุณโอนเงินจริง ทีมงานจะตรวจสอบและติดต่อคืนเงิน · สั่งซื้อใหม่ได้หากสินค้ายังอยู่`, ref: o.order_no },
+      { to_user: o.seller_id, icon: "ℹ️", title: "ออเดอร์ถูกปิด — ผู้ซื้อไม่แนบสลิปใหม่", body: `${o.item} — สินค้ายังลงขายตามปกติ`, ref: o.order_no },
+    ]);
+    result.slip_expired.push(o.order_no);
   }
 
   // AD5: สรุปแจ้งแอดมิน — เฉพาะรอบที่มีงานเกิด

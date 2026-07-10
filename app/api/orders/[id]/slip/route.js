@@ -35,6 +35,7 @@ export async function POST(req, { params }) {
     transfer_time: transferTime || new Date().toISOString(),
     status: "pending_verification",
     slip_reject_reason: null,   // สลิปใหม่ล้างเหตุผลปฏิเสธเก่า
+    reslip_deadline: null,      // และล้างเส้นตายแนบใหม่ (cron จะไม่ปิดออเดอร์นี้แล้ว)
   };
 
   // อัปเดตทั้งกลุ่ม (เฉพาะออเดอร์ของผู้ซื้อคนนี้ที่ยังอยู่ขั้นชำระเงิน) หรือออเดอร์เดี่ยว

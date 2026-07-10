@@ -503,6 +503,8 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
     return verifyQ.filter(o => !grouped.has(o.id));
   }, [verifyQ, verifyGroups]);
   const [rejectGroup, setRejectGroup] = useState(null);   // pay_group ที่กำลังปฏิเสธทั้งกลุ่ม
+  const [reslip, setReslip] = useState(null);              // orderId ที่กำลังขอสลิปใหม่
+  const [reslipGroup, setReslipGroup] = useState(null);    // pay_group ที่กำลังขอสลิปใหม่ทั้งกลุ่ม
   const returnQ = useMemo(() => orders.filter(o => ["return_requested", "disputed", "return_shipped"].includes(o.status)), [orders]);
   const refundQ = useMemo(() => orders.filter(o => ["return_received", "cancelled"].includes(o.status)), [orders]); // cancelled = ยกเลิกเพราะไม่จัดส่ง → คืนเงิน
   const [kycUrls, setKycUrls] = useState({});
@@ -818,16 +820,26 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
                         <span style={{ fontSize: 11, color: C.brand }}>คลิกเพื่อซูม ↗</span>
                       </a>
                     : <div style={{ fontSize: 12, color: C.muted }}>กำลังโหลดสลิป...</div>}
+                  {g[0].reslip_deadline ? (
+                    <div style={{ marginTop: 12, background: "#FFF8EC", border: "1px solid #F3E3C2", borderRadius: 10, padding: "10px 14px", fontSize: 12.5, color: "#92400E", fontWeight: 700 }}>
+                      🔄 ส่งคำขอแนบสลิปใหม่แล้ว — รอผู้ซื้อ (เหตุผล: {g[0].slip_reject_reason}) · เกินกำหนดระบบจะปิดเป็นซื้อไม่สำเร็จเอง
+                    </div>
+                  ) : (
                   <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                     <button onClick={() => setRejectGroup(g[0].pay_group)} disabled={busy}
-                      style={{ flex: 1, height: 42, borderRadius: 9, border: `1.5px solid ${C.danger}`, background: "#fff", color: C.danger, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
-                      ✕ ปฏิเสธทั้งหมด
+                      style={{ flex: 1, height: 42, borderRadius: 9, border: `1.5px solid ${C.danger}`, background: "#fff", color: C.danger, fontWeight: 800, fontSize: 12, cursor: "pointer" }}>
+                      ✕ ปฏิเสธ (จบทันที)
+                    </button>
+                    <button onClick={() => setReslipGroup(g[0].pay_group)} disabled={busy}
+                      style={{ flex: 1, height: 42, borderRadius: 9, border: "1.5px solid #B7791F", background: "#fff", color: "#B7791F", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>
+                      🔄 ขอสลิปใหม่
                     </button>
                     <button onClick={() => call("/api/admin/verify", { payGroup: g[0].pay_group, approve: true })} disabled={busy}
-                      style={{ flex: 2, height: 42, borderRadius: 9, border: "none", background: C.ok, color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
-                      ✓ อนุมัติทั้งหมด ({g.length} รายการ)
+                      style={{ flex: 1.6, height: 42, borderRadius: 9, border: "none", background: C.ok, color: "#fff", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>
+                      ✓ อนุมัติทั้งหมด ({g.length})
                     </button>
                   </div>
+                  )}
                 </div>
               );
             })}
@@ -850,16 +862,26 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
                       <span style={{ fontSize: 11, color: C.brand }}>คลิกเพื่อซูม ↗</span>
                     </a>
                   : <div style={{ fontSize: 12, color: C.muted }}>กำลังโหลดสลิป...</div>}
+                {o.reslip_deadline ? (
+                  <div style={{ marginTop: 12, background: "#FFF8EC", border: "1px solid #F3E3C2", borderRadius: 10, padding: "10px 14px", fontSize: 12.5, color: "#92400E", fontWeight: 700 }}>
+                    🔄 ส่งคำขอแนบสลิปใหม่แล้ว — รอผู้ซื้อ (เหตุผล: {o.slip_reject_reason}) · เกินกำหนดระบบจะปิดเป็นซื้อไม่สำเร็จเอง
+                  </div>
+                ) : (
                 <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                   <button onClick={() => setReject(o.id)} disabled={busy}
-                    style={{ flex: 1, height: 42, borderRadius: 9, border: `1.5px solid ${C.danger}`, background: "#fff", color: C.danger, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
-                    ✕ ปฏิเสธ
+                    style={{ flex: 1, height: 42, borderRadius: 9, border: `1.5px solid ${C.danger}`, background: "#fff", color: C.danger, fontWeight: 800, fontSize: 12, cursor: "pointer" }}>
+                    ✕ ปฏิเสธ (จบทันที)
+                  </button>
+                  <button onClick={() => setReslip(o.id)} disabled={busy}
+                    style={{ flex: 1, height: 42, borderRadius: 9, border: "1.5px solid #B7791F", background: "#fff", color: "#B7791F", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>
+                    🔄 ขอสลิปใหม่
                   </button>
                   <button onClick={() => call("/api/admin/verify", { orderId: o.id, approve: true })} disabled={busy}
-                    style={{ flex: 2, height: 42, borderRadius: 9, border: "none", background: C.ok, color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
-                    ✓ อนุมัติ — เงินเข้าระบบฝาก
+                    style={{ flex: 1.6, height: 42, borderRadius: 9, border: "none", background: C.ok, color: "#fff", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>
+                    ✓ อนุมัติ — เงินเข้าฝาก
                   </button>
                 </div>
+                )}
               </div>
             );
           })}
@@ -1187,10 +1209,16 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
 
       </div>{/* /main */}
 
-      {reject && <ReasonModal title="เหตุผลการปฏิเสธสลิป (ผู้ซื้อจะเห็น)" onCancel={() => setReject(null)}
-        onSubmit={r => { setReject(null); call("/api/admin/verify", { orderId: reject, approve: false, reason: r }); }} />}
-      {rejectGroup && <ReasonModal title="เหตุผลการปฏิเสธสลิปทั้งกลุ่ม (ผู้ซื้อจะเห็น + แนบใหม่ทั้งกลุ่ม)" onCancel={() => setRejectGroup(null)}
-        onSubmit={r => { setRejectGroup(null); call("/api/admin/verify", { payGroup: rejectGroup, approve: false, reason: r }); }} />}
+      {reject && <ReasonModal title={'ปฏิเสธ = ซื้อไม่สำเร็จทันที · สลิปแค่ไม่ชัดแต่เงินเข้าจริง ให้ใช้ "ขอสลิปใหม่" แทน — เหตุผล (ผู้ซื้อจะเห็น)'} onCancel={() => setReject(null)}
+        onSubmit={r => { setReject(null); call("/api/admin/verify", { orderId: reject, action: "reject", reason: r }); }} />}
+      {rejectGroup && <ReasonModal title={'ปฏิเสธทั้งกลุ่ม = ซื้อไม่สำเร็จทันทีทุกรายการ · เงินเข้าจริงแต่สลิปไม่ชัด ให้ใช้ "ขอสลิปใหม่" แทน — เหตุผล (ผู้ซื้อจะเห็น)'} onCancel={() => setRejectGroup(null)}
+        onSubmit={r => { setRejectGroup(null); call("/api/admin/verify", { payGroup: rejectGroup, action: "reject", reason: r }); }} />}
+      {reslip != null && <ReasonModal title={'ขอสลิปใหม่ — เหตุผล (ผู้ซื้อจะเห็นข้อความนี้ และมีเวลาแนบใหม่ตามเวลาชำระเงิน)'}
+        onCancel={() => setReslip(null)}
+        onSubmit={r => { setReslip(null); call("/api/admin/verify", { orderId: reslip, action: "reslip", reason: r }); }} />}
+      {reslipGroup != null && <ReasonModal title={'ขอสลิปใหม่ทั้งกลุ่ม — เหตุผล (ผู้ซื้อจะเห็นข้อความนี้)'}
+        onCancel={() => setReslipGroup(null)}
+        onSubmit={r => { setReslipGroup(null); call("/api/admin/verify", { payGroup: reslipGroup, action: "reslip", reason: r }); }} />}
       {rejectReturn && <ReasonModal title="เหตุผลปฏิเสธการคืนสินค้า (ผู้ซื้อจะเห็น)" onCancel={() => setRejectReturn(null)}
         onSubmit={r => { setRejectReturn(null); call("/api/admin/return-decide", { orderId: rejectReturn, approve: false, reason: r }); }} />}
       {/* AD2: modal ศูนย์ข้อมูลออเดอร์ — spec แอดมิน §3 (อ่านอย่างเดียว: การตัดสินใช้ปุ่มบนการ์ดคิวเช่นเดิม) */}

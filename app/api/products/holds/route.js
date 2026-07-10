@@ -24,7 +24,7 @@ export async function GET(req) {
 
   const PAY_MIN = Number(cfgRows?.[0]?.pay_within_minutes) || 60;
   const cutoff = Date.now() - PAY_MIN * 60000;
-  const stockOf = Object.fromEntries((prods || []).map(p => [String(p.id), Number(p.stock) || 1]));
+  const stockOf = Object.fromEntries((prods || []).map(p => [String(p.id), Number.isFinite(Number(p.stock)) ? Number(p.stock) : 1])); // สต๊อค 0 ต้องนับเป็น 0 (|| จะเหมาเป็น 1)
 
   const holds = {};
   for (const id of ids) {

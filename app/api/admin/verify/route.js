@@ -28,7 +28,9 @@ export async function POST(req) {
   if (!ctx) return NextResponse.json({ error: "เฉพาะแอดมินเท่านั้น" }, { status: 403 });
   const { admin } = ctx;
 
-  const { orderId, payGroup, approve, reason } = await req.json();
+  const { orderId, payGroup, approve, reason, action } = await req.json();
+  // 3 ทาง: approve (เงินเข้า escrow) / reslip (ขอสลิปใหม่ ให้เวลาตามค่าชำระเงิน) / reject (จบเป็นซื้อไม่สำเร็จทันที)
+  const act = action || (approve ? "approve" : "reject");
 
   // เป้าหมาย: ทั้งกลุ่ม หรือออเดอร์เดี่ยว — เฉพาะที่ยังอยู่คิวตรวจสลิป
   let targets = [];
@@ -47,7 +49,7 @@ export async function POST(req) {
   const buyerId = targets[0].buyer_id;
   const refNo = payGroup || targets[0].order_no;
 
-  if (approve) {
+  if (act === "approve") {
     // ST1: backstop สุดท้าย — เช็คสต็อกจริง ณ วินาที approve (กันขายซ้ำจากเคสชนกันระดับ ms)
     const pids = [...new Set(targets.map(o => o.product_id).filter(Boolean))];
     const { data: prods } = pids.length
@@ -68,7 +70,7 @@ export async function POST(req) {
       return NextResponse.json({ error: `บางชิ้นถูกขายไปแล้ว (${blocked.join(", ")}) — ต้องแยกจัดการทีละใบ: ปฏิเสธใบที่ของหมดก่อน แล้วค่อยอนุมัติใบที่เหลือ` }, { status: 409 });
 
     const { error } = await admin.from("orders")
-      .update({ status: "payment_verified", slip_reject_reason: null }).in("id", ids);
+      .update({ status: "payment_verified", slip_reject_reason: null, reslip_deadline: null }).in("id", ids).eq("status", "pending_verification");
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     for (const o of targets) await consumeStock(admin, o.product_id);
@@ -87,19 +89,48 @@ export async function POST(req) {
         body: `${o.item} — จัดส่งแล้วกรอกเลขพัสดุได้เลย`, ref: o.order_no,
       })),
     ]);
+  } else if (act === "reslip") {
+    // 🔄 ขอสลิปใหม่ — สถานะคงเดิม (pending_verification) สิทธิ์จองไม่หลุด · ให้เวลาเท่าเวลาชำระเงิน
+    if (!String(reason || "").trim())
+      return NextResponse.json({ error: "ต้องระบุเหตุผลที่ขอสลิปใหม่" }, { status: 400 });
+    const { data: cfgRows } = await admin.from("platform_config").select("pay_within_minutes").limit(1);
+    const PAY_MIN = Number(cfgRows?.[0]?.pay_within_minutes) || 60;
+    const deadline = new Date(Date.now() + PAY_MIN * 60000).toISOString();
+    const { error } = await admin.from("orders")
+      .update({ slip_reject_reason: reason.trim(), reslip_deadline: deadline })
+      .in("id", ids).eq("status", "pending_verification");
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    const minText = PAY_MIN % 60 === 0 ? `${PAY_MIN / 60} ชั่วโมง` : `${PAY_MIN} นาที`;
+    await admin.from("notifications").insert({
+      to_user: buyerId, icon: "🔄", title: "สลิปตรวจไม่ได้ — กรุณาแนบสลิปใหม่",
+      body: `${isGroup ? `กลุ่มชำระ ${targets.length} รายการ` : targets[0].item} — เหตุผล: ${reason.trim()} · แนบสลิปใหม่ภายใน ${minText} ไม่เช่นนั้นคำสั่งซื้อจะถูกปิด`,
+      ref: refNo,
+    });
   } else {
-    // กติกา: ปฏิเสธทุกชนิดบังคับเหตุผล + ผู้ใช้เห็นเสมอ
+    // ⛔ ปฏิเสธ = การซื้อไม่สำเร็จทันที (สลิปเก็บไว้เป็นหลักฐาน · ไม่แตะเส้นทางเงิน/สต็อก — สต็อกยังไม่เคยถูกตัด)
     if (!String(reason || "").trim())
       return NextResponse.json({ error: "ต้องระบุเหตุผลการปฏิเสธ" }, { status: 400 });
     const { error } = await admin.from("orders")
-      .update({ status: "pending_payment", slip_reject_reason: reason.trim() }).in("id", ids);
+      .update({
+        status: "expired", cancelled_at: new Date().toISOString(),
+        cancel_reason: `สลิปไม่ผ่านการตรวจ: ${reason.trim()}`,
+        slip_reject_reason: reason.trim(), reslip_deadline: null,
+      })
+      .in("id", ids).eq("status", "pending_verification");
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    await admin.from("notifications").insert({
-      to_user: buyerId, icon: "⚠️", title: "สลิปไม่ผ่านการตรวจสอบ",
-      body: `${isGroup ? `กลุ่มชำระ ${targets.length} รายการ` : targets[0].item} — เหตุผล: ${reason.trim()} · กรุณาแนบสลิปใหม่`,
-      ref: refNo,
-    });
+    await admin.from("notifications").insert([
+      {
+        to_user: buyerId, icon: "⛔", title: "การซื้อไม่สำเร็จ — สลิปไม่ผ่านการตรวจสอบ",
+        body: `${isGroup ? `กลุ่มชำระ ${targets.length} รายการ` : targets[0].item} — เหตุผล: ${reason.trim()} · หากคุณโอนเงินจริง ทีมงานจะตรวจสอบและติดต่อคืนเงิน · สั่งซื้อใหม่ได้หากสินค้ายังอยู่`,
+        ref: refNo,
+      },
+      ...targets.map(o => ({
+        to_user: o.seller_id, icon: "ℹ️", title: "ออเดอร์ถูกยกเลิก — สลิปผู้ซื้อไม่ผ่าน",
+        body: `${o.item} — สินค้ายังลงขายตามปกติ ไม่ต้องทำอะไรเพิ่ม`, ref: o.order_no,
+      })),
+    ]);
   }
   return NextResponse.json({ ok: true });
 }

@@ -21,8 +21,9 @@ export default function PayClient({ order: o, groupOrders, config, userId }) {
   const total = isGroup ? Number(o.group_total || orders.reduce((s, x) => s + payable(x), 0)) : payable(o);
 
   const pending = orders.filter(x => x.status === "pending_payment");
-  const submitted = pending.length === 0;                 // ทุกออเดอร์ในกลุ่มส่งสลิปแล้ว (รอตรวจ/เลยขั้นนี้)
-  const rejectedOrder = pending.find(x => x.slip_reject_reason);
+  // แอดมินขอสลิปใหม่ = สถานะยังรอตรวจ แต่มีเหตุผล+เส้นตายติดอยู่ (สิทธิ์จองไม่หลุดระหว่างรอ)
+  const reslipOrder = orders.find(x => x.status === "pending_verification" && x.slip_reject_reason);
+  const submitted = pending.length === 0 && !reslipOrder; // ส่งครบและไม่มีคำขอแนบใหม่ → จอรอตรวจ
 
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState("");
@@ -135,15 +136,17 @@ export default function PayClient({ order: o, groupOrders, config, userId }) {
           </div>
         </div>
 
-        {!submitted && (
+        {!submitted && !reslipOrder && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#FFF8EC", border: "1px solid #F3E3C2", borderRadius: 10, padding: "10px 14px", fontSize: 12.5, color: "#92400E", lineHeight: 1.55 }}>
             ⏳ <span>เหลือเวลาชำระ <TimeLeft startIso={o.created_at} minutes={Number(config?.pay_within_minutes) || 60} prefix="อีก" overdueText="หมดเวลาแล้ว — ระบบกำลังปิดออเดอร์" /> — โอนแล้วอย่าลืมแนบสลิปก่อนหมดเวลา</span>
           </div>
         )}
-        {rejectedOrder && (
+        {reslipOrder && (
           <div style={{ fontSize: 12.5, color: C.danger, background: "#FBEAE8", borderRadius: 10, padding: "10px 14px", fontWeight: 700 }}>
-            ⚠ สลิปก่อนหน้าไม่ผ่านการตรวจสอบ — เหตุผล: {rejectedOrder.slip_reject_reason}<br />
-            <span style={{ fontWeight: 400 }}>กรุณาตรวจสอบและแนบสลิปที่ถูกต้องอีกครั้ง</span>
+            🔄 สลิปก่อนหน้าตรวจไม่ได้ — เหตุผล: {reslipOrder.slip_reject_reason}<br />
+            <span style={{ fontWeight: 400 }}>
+              แนบสลิปที่ถูกต้อง{reslipOrder.reslip_deadline && <>ภายใน <TimeLeft startIso={reslipOrder.reslip_deadline} prefix="" clock overdueText="หมดเวลาแล้ว — ระบบกำลังปิดคำสั่งซื้อ" style={{ color: C.danger }} /></>} ไม่เช่นนั้นคำสั่งซื้อจะถูกปิดเป็นซื้อไม่สำเร็จ
+            </span>
           </div>
         )}
         {submitted ? (
@@ -218,6 +221,7 @@ export default function PayClient({ order: o, groupOrders, config, userId }) {
                   <span style={{ fontSize: 26 }}>🧾</span>
                   <span style={{ fontSize: 13, fontWeight: 800, color: C.brand }}>แตะเพื่อเลือกรูปสลิป</span>
                   <span style={{ fontSize: 11, color: C.muted }}>รองรับรูปภาพจากแกลเลอรี่/ภาพหน้าจอแอปธนาคาร</span>
+                  <span style={{ fontSize: 10.5, color: "#B7791F", fontWeight: 700 }}>รูปต้องชัด เห็นยอดเงินและเวลาโอนครบ — สลิปที่ตรวจไม่ได้ คำสั่งซื้อจะถูกยกเลิก</span>
                   <input type="file" accept="image/*" onChange={pick} hidden />
                 </label>
               )}
@@ -226,8 +230,8 @@ export default function PayClient({ order: o, groupOrders, config, userId }) {
                 style={{ marginTop: 12, width: "100%", height: 48, border: "none", borderRadius: 10, background: C.brand, color: "#fff", fontWeight: 800, fontSize: 15, cursor: "pointer", opacity: busy ? .6 : 1 }}>
                 {busy ? "กำลังส่งสลิป..." : "ส่งสลิปให้ตรวจสอบ"}
               </button>
-              {/* ยกเลิกการสั่งซื้อ — ทำได้เฉพาะตอนยังไม่แนบสลิป (แนบแล้วต้องรอผลตรวจ) */}
-              {!cancelOpen ? (
+              {/* ยกเลิกการสั่งซื้อ — เฉพาะยังไม่เคยแนบสลิป (โหมดขอสลิปใหม่ = โอนแล้ว ห้ามยกเลิกเอง) */}
+              {reslipOrder ? null : !cancelOpen ? (
                 <button type="button" onClick={() => setCancelOpen(true)} disabled={busy || cancelBusy}
                   style={{ marginTop: 10, width: "100%", height: 40, border: "none", borderRadius: 10, background: "transparent", color: C.danger, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
                   ยกเลิกการสั่งซื้อ

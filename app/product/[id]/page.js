@@ -34,7 +34,7 @@ export default async function ProductPage({ params }) {
 
   const { data: { user } } = await supabase.auth.getUser();
   const isOwner = user && user.id === p.seller_id;
-  const canBuy = p.status === "active" && !isOwner;
+  const canBuy = p.status === "active" && (Number(p.stock) || 0) > 0 && !isOwner; // สต๊อค 0 = ปุ่มซื้อไม่โชว์
 
   // A4: ตัวนับวิว — นับเมื่อคนอื่นเปิดดู (เจ้าของดูเองไม่นับ) ผ่านฟังก์ชัน DB
   if (!isOwner) await supabase.rpc("increment_product_views", { pid: Number(id) });

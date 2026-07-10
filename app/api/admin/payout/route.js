@@ -37,10 +37,11 @@ export async function POST(req) {
   if (!slipPath) return NextResponse.json({ error: "ต้องแนบสลิปโอนเงินทุกครั้ง" }, { status: 400 });
   const net = Number(o.price) + Number(o.ship_fee || 0) - Number(o.seller_fee || 0);
 
-  const { error } = await admin.from("orders").update({
+  const { data: upd, error } = await admin.from("orders").update({
     status: "completed", payout_slip_path: slipPath, payout_failed_note: null, completed_at: new Date().toISOString(),
-  }).eq("id", o.id);
+  }).eq("id", o.id).eq("status", "delivered").select("id"); // กันชน: ผู้ซื้อเพิ่งเปิดพิพาท — ห้ามโอนทับ
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!upd?.length) return NextResponse.json({ error: "สถานะออเดอร์เปลี่ยนไปแล้ว (อาจมีเคสพิพาทเข้ามา) — รีเฟรชคิวก่อนโอน" }, { status: 409 });
   await admin.from("profiles").update({ payout_failed_note: null }).eq("id", o.seller_id);
   await admin.from("notifications").insert([
     { to_user: o.seller_id, icon: "💸", title: "โอนเงินให้คุณแล้ว", body: `${o.item} — ยอดสุทธิ ฿${net.toLocaleString()}`, ref: o.order_no },

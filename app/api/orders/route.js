@@ -61,7 +61,7 @@ export async function POST(req) {
     const mine = claims.find(r => r.buyer_id === user.id);
     if (mine)
       return NextResponse.json({ error: `คุณมีคำสั่งซื้อ "${p.name}" รอชำระอยู่แล้ว — ไปที่ "การซื้อของฉัน" เพื่อชำระเงินใบเดิม` }, { status: 400 });
-    if (claims.length >= (Number(p.stock) || 1))
+    if (claims.length >= (Number.isFinite(Number(p.stock)) ? Number(p.stock) : 1)) // สต๊อค 0 นับเป็น 0 จริง
       return NextResponse.json({ error: `มีผู้อื่นกำลังทำรายการ "${p.name}" อยู่ — หากไม่ชำระภายใน ${PAY_MIN} นาที สินค้าจะว่างอีกครั้ง` }, { status: 409 });
   }
 

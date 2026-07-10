@@ -19,10 +19,11 @@ export async function POST(req, { params }) {
   if (o.status !== "payment_verified")
     return NextResponse.json({ error: "ออเดอร์ยังไม่พร้อมจัดส่ง (เงินต้องเข้า escrow ก่อน)" }, { status: 400 });
 
-  const { error } = await admin.from("orders").update({
+  const { data: upd, error } = await admin.from("orders").update({
     carrier, tracking_no: String(trackingNo).trim(), shipped_at: new Date().toISOString(), status: "shipped",
-  }).eq("id", id);
+  }).eq("id", id).eq("status", "payment_verified").select("id"); // กันชน: สถานะต้องยังไม่ขยับ (เช่น cron เพิ่งยกเลิก)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!upd?.length) return NextResponse.json({ error: "สถานะออเดอร์เปลี่ยนไปแล้ว — รีเฟรชหน้าแล้วดูสถานะล่าสุด" }, { status: 409 });
 
   await admin.from("notifications").insert({
     to_user: o.buyer_id, icon: "📦", title: "ผู้ขายจัดส่งสินค้าแล้ว",

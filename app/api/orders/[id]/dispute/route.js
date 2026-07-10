@@ -23,11 +23,12 @@ export async function POST(req, { params }) {
     return NextResponse.json({ error: "เปิดเคสได้เฉพาะออเดอร์ที่จัดส่งแล้ว" }, { status: 400 });
 
   const status = requireReturn ? "return_requested" : "disputed";
-  const { error } = await admin.from("orders").update({
+  const { data: upd, error } = await admin.from("orders").update({
     status, dispute_reason: reason, dispute_detail: detail.trim(),
     require_return: !!requireReturn, evidence_paths: evidencePaths.slice(0, 5),
-  }).eq("id", id);
+  }).eq("id", id).in("status", ["shipped", "delivered"]).select("id"); // กันชน: ชนกับการโอนเงิน/ปิดออเดอร์
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!upd?.length) return NextResponse.json({ error: "สถานะออเดอร์เปลี่ยนไปแล้ว — รีเฟรชหน้าแล้วดูสถานะล่าสุด" }, { status: 409 });
 
   await admin.from("notifications").insert({
     to_user: o.seller_id, icon: "⚠️", title: requireReturn ? "ผู้ซื้อขอคืนสินค้า" : "ผู้ซื้อเปิดข้อพิพาท",
