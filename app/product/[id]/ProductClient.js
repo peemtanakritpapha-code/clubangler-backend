@@ -55,7 +55,7 @@ export default function ProductClient({ p, seller, views, canBuy, isOwner, simil
       } catch {}
     };
     load();
-    const t = setInterval(load, 10000);
+    const t = setInterval(load, 5000);
     return () => { stop = true; clearInterval(t); };
   }, [p.id]);
   const sold = p.status === "sold";

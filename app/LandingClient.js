@@ -96,7 +96,7 @@ export default function LandingClient({ products = [] }) {
       } catch {}
     };
     load();
-    const t = setInterval(load, 10000);
+    const t = setInterval(load, 5000);
     return () => { stop = true; clearInterval(t); };
   }, [products]);
   const steps = [

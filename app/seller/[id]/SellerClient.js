@@ -85,7 +85,7 @@ export default function SellerClient({ seller: s, products, posts, followers: fo
       } catch {}
     };
     load();
-    const t = setInterval(load, 10000);
+    const t = setInterval(load, 5000);
     return () => { stop = true; clearInterval(t); };
   }, [products]);
 

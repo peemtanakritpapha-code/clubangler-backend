@@ -167,7 +167,7 @@ export default function MarketClient({ products, loggedIn }) {
       } catch {}
     };
     load();
-    const t = setInterval(load, 10000);
+    const t = setInterval(load, 5000);
     return () => { stop = true; clearInterval(t); };
   }, [list]);
 
