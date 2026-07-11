@@ -34,5 +34,5 @@ export default async function SellPage({ searchParams }) {
     editProduct = p;
   }
 
-  return <SellClient userId={user.id} tiers={tiers || []} editProduct={editProduct} />;
+  return <SellClient userId={user.id} tiers={tiers || []} editProduct={editProduct} aiEnabled={!!process.env.ANTHROPIC_API_KEY} />;
 }

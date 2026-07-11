@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { Camera, ChevronRight, ChevronLeft, X, Search, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { CAT_MAINS, catNodeAt, catChildren, COND_GRADES, ISSUE_PRESETS, ALL_BRANDS } from "@/lib/catalog";
+import AiFillCard from "@/components/AiFillCard";
 import { feeFor, feeTierRange } from "@/lib/fees";
 
 const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7", danger: "#C0392B", ok: "#1E8E3E" };
@@ -62,6 +63,30 @@ export default function SellClient({ userId, tiers, editProduct = null }) {
     const n = [...l]; [n[i], n[j]] = [n[j], n[i]]; return n;
   });
   const totalImgs = imgs.length;
+
+  /* ── AI1: รับ draft จาก AiFillCard — เติมเฉพาะช่องที่ยังว่าง ไม่ทับของที่ผู้ใช้พิมพ์เอง ──
+     กติกา: AI ไม่แตะ สภาพ/เกรด/ตำหนิ/ราคา เด็ดขาด (ผู้ขายกำหนดเอง) */
+  const applyDraft = (d) => {
+    const filled = [], skipped = [];
+    if (!f.name.trim() && d.title) { set("name", d.title); filled.push("ชื่อสินค้า"); }
+    else skipped.push("ชื่อสินค้า");
+    if (!catPath.length && Array.isArray(d.catPath) && d.catPath.length) { setCatPath(d.catPath); filled.push("หมวดหมู่"); }
+    else skipped.push("หมวดหมู่");
+    if (!f.brand.trim() && d.brand) { set("brand", d.brand); filled.push("แบรนด์"); }
+    else skipped.push("แบรนด์");
+    if (!f.description.trim()) {
+      const lines = [];
+      if (d.description) lines.push(d.description);
+      const extra = [];
+      if (d.model) extra.push(`รุ่น: ${d.model}`);
+      if (d.brandCountry) extra.push(`ประเทศแบรนด์: ${d.brandCountry}`);
+      for (const [k, v] of Object.entries(d.specs || {})) extra.push(`${k}: ${v}`);
+      if (extra.length) lines.push("", "สเปก:", ...extra.map(s => "• " + s));
+      if (lines.length) { set("description", lines.join("\n")); filled.push("รายละเอียด+สเปก"); }
+      else skipped.push("รายละเอียด");
+    } else skipped.push("รายละเอียด");
+    return { filled, skipped: skipped.filter(s => !filled.includes(s)) };
+  };
 
   /* ── แบรนด์: แผงจัดกลุ่มตามตัวอักษร + แบรนด์ใหม่ → รอตรวจ ── */
   const isNewBrand = !!f.brand.trim() && !ALL_BRANDS.some(b => b.toLowerCase() === f.brand.trim().toLowerCase());
@@ -258,6 +283,9 @@ export default function SellClient({ userId, tiers, editProduct = null }) {
               </label>
             )}
           </div>
+
+          {/* ── AI1: ปุ่ม AI ช่วยกรอกจากรูป (ใช้รูปใหม่ ≤5 รูปแรก) ── */}
+          <AiFillCard imgs={imgs} onDraft={applyDraft} />
 
           {/* ── สัดส่วนรูปภาพในตลาด (prototype ภาพ 2) ── */}
           <div style={label}>สัดส่วนรูปภาพในตลาด</div>

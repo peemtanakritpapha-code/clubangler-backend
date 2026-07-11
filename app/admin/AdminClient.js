@@ -389,6 +389,7 @@ function SystemSettings({ config, onError }) {
     banner_enabled: !!config?.banner_enabled,
     banner_text: config?.banner_text || "",
     post_approval: !!config?.post_approval, // POST3.1
+    ai_notes: config?.ai_notes || "", // AI2
   };
   const [draft, setDraft] = useState(base);
   const [busy, setBusy] = useState(false);
@@ -461,6 +462,13 @@ function SystemSettings({ config, onError }) {
         <Row label="อนุมัติโพสต์ก่อนแสดง" hint="เปิด = โพสต์ใหม่ต้องผ่านแอดมินก่อนขึ้นฟีด (โพสต์ของแอดมินไม่ต้องรอ) · ปิด = แสดงทันที">
           <Toggle on={draft.post_approval} onClick={() => set({ post_approval: !draft.post_approval })} />
         </Row>
+        <Row label="🧠 ความรู้เสริมสำหรับ AI ช่วยกรอกประกาศ" hint="บรรทัดละเรื่อง — เจอ AI อ่านรูปพลาดเคสไหน มาเติมความรู้ตรงนี้ มีผลกับการกดครั้งถัดไปทันที ไม่ต้อง deploy"><span /></Row>
+        <div style={{ padding: "0 14px 13px" }}>
+          <textarea value={draft.ai_notes} onChange={e => set({ ai_notes: e.target.value })} rows={5} maxLength={4000}
+            placeholder={"ตัวอย่าง:\nStrike Eagle คือเหยื่อปลอมประเภท stickbait ของแบรนด์ Carpenter (ญี่ปุ่น) — รหัสเช่น 100-215 คือ น้ำหนัก(กรัม)-ความยาว(มม.) ไม่ใช่ขนาดคันเบ็ด"}
+            style={{ ...inputS, width: "100%", height: "auto", minHeight: 120, textAlign: "left", padding: "10px 12px", resize: "vertical", lineHeight: 1.7 }} />
+          <div style={{ fontSize: 11, color: C.muted, marginTop: 4, textAlign: "right" }}>{draft.ai_notes.length}/4000</div>
+        </div>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, background: dirty ? "#FFFBEB" : "#fff", border: `1px solid ${dirty ? "#FDE68A" : C.line}`, borderRadius: 12, padding: "12px 14px", flexWrap: "wrap" }}>

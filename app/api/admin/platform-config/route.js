@@ -13,6 +13,7 @@ const ALLOWED = [
   "auto_confirm_days", "return_auto_confirm_days",
   "ship_within_days", "ship_extend_days", "return_ship_within_days", "extend_receive_days",
   "pay_within_minutes",
+  "ai_notes", // AI2: ความรู้เสริมสำหรับ AI ช่วยกรอกประกาศ
 ];
 
 async function requireAdmin() {
@@ -53,6 +54,9 @@ export async function POST(req) {
 
   // ต้องเหลืออย่างน้อย 1 ช่องทางรับเงินที่ใช้งานได้ (กติกาจาก prototype บรรทัด 5343)
     if ("pay_within_minutes" in patch) patch.pay_within_minutes = Math.min(10080, Math.max(5, Number(patch.pay_within_minutes) || 0));
+
+  // AI2: ความรู้เสริม — จำกัดความยาวกัน prompt บวม (4000 ตัวอักษรพอสำหรับหลายสิบบรรทัด)
+  if ("ai_notes" in patch) patch.ai_notes = String(patch.ai_notes ?? "").trim().slice(0, 4000) || null;
 
   const { data: cur } = await admin.from("platform_config").select("*").single();
   if (!cur) return NextResponse.json({ error: "ไม่พบ platform_config" }, { status: 500 });
