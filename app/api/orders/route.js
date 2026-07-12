@@ -79,7 +79,7 @@ export async function POST(req) {
     const sellerFee = feeFor(price + shipFee, tiers, "seller");
     // PRE-1: snapshot วันส่งรายใบ = ฐาน config ณ ตอนนี้ + วันพรีของสินค้า (ห้าม || — 0/null = ไม่ใช่พรี)
     const preDays = Number.isFinite(Number(p.preorder_days)) && Number(p.preorder_days) > 0 ? Math.round(Number(p.preorder_days)) : 0;
-    return { p, price, buyerFee, sellerFee, shipFee, payable: price + buyerFee + shipFee, shipDays: SHIP_X + preDays };
+    return { p, price, buyerFee, sellerFee, shipFee, payable: price + buyerFee + shipFee, shipDays: preDays > 0 ? preDays : SHIP_X }; // PRE-1fix: เลขที่ผู้ขายเลือก = เดดไลน์ทั้งก้อน (ป้ายผู้ซื้อ 7 วัน = บังคับ 7 วันจริง)
   });
   const groupTotal = lines.reduce((s, l) => s + l.payable, 0);
   const multi = lines.length > 1;
