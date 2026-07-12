@@ -11,10 +11,19 @@ export async function generateMetadata({ params }) {
   const { id: rawId } = await params;
   const id = productIdFromParam(rawId); // SEO2: รับทั้ง /product/14 และ /product/14-ชื่อ
   const supabase = await createClient();
-  const { data: p } = await supabase.from("products").select("name, price, detail, images").eq("id", id).single();
+  const { data: p } = await supabase.from("products").select("name, price, description, images, brand, location, cond, cond_label").eq("id", id).single();
   if (!p) return { title: "ไม่พบสินค้า — ClubAngler" };
-  const title = `${p.name} · ฿${Number(p.price || 0).toLocaleString()} — ClubAngler`;
-  const description = (p.detail || "ตลาดอุปกรณ์ตกปลามือสอง ซื้อขายปลอดภัยผ่านระบบเงินฝากคนกลาง").slice(0, 150);
+  // SEO-1: title = ชื่อ + แบรนด์(ถ้าชื่อยังไม่มี) + มือสอง(ตามสภาพจริง) + จังหวัด — คีย์เวิร์ด long-tail ที่คนค้นจริง
+  //        เอาราคาออก (stale ง่าย ไม่ช่วยอันดับ — ราคายังโชว์ใน rich result ผ่าน Product schema)
+  const brandWord = p.brand && !p.name.toLowerCase().includes(p.brand.toLowerCase()) ? p.brand : "";
+  const condWord = p.cond === "ของใหม่" ? "" : "มือสอง";
+  let title = [p.name, brandWord, condWord, p.location].filter(Boolean).join(" ");
+  if (title.length > 60) title = title.slice(0, 59) + "…";
+  title += " | ClubAngler";
+  // SEO-1: detail สั้นกว่า 50 ตัวอักษร = ใช้สูตรสำรองแทนปล่อยโหรงเหรง
+  const description = ((p.description || "").trim().length >= 50)
+    ? p.description.slice(0, 150)
+    : `ขาย ${p.name} สภาพ${p.cond_label || p.cond || "ดี"} ${p.location ? `จาก${p.location} ` : ""}ซื้อขายปลอดภัยผ่านระบบพักเงิน escrow ที่ ClubAngler`.slice(0, 160);
   const images = p.images?.length ? [p.images[0]] : [];
   return {
     title,
@@ -55,7 +64,7 @@ export default async function ProductPage({ params }) {
     "@type": "Product",
     name: p.name,
     image: p.images || [],
-    description: (p.detail || "").slice(0, 300),
+    description: (p.description || "").slice(0, 300),
     ...(p.brand ? { brand: { "@type": "Brand", name: p.brand } } : {}),
     itemCondition: p.cond === "ของใหม่"
       ? "https://schema.org/NewCondition" : "https://schema.org/UsedCondition",
