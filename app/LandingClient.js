@@ -128,7 +128,7 @@ export default function LandingClient({ products = [] }) {
 
       {/* Escrow band */}
       <section style={{ background: C.brand, padding: "30px 24px" }}>
-        <div style={{ textAlign: "center", color: "#fff", fontSize: 18, fontWeight: 700, marginBottom: 6 }}>ทำไมปลอดภัยกว่าซื้อในกลุ่ม Facebook</div>
+        <div style={{ textAlign: "center", color: "#fff", fontSize: 18, fontWeight: 700, marginBottom: 6 }}>ทำไมปลอดภัยกว่าซื้อขายในกลุ่มออนไลน์</div>
         <div style={{ textAlign: "center", color: "#CDEDE4", fontSize: 13, marginBottom: 22 }}>เงินของคุณถูกพักไว้จนกว่าจะได้รับของ</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, maxWidth: 640, margin: "0 auto" }}>
           {steps.map((s, i) => (
