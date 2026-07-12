@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { Camera, ChevronRight, ChevronLeft, X, Search, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { CAT_MAINS, catNodeAt, catPathValid, catChildren, COND_GRADES, ISSUE_PRESETS, ALL_BRANDS } from "@/lib/catalog";
+import { PREORDER_MAX_DAYS } from "@/lib/preorder"; // PRE-1
 import AiFillCard from "@/components/AiFillCard";
 import { feeFor, feeTierRange } from "@/lib/fees";
 
@@ -31,6 +32,8 @@ export default function SellClient({ userId, tiers, editProduct = null, aiEnable
     brand: ep.brand || "", isNew: isEdit ? ep.cond === "ของใหม่" : true, grade: ep.cond_label || "",
     issues: ep.issues || [], condNote: ep.cond_note || "", location: ep.location || "",
     shipMode: ep.shipping?.mode === "paid" ? "paid" : "free", shipFee: ep.shipping?.fee != null ? String(ep.shipping.fee) : "",
+    // PRE-1: null = พร้อมส่ง (ห้ามเก็บ 0 — กติกาเหล็ก ?? ไม่ใช่ ||)
+    preorderDays: Number.isFinite(Number(ep.preorder_days)) && Number(ep.preorder_days) > 0 ? Math.round(Number(ep.preorder_days)) : null,
     stock: ep.stock ?? 1,  // ?? ไม่ใช่ || — สต๊อค 0 ต้องโชว์ 0 (|| จะเหมาว่า 0 = ไม่มีค่า แล้วเด้งเป็น 1) ratio: ep.image_ratio || "1/1",
   });
   const set = (k, v) => setF(p => ({ ...p, [k]: v }));
@@ -142,11 +145,14 @@ export default function SellClient({ userId, tiers, editProduct = null, aiEnable
       if (lines.length) { set("description", lines.join("\n")); filled.push("รายละเอียด+สเปก"); }
       else skipped.push("รายละเอียด");
     } else skipped.push("รายละเอียด");
+    if (filled.length) setAiUsed(true); // AI-DISC
     return { filled, skipped: skipped.filter(s => !filled.includes(s)) };
   };
 
   /* ── แบรนด์: แผงจัดกลุ่มตามตัวอักษร + แบรนด์ใหม่ → รอตรวจ ── */
   const isNewBrand = !!f.brand.trim() && !ALL_BRANDS.some(b => b.toLowerCase() === f.brand.trim().toLowerCase());
+  const [aiUsed, setAiUsed] = useState(false);          // AI-DISC: โพสต์นี้มีช่องที่ AI เติมสำเร็จอย่างน้อย 1 ช่อง
+  const [aiConfirmOpen, setAiConfirmOpen] = useState(false);
   const [brandOpen, setBrandOpen] = useState(false);
   const [provOpen, setProvOpen] = useState(false); // แผงเลือกจังหวัด (พิมพ์ค้นหาได้แบบช่องแบรนด์)
   const brandGroups = useMemo(() => {
@@ -182,7 +188,7 @@ export default function SellClient({ userId, tiers, editProduct = null, aiEnable
   const isNewCat = catPath.length > 0 && !catPathValid(catPath); // CAT-VAL
   const needsReview = isNewBrand || isNewCat;
 
-  const submit = async () => {
+  const submit = async (aiOk) => {
     setErr("");
     if (!f.name.trim()) return setErr("กรอกชื่อสินค้า");
     if (!price || price <= 0) return setErr("กรอกราคาให้ถูกต้อง");
@@ -193,6 +199,7 @@ export default function SellClient({ userId, tiers, editProduct = null, aiEnable
     if (!Number.isFinite(stockNum) || stockNum < 1 || stockNum > 999)
       return setErr('จำนวนสต็อกต้องเป็น 1–999 — ต้องการปิดการขาย ใช้ปุ่ม "ทำเครื่องหมายขายแล้ว" ในหน้าสินค้าที่ลงขาย');
     if (f.shipMode === "paid" && !(Number(f.shipFee) >= 0)) return setErr("กรอกค่าส่ง");
+    if (aiUsed && aiOk !== true) { setAiConfirmOpen(true); return; } // AI-DISC: ใช้ AI กรอก → ต้องยืนยันก่อนโพสต์
     setBusy(true);
     try {
       // อัปโหลดรูปใหม่ตามตำแหน่งจริงในลิสต์ — ลำดับที่ผู้ขายจัด = ลำดับที่บันทึก (รูปแรกคือปก)
@@ -218,6 +225,8 @@ export default function SellClient({ userId, tiers, editProduct = null, aiEnable
           location: f.location, stock: f.stock,
           shipMode: f.shipMode, shipFee: f.shipFee,
           images: allImgs, ratio: f.ratio,
+          aiAssisted: aiUsed, // AI-DISC
+          preorderDays: f.preorderDays, // PRE-1
         }),
       });
       const out = await res.json();
@@ -470,14 +479,40 @@ export default function SellClient({ userId, tiers, editProduct = null, aiEnable
             </div>
           </div>
 
-          {/* ── การจัดส่ง ── */}
+          {/* ── PRE-1: กลุ่มการจัดส่ง = ค่าส่ง + กำหนดส่งของ (mock-pre1-v3) ── */}
           <div style={label}>การจัดส่ง <span style={{ color: C.danger }}>*</span></div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <div style={chip(f.shipMode === "free")} onClick={() => set("shipMode", "free")}>ส่งฟรี</div>
-            <div style={chip(f.shipMode === "paid")} onClick={() => set("shipMode", "paid")}>ผู้ซื้อจ่ายค่าส่ง</div>
-            {f.shipMode === "paid" && (
-              <input style={{ ...input, width: 120 }} type="number" min={0} value={f.shipFee} onChange={e => set("shipFee", e.target.value)} placeholder="ค่าส่ง ฿" />
-            )}
+          <div style={{ border: `1.5px solid ${C.line}`, borderRadius: 16 }}>
+            <div style={{ padding: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 8 }}>ค่าจัดส่ง</div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <div style={chip(f.shipMode === "free")} onClick={() => set("shipMode", "free")}>ส่งฟรี</div>
+                <div style={chip(f.shipMode === "paid")} onClick={() => set("shipMode", "paid")}>ผู้ซื้อจ่ายค่าส่ง</div>
+                {f.shipMode === "paid" && (
+                  <input style={{ ...input, width: 120 }} type="number" min={0} value={f.shipFee} onChange={e => set("shipFee", e.target.value)} placeholder="ค่าส่ง ฿" />
+                )}
+              </div>
+            </div>
+            <div style={{ padding: "0 14px 14px" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 8 }}>กำหนดส่งของ</div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <div style={chip(f.preorderDays == null)} onClick={() => set("preorderDays", null)}>พร้อมส่ง</div>
+                <div style={chip(f.preorderDays != null)} onClick={() => set("preorderDays", f.preorderDays ?? 7)}>🕒 พรีออเดอร์</div>
+                {f.preorderDays != null && (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
+                    <button type="button" onClick={() => set("preorderDays", Math.max(1, f.preorderDays - 1))} disabled={f.preorderDays <= 1}
+                      style={{ width: 30, height: 30, border: `1.5px solid ${C.line}`, borderRadius: 999, background: "#fff", fontSize: 15, color: f.preorderDays <= 1 ? "#C9D4D6" : C.brand, cursor: f.preorderDays <= 1 ? "default" : "pointer", fontWeight: 700, lineHeight: 1 }}>−</button>
+                    <b style={{ minWidth: 60, textAlign: "center", fontSize: 13.5, color: C.ink }}>รอ {f.preorderDays} วัน</b>
+                    <button type="button" onClick={() => set("preorderDays", Math.min(PREORDER_MAX_DAYS, f.preorderDays + 1))} disabled={f.preorderDays >= PREORDER_MAX_DAYS}
+                      style={{ width: 30, height: 30, border: `1.5px solid ${C.line}`, borderRadius: 999, background: "#fff", fontSize: 15, color: f.preorderDays >= PREORDER_MAX_DAYS ? "#C9D4D6" : C.brand, cursor: f.preorderDays >= PREORDER_MAX_DAYS ? "default" : "pointer", fontWeight: 700, lineHeight: 1 }}>+</button>
+                  </span>
+                )}
+              </div>
+              {f.preorderDays != null && (
+                <div style={{ fontSize: 11.5, color: C.muted, marginTop: 8, lineHeight: 1.7 }}>
+                  สูงสุด {PREORDER_MAX_DAYS} วัน · แก้ทีหลังไม่มีผลกับออเดอร์ที่เกิดแล้ว · ผู้ซื้อเห็น: <span style={{ background: "#FCF3E3", border: "1px solid #EBCF9C", color: "#8A5A12", fontWeight: 700, borderRadius: 999, padding: "2px 9px", whiteSpace: "nowrap" }}>🕒 พรีออเดอร์ — จัดส่งภายใน {f.preorderDays} วัน</span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* ── ราคาขาย (ล่างสุด) + กล่องค่าธรรมเนียม — ฐานคำนวณ = ราคา + ค่าส่งที่ผู้ซื้อจ่าย (S4 แบบ B) ── */}
@@ -517,6 +552,22 @@ export default function SellClient({ userId, tiers, editProduct = null, aiEnable
       </div>
 
       {/* ── Modal เลือกหมวดหมู่ (prototype ภาพ 4-6) ── */}
+      {/* AI-DISC: ยืนยันก่อนโพสต์เมื่อใช้ AI ช่วยกรอก — ห้าม window.confirm (กติกาเหล็ก) */}
+      {aiConfirmOpen && (
+        <div onClick={() => setAiConfirmOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(16,19,20,.5)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 420, background: "#fff", borderRadius: 18, padding: "20px 18px" }}>
+            <div style={{ fontSize: 15.5, fontWeight: 800, color: C.ink, marginBottom: 8 }}>✨ โพสต์นี้ใช้ AI ช่วยกรอกข้อมูล</div>
+            <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.7 }}>ระบบเติมข้อมูลบางส่วนจากรูปภาพให้โดยอัตโนมัติ (ชื่อ · หมวดหมู่ · แบรนด์ · สเปก · รายละเอียด)</div>
+            <div style={{ background: "#FCF3E3", border: "1px solid #EBCF9C", color: "#8A5A12", borderRadius: 12, padding: "10px 12px", fontSize: 12.5, lineHeight: 1.65, margin: "12px 0" }}>
+              ⚠️ โปรดตรวจทุกช่องให้ถูกต้องครบถ้วนก่อนโพสต์ — ข้อมูลที่คลาดเคลื่อน<b>มีผลต่อการตีกลับ/คืนสินค้า</b> และถือเป็นความรับผิดชอบของผู้ขาย
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setAiConfirmOpen(false)} style={{ flex: 1, padding: 11, borderRadius: 999, fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", background: "#fff", border: `1.5px solid ${C.line}`, color: C.muted }}>กลับไปตรวจก่อน</button>
+              <button onClick={() => { setAiConfirmOpen(false); submit(true); }} style={{ flex: 1, padding: 11, borderRadius: 999, fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", background: C.brand, border: "none", color: "#fff" }}>ตรวจครบแล้ว · โพสต์เลย</button>
+            </div>
+          </div>
+        </div>
+      )}
       {catOpen && (
         <div onClick={() => setCatOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(16,19,20,.5)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 560, maxHeight: "86vh", background: "#fff", borderRadius: 18, display: "flex", flexDirection: "column", overflow: "hidden" }}>

@@ -220,7 +220,8 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
   const E_DAYS = Number(config?.extend_receive_days) || 3;            // ขยายเวลารับของครั้งละ
   const Z_DAYS = Number(config?.ship_extend_days) || 2;
   const PAY_MIN = Number(config?.pay_within_minutes) || 60;           // ผู้ซื้อต้องชำระภายใน (ชม.)               // ขยายเวลาจัดส่งครั้งละ
-  const effX = X_DAYS + (o.ship_extend_status === "approved" ? (Number(o.ship_extend_days) || 0) : 0);
+  const baseX = Number.isFinite(Number(o.ship_days)) && Number(o.ship_days) > 0 ? Number(o.ship_days) : X_DAYS; // PRE-1: ใบใหม่ใช้ snapshot รายใบ
+  const effX = baseX + (o.ship_extend_status === "approved" ? (Number(o.ship_extend_days) || 0) : 0);
   const effN = N_DAYS + (o.extend_status === "approved" ? (Number(o.extend_days) || 0) : 0); // กำหนดจริงรวมขยาย
   const escrowIn = ["payment_verified", "shipped", "delivered", "completed"].includes(o.status);
   const inReturn = RETURN_FLOW.includes(o.status);
@@ -503,7 +504,7 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
           {!isSeller && o.status === "payment_verified" && o.ship_extend_status === "pending" && (
             <div style={{ border: "1.5px solid #F0A500", background: "#FFFBEB", borderRadius: 12, padding: 14, marginTop: 10 }}>
               <div style={{ fontSize: 13, fontWeight: 800, color: "#92400E" }}>⏳ ผู้ขายขอขยายเวลาจัดส่ง +{o.ship_extend_days} วัน</div>
-              <div style={{ fontSize: 11.5, color: C.muted, margin: "3px 0 10px" }}>อนุมัติ = เลื่อนกำหนดยกเลิกออกไป · ปฏิเสธ = กำหนดเดิม ({X_DAYS} วัน) ยังมีผล</div>
+              <div style={{ fontSize: 11.5, color: C.muted, margin: "3px 0 10px" }}>อนุมัติ = เลื่อนกำหนดยกเลิกออกไป · ปฏิเสธ = กำหนดเดิม ({baseX} วัน) ยังมีผล</div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button disabled={busy} onClick={() => call(`/api/orders/${o.id}/extend`, { kind: "ship", action: "reject" })}
                   style={{ flex: 1, height: 40, borderRadius: 9, border: `1.5px solid ${C.danger}`, background: "#fff", color: C.danger, fontWeight: 800, fontSize: 12.5, cursor: "pointer" }}>✕ ปฏิเสธ</button>

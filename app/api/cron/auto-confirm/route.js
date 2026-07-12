@@ -110,21 +110,22 @@ async function run(req) {
 
   /* ── D) ผู้ขายไม่จัดส่ง ครบ X วัน (+ขยายที่ผู้ซื้ออนุมัติ) → ยกเลิก + คืนสต็อก + เข้าคิวคืนเงิน ── */
   const { data: candD } = await admin.from("orders")
-    .select("id, order_no, item, buyer_id, seller_id, product_id, payment_verified_at, ship_extend_status, ship_extend_days")
+    .select("id, order_no, item, buyer_id, seller_id, product_id, payment_verified_at, ship_extend_status, ship_extend_days, ship_days")
     .eq("status", "payment_verified").not("payment_verified_at", "is", null)
     .lt("payment_verified_at", new Date(now - daysMs(X)).toISOString()).limit(200);
   for (const o of candD || []) {
     if (o.ship_extend_status === "pending") continue; // รอผู้ซื้อตอบคำขอขยายจัดส่ง — พักไว้
     const extra = o.ship_extend_status === "approved" ? (Number(o.ship_extend_days) || 0) : 0;
-    if (new Date(o.payment_verified_at).getTime() > now - daysMs(X + extra)) continue; // ยังอยู่ในช่วงขยาย
+    const baseX = Number.isFinite(Number(o.ship_days)) && Number(o.ship_days) > 0 ? Number(o.ship_days) : X; // PRE-1: snapshot รายใบ · ใบเก่า null → ค่า config เดิม
+    if (new Date(o.payment_verified_at).getTime() > now - daysMs(baseX + extra)) continue; // ยังอยู่ในช่วงขยาย
     const { error } = await admin.from("orders")
-      .update({ status: "cancelled", cancelled_at: nowIso, cancel_reason: `ผู้ขายไม่จัดส่งภายใน ${X + extra} วัน — ระบบยกเลิกอัตโนมัติ` })
+      .update({ status: "cancelled", cancelled_at: nowIso, cancel_reason: `ผู้ขายไม่จัดส่งภายใน ${baseX + extra} วัน — ระบบยกเลิกอัตโนมัติ` })
       .eq("id", o.id).eq("status", "payment_verified"); // กันชนกับผู้ขายที่เพิ่งกดแจ้งส่ง
     if (error) continue;
     await restoreStock(admin, o.product_id); // คืนสต็อก — สินค้ากลับมาขายได้ (ตรงข้าม consumeStock ตอน approve)
     await admin.from("notifications").insert([
-      { to_user: o.buyer_id, icon: "⛔", title: "ออเดอร์ถูกยกเลิก — ผู้ขายไม่จัดส่ง", body: `${o.item} — เกินกำหนด ${X + extra} วัน ทีมงานจะโอนเงินคืนเต็มจำนวนโดยเร็ว`, ref: o.order_no },
-      { to_user: o.seller_id, icon: "⛔", title: "ออเดอร์ถูกยกเลิกอัตโนมัติ", body: `${o.item} — ไม่มีการแจ้งจัดส่งภายใน ${X + extra} วัน เงินจะถูกคืนให้ผู้ซื้อ`, ref: o.order_no },
+      { to_user: o.buyer_id, icon: "⛔", title: "ออเดอร์ถูกยกเลิก — ผู้ขายไม่จัดส่ง", body: `${o.item} — เกินกำหนด ${baseX + extra} วัน ทีมงานจะโอนเงินคืนเต็มจำนวนโดยเร็ว`, ref: o.order_no },
+      { to_user: o.seller_id, icon: "⛔", title: "ออเดอร์ถูกยกเลิกอัตโนมัติ", body: `${o.item} — ไม่มีการแจ้งจัดส่งภายใน ${baseX + extra} วัน เงินจะถูกคืนให้ผู้ซื้อ`, ref: o.order_no },
     ]);
     result.cancelled.push(o.order_no);
   }

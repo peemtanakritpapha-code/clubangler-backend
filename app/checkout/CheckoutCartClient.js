@@ -35,7 +35,7 @@ export default function CheckoutCartClient({ addresses, tiers, userId }) {
       const local = getCart();
       if (!local.length) { setItems([]); return; }
       const { data: rows } = await supabase.from("products")
-        .select("id, name, price, images, status, stock, shipping, cond").in("id", local.map(x => x.id));
+        .select("id, name, price, images, status, stock, shipping, cond, preorder_days").in("id", local.map(x => x.id));
       const byId = Object.fromEntries((rows || []).map(r => [String(r.id), r]));
       setItems(local.map(l => {
         const f = byId[String(l.id)];
@@ -47,6 +47,7 @@ export default function CheckoutCartClient({ addresses, tiers, userId }) {
           cond: f?.cond || "",
           shipFee: f?.shipping?.mode === "paid" ? Number(f.shipping.fee) || 0 : 0,
           shipLabel: f?.shipping?.label || "ส่งฟรี",
+          preDays: Number(f?.preorder_days) > 0 ? Number(f.preorder_days) : 0, // PRE-1
           ok: !!f && f.status === "active" && (f.stock ?? 1) >= 1,
         };
       }));
@@ -127,6 +128,11 @@ export default function CheckoutCartClient({ addresses, tiers, userId }) {
         {/* รายการสินค้า — prototype บรรทัด 2092–2104 */}
         <div style={card}>
           <div style={{ fontSize: 13, fontWeight: 800, color: C.ink, marginBottom: 10 }}>รายการสินค้า ({items.length})</div>
+          {items.some(x => x.ok && x.preDays > 0) && items.some(x => x.ok && !x.preDays) && ( /* PRE-1: ตะกร้าผสม */
+            <div style={{ background: "#F0F7F8", borderRadius: 10, padding: "9px 12px", fontSize: 11.5, color: "#0B6572", lineHeight: 1.6, marginBottom: 10 }}>
+              ℹ️ ตะกร้านี้มีทั้งของพร้อมส่งและพรีออเดอร์ — แต่ละชิ้นแยกกำหนดส่งกัน ชิ้นพร้อมส่งมาก่อนได้เลย
+            </div>
+          )}
           {items.map((p, i) => (
             <div key={p.id} style={{ display: "flex", gap: 10, alignItems: "center", paddingTop: i ? 10 : 0, marginTop: i ? 10 : 0, borderTop: i ? `1px solid ${C.line}` : "none", opacity: p.ok ? 1 : .6 }}>
               <div style={{ width: 44, height: 44, borderRadius: 9, background: C.brandTint, color: C.brand, display: "flex", alignItems: "center", justifyContent: "center", flex: "none", overflow: "hidden" }}>
@@ -135,7 +141,7 @@ export default function CheckoutCartClient({ addresses, tiers, userId }) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 600, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
                 {p.ok
-                  ? <div style={{ fontSize: 11, color: C.muted }}>{p.cond}{p.cond ? " · " : ""}{p.shipFee ? `ค่าส่ง ${baht(p.shipFee)}` : p.shipLabel}</div>
+                  ? <div style={{ fontSize: 11, color: C.muted }}>{p.cond}{p.cond ? " · " : ""}{p.shipFee ? `ค่าส่ง ${baht(p.shipFee)}` : p.shipLabel}{p.preDays > 0 ? <b style={{ color: "#8A5A12" }}> · 🕒 พรีออเดอร์ ส่งใน {p.preDays} วัน</b> : null}</div>
                   : <div style={{ fontSize: 11, color: C.danger, fontWeight: 700 }}>⚠ ไม่พร้อมขายแล้ว — กลับไปลบออกจากตะกร้า</div>}
               </div>
               <b style={{ color: C.brand, fontSize: 13.5, flex: "none" }}>{baht(p.price)}</b>

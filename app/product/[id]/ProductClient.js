@@ -198,6 +198,7 @@ export default function ProductClient({ p, seller, views, canBuy, isOwner, simil
               {[
                 ["สภาพสินค้า", <span key="c">{p.cond}{p.cond_label ? ` · ${p.cond_label}` : ""}{grade?.desc ? <span style={{ display: "block", fontSize: 11.5, color: C.muted, marginTop: 2 }}>{grade.desc}</span> : null}</span>],
                 ["ประเภทการจัดส่ง", shipLabel],
+                ...(Number(p.preorder_days) > 0 ? [["กำหนดส่งของ", <span key="pre" style={{ color: "#8A5A12", fontWeight: 700 }}>🕒 พรีออเดอร์ — จัดส่งภายใน {Number(p.preorder_days)} วันหลังยืนยันชำระ</span>]] : []), // PRE-1
                 ["หมวดหมู่", <span key="cat" style={{ color: C.brand }}>{p.cat_main}{p.cat_sub ? <> <ChevronRight size={11} style={{ verticalAlign: -1 }} /> {p.cat_sub}</> : null}</span>],
                 ["แบรนด์", p.brand ? <span key="b" style={{ color: C.brand }}>{p.brand}</span> : "—"],
                 ["จังหวัด", p.location || "—"],

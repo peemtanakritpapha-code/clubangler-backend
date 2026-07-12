@@ -48,8 +48,9 @@ export async function POST(req) {
 
   // ── ST1: ด่านนับสิทธิ์มีชีวิต — กันซื้อทับซ้อน ──
   // สิทธิ์มีชีวิต = pending_verification ทุกใบ + pending_payment ที่ยังไม่หมดเวลา (นับสด ไม่รอ cron)
-  const { data: cfgRows } = await admin.from("platform_config").select("pay_within_minutes").limit(1);
+  const { data: cfgRows } = await admin.from("platform_config").select("pay_within_minutes, ship_within_days").limit(1);
   const PAY_MIN = Number(cfgRows?.[0]?.pay_within_minutes) || 60;
+  const SHIP_X = Number(cfgRows?.[0]?.ship_within_days) || 3; // PRE-1: ฐานวันส่ง ณ ตอนสร้างออเดอร์ (ตรง fallback ใน cron)
   const freshCut = new Date(Date.now() - PAY_MIN * 60000).toISOString();
   const { data: liveRows } = await admin.from("orders")
     .select("product_id, buyer_id, status, created_at")
@@ -76,7 +77,9 @@ export async function POST(req) {
     // S4 (แบบ B): ค่าธรรมเนียมผู้ขายคิดจากฐาน ราคา + ค่าส่งที่ผู้ซื้อจ่าย — ให้ตรงกับกล่องหน้าลงขาย
     // (ผู้ขายได้รับ = price + shipFee − sellerFee ซึ่งคิวโอนเงินแอดมินใช้สูตรนี้อยู่แล้ว)
     const sellerFee = feeFor(price + shipFee, tiers, "seller");
-    return { p, price, buyerFee, sellerFee, shipFee, payable: price + buyerFee + shipFee };
+    // PRE-1: snapshot วันส่งรายใบ = ฐาน config ณ ตอนนี้ + วันพรีของสินค้า (ห้าม || — 0/null = ไม่ใช่พรี)
+    const preDays = Number.isFinite(Number(p.preorder_days)) && Number(p.preorder_days) > 0 ? Math.round(Number(p.preorder_days)) : 0;
+    return { p, price, buyerFee, sellerFee, shipFee, payable: price + buyerFee + shipFee, shipDays: SHIP_X + preDays };
   });
   const groupTotal = lines.reduce((s, l) => s + l.payable, 0);
   const multi = lines.length > 1;
@@ -98,6 +101,7 @@ export async function POST(req) {
     status: "pending_payment",
     pay_group: payGroup,
     group_total: multi ? groupTotal : null,
+    ship_days: l.shipDays, // PRE-1: เดดไลน์ส่งของใบนี้ตรึงตายตัว — ผู้ขายแก้สินค้าทีหลังไม่มีผลย้อนหลัง
   }));
 
   const { data: orders, error } = await admin.from("orders").insert(inserts).select("id, order_no");

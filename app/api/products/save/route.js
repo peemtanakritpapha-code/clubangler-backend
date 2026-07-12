@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkContent, filterMessage } from "@/lib/contentFilter";
 import { catPathValid, COND_GRADES, ALL_BRANDS } from "@/lib/catalog";
+import { PREORDER_MAX_DAYS } from "@/lib/preorder"; // PRE-1
 
 const bad = (msg, status = 400) => NextResponse.json({ error: msg }, { status });
 
@@ -85,6 +86,15 @@ export async function POST(req) {
   );
   if (!chk.ok) return bad(filterMessage(chk.hits));
 
+  // ── PRE-1: server ด่านสุดท้าย — ไม่ใช่พรี = null เด็ดขาด (ห้าม 0) · พรี = จำนวนเต็ม 1–เพดาน ──
+  let preorderDays = null;
+  if (body?.preorderDays !== null && body?.preorderDays !== undefined && body?.preorderDays !== "") {
+    const n = Math.round(Number(body.preorderDays));
+    if (!Number.isFinite(n) || n < 1 || n > PREORDER_MAX_DAYS)
+      return bad(`กำหนดวันพรีออเดอร์ต้องเป็น 1–${PREORDER_MAX_DAYS} วัน`);
+    preorderDays = n;
+  }
+
   // ── server คำนวณเองว่าต้องเข้าคิวตรวจไหม (client สั่ง status ตรงไม่ได้แล้ว) ──
   const isNewBrand = !!brand && !ALL_BRANDS.some(b => b.toLowerCase() === brand.toLowerCase());
   const isNewCat = !catPathValid(catPath); // CAT-VAL: catNodeAt แยกหมวดปลายทางจริงกับหมวดมั่วไม่ออก
@@ -103,11 +113,13 @@ export async function POST(req) {
     issues: isNew ? [] : issues,
     location: location || null,
     stock,
+    preorder_days: preorderDays, // PRE-1: null = พร้อมส่ง
     shipping: shipMode === "free"
       ? { mode: "free", label: "ส่งฟรี" }
       : { mode: "paid", fee: shipFee, label: `ค่าส่ง ฿${shipFee.toLocaleString()}` },
     images,
     image_ratio: ratio,
+    ...(body?.aiAssisted === true ? { ai_assisted: true } : {}), // AI-DISC: ธงหลักฐานใช้ AI กรอก — ติดแล้วไม่ถอด
     status,
   };
 

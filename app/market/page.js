@@ -16,7 +16,7 @@ export default async function MarketPage() {
 
   const { data: products } = await supabase
     .from("products")
-    .select("id, name, price, cond, cond_label, brand, location, images, image_ratio, status, cat_main, cat_sub, shipping, views, created_at, seller_id")
+    .select("id, name, price, cond, cond_label, brand, location, images, image_ratio, status, cat_main, cat_sub, shipping, views, created_at, seller_id, preorder_days")
     .in("status", ["active", "sold"])
     .order("created_at", { ascending: false })
     .limit(60);

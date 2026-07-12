@@ -72,7 +72,7 @@ export default function CheckoutClient({ product: p, addresses, tiers, userId })
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13.5, fontWeight: 700, color: C.ink }}>{p.name}</div>
-            <div style={{ fontSize: 12, color: C.muted }}>{p.cond} · {p.shipping?.label || "ส่งฟรี"}</div>
+            <div style={{ fontSize: 12, color: C.muted }}>{p.cond} · {p.shipping?.label || "ส่งฟรี"}{Number(p.preorder_days) > 0 ? <b style={{ color: "#8A5A12" }}> · 🕒 พรีออเดอร์ ส่งใน {Number(p.preorder_days)} วัน</b> : null}</div>
           </div>
           <b style={{ color: C.brand, fontSize: 15 }}>{baht(p.price)}</b>
         </div>

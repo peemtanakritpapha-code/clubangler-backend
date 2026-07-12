@@ -67,6 +67,9 @@ function MasonryCard({ p, idx, router, hold }) {
           {p.shipping?.mode === "free" && (
             <span style={{ fontSize: 9.5, color: "#fff", background: C.brand, padding: "2px 7px", borderRadius: 999, fontWeight: 600 }}>ส่งฟรี</span>
           )}
+          {Number(p.preorder_days) > 0 && ( /* PRE-1 */
+            <span style={{ fontSize: 9.5, color: "#8A5A12", background: "#FCF3E3", padding: "2px 7px", borderRadius: 999, fontWeight: 600 }}>🕒 พรี {Number(p.preorder_days)} วัน</span>
+          )}
         </div>
         {/* ผู้ขาย — กดเข้าหน้าร้าน (prototype บรรทัด 753–767) */}
         <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 5 }}>
