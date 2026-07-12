@@ -6,7 +6,7 @@
 // กติกาที่คงไว้: แบรนด์ใหม่ **หรือ** หมวดย่อยใหม่ (ขอเพิ่มใน modal) → สินค้า status "review" ซ่อนจากตลาดจนแอดมินอนุมัติ
 //   · โหมดแก้ไข (?edit=) เติมค่าเดิมครบ + คงสถานะเดิม
 // S4 (เคาะแล้ว = แบบ B): ฐานค่าธรรมเนียม = ราคาขาย + ค่าส่งที่ผู้ซื้อจ่าย · คำนวณผ่าน feeFor เท่านั้น
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Camera, ChevronRight, ChevronLeft, X, Search, Plus } from "lucide-react";
@@ -49,19 +49,76 @@ export default function SellClient({ userId, tiers, editProduct = null, aiEnable
   const net = feeBase - fee; // คุณจะได้รับ = (ราคา+ค่าส่ง) − ค่าธรรมเนียม
   const range = useMemo(() => feeTierRange(feeBase, tiers), [feeBase, tiers]);
 
-  /* ── รูปภาพ: เพิ่มหลายรอบ ≤10 · ลบรายรูป · ตั้งปก (ย้ายขึ้นหน้า) · เลื่อนซ้าย/ขวา ── */
+  /* ── รูปภาพ: เพิ่มหลายรอบ ≤10 · ลบรายรูป · ลากจัดลำดับ (IMG-DND, รูปแรก = ปก) ── */
   const pickFiles = e => {
     const add = Array.from(e.target.files || []).slice(0, Math.max(0, 10 - imgs.length));
     if (add.length) setImgs(l => [...l, ...add.map(f => ({ k: "new", file: f, prev: URL.createObjectURL(f) }))]);
     e.target.value = "";
   };
   const removeImg = i => setImgs(l => { if (l[i].k === "new") URL.revokeObjectURL(l[i].prev); return l.filter((_, x) => x !== i); });
-  const setCover = i => setImgs(l => [l[i], ...l.filter((_, x) => x !== i)]);
-  const moveImg = (i, d) => setImgs(l => {
-    const j = i + d;
-    if (j < 0 || j >= l.length) return l;
-    const n = [...l]; [n[i], n[j]] = [n[j], n[i]]; return n;
-  });
+  /* ── IMG-DND: ลากจัดลำดับรูป (ตำแหน่งแรก = ปกเสมอ) ──
+     เดสก์ท็อป: กดแล้วขยับเกิน 8px = เริ่มลาก · มือถือ: กดค้าง 300ms ก่อน (ขยับก่อนครบ = ตั้งใจเลื่อนหน้าจอ ปล่อยให้ scroll)
+     ระหว่างลากมี ghost ลอยตามนิ้ว + กัน scroll ด้วย touchmove preventDefault (passive:false) */
+  const dragRef = useRef({ active: false, idx: -1, ghost: null, timer: null, offX: 0, offY: 0, sx: 0, sy: 0 });
+  const [dragIdx, setDragIdx] = useState(-1);
+
+  useEffect(() => {
+    const block = (e) => { if (dragRef.current.active) e.preventDefault(); };
+    document.addEventListener("touchmove", block, { passive: false });
+    return () => document.removeEventListener("touchmove", block);
+  }, []);
+
+  const startImgDrag = (e, i) => {
+    if (e.target.closest("button")) return; // ปุ่ม ✕ ไม่ใช่จุดจับลาก
+    const d = dragRef.current;
+    const rect = e.currentTarget.getBoundingClientRect();
+    d.idx = i; d.sx = e.clientX; d.sy = e.clientY;
+    d.offX = e.clientX - rect.left; d.offY = e.clientY - rect.top;
+    const src = imgs[i].k === "old" ? imgs[i].url : imgs[i].prev;
+
+    const activate = () => {
+      d.active = true; setDragIdx(d.idx);
+      const g = document.createElement("div");
+      g.style.cssText = `position:fixed;z-index:99;pointer-events:none;width:${rect.width}px;height:${rect.height}px;left:${rect.left}px;top:${rect.top}px;border-radius:12px;overflow:hidden;border:2px solid ${C.brand};box-shadow:0 12px 30px rgba(16,19,20,.35);transform:scale(1.06) rotate(1.5deg);`;
+      const im = document.createElement("img");
+      im.src = src; im.style.cssText = "width:100%;height:100%;object-fit:cover;display:block;";
+      g.appendChild(im);
+      document.body.appendChild(g);
+      d.ghost = g;
+      if (navigator.vibrate) navigator.vibrate(12); // haptic เบาๆ บน Android
+    };
+    if (e.pointerType !== "mouse") d.timer = setTimeout(activate, 300);
+
+    const move = (ev) => {
+      if (!d.active) {
+        if (Math.hypot(ev.clientX - d.sx, ev.clientY - d.sy) <= 8) return;
+        if (ev.pointerType === "mouse") activate();
+        else { cleanup(); return; } // นิ้วขยับก่อนครบ 300ms = scroll ไม่ใช่ลาก
+      }
+      if (!d.ghost) return;
+      d.ghost.style.left = (ev.clientX - d.offX) + "px";
+      d.ghost.style.top = (ev.clientY - d.offY) + "px";
+      const under = document.elementsFromPoint(ev.clientX, ev.clientY)
+        .find(el => el.dataset && el.dataset.imgidx !== undefined && Number(el.dataset.imgidx) !== d.idx);
+      if (under) {
+        const to = Number(under.dataset.imgidx);
+        const from = d.idx; // ล็อกค่าก่อน — updater ของ React รันทีหลัง ถ้าอ่าน d.idx ตรงๆ จะได้ค่าที่ถูกแก้เป็น to ไปแล้ว (บั๊กลำดับไม่เปลี่ยน)
+        setImgs(l => { const c = [...l]; const [x] = c.splice(from, 1); c.splice(to, 0, x); return c; });
+        d.idx = to; setDragIdx(to);
+      }
+    };
+    const cleanup = () => {
+      clearTimeout(d.timer);
+      if (d.ghost) { d.ghost.remove(); d.ghost = null; }
+      d.active = false; d.idx = -1; setDragIdx(-1);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", cleanup);
+      window.removeEventListener("pointercancel", cleanup);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", cleanup);
+    window.addEventListener("pointercancel", cleanup);
+  };
   const totalImgs = imgs.length;
 
   /* ── AI1: รับ draft จาก AiFillCard — เติมเฉพาะช่องที่ยังว่าง ไม่ทับของที่ผู้ใช้พิมพ์เอง ──
@@ -252,29 +309,20 @@ export default function SellClient({ userId, tiers, editProduct = null, aiEnable
 
           {/* ── รูปภาพ: ช่อง tile ทันสมัย (prototype ภาพ 2) ── */}
           <div style={label}>รูปภาพสินค้า ({totalImgs}/10) <span style={{ color: C.danger }}>*</span> <span style={{ fontWeight: 500, color: C.muted }}>— รูปแรกคือรูปปกในตลาด</span></div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 92px)", gap: 12, rowGap: 26 }}>
+          <div style={{ fontSize: 11.5, color: C.muted, marginTop: -4, marginBottom: 8 }}>ลากรูปเพื่อจัดลำดับ — ช่องแรกคือปก · บนมือถือกดค้างที่รูปแล้วลาก</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 92px)", gap: 12 }}>
             {imgs.map((it, i) => (
-              <div key={it.k === "old" ? it.url : it.prev} style={{ position: "relative", width: 92 }}>
-                <img src={it.k === "old" ? it.url : it.prev} alt=""
-                  style={{ width: 92, height: 92, objectFit: "cover", borderRadius: 12, border: `2px solid ${i === 0 ? C.brand : C.line}`, display: "block", boxSizing: "border-box" }} />
+              <div key={it.k === "old" ? it.url : it.prev} data-imgidx={i} onPointerDown={e => startImgDrag(e, i)}
+                style={{ position: "relative", width: 92, aspectRatio: f.ratio, transition: "aspect-ratio .25s", borderRadius: 12, border: `2px solid ${i === 0 ? C.brand : C.line}`, overflow: "hidden", boxSizing: "border-box", opacity: i === dragIdx ? 0.3 : 1, cursor: "grab", touchAction: "pan-y", userSelect: "none", WebkitUserSelect: "none" }}>
+                <img src={it.k === "old" ? it.url : it.prev} alt="" draggable={false}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", pointerEvents: "none" }} />
                 {i === 0 && <span style={{ position: "absolute", left: 5, top: 5, background: C.brand, color: "#fff", fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 999 }}>ปก</span>}
                 <button type="button" onClick={() => removeImg(i)} aria-label="ลบรูปนี้"
-                  style={{ position: "absolute", top: -7, right: -7, width: 22, height: 22, borderRadius: "50%", border: "2px solid #fff", background: C.danger, color: "#fff", fontSize: 11, fontWeight: 800, cursor: "pointer", lineHeight: 1 }}>✕</button>
-                {/* แถวจัดเรียง: ◀ ตั้งปก ▶ */}
-                <div style={{ display: "flex", justifyContent: "center", gap: 4, marginTop: 4 }}>
-                  <button type="button" onClick={() => moveImg(i, -1)} disabled={i === 0} aria-label="เลื่อนซ้าย"
-                    style={{ width: 22, height: 20, border: `1px solid ${C.line}`, borderRadius: 6, background: "#fff", color: i === 0 ? C.line : C.muted, fontSize: 10, cursor: i === 0 ? "default" : "pointer", lineHeight: 1 }}>◀</button>
-                  {i > 0 && (
-                    <button type="button" onClick={() => setCover(i)}
-                      style={{ height: 20, padding: "0 8px", border: `1px solid ${C.brand}`, borderRadius: 6, background: C.brandTint, color: C.brand, fontSize: 9.5, fontWeight: 800, cursor: "pointer", lineHeight: 1 }}>ตั้งปก</button>
-                  )}
-                  <button type="button" onClick={() => moveImg(i, 1)} disabled={i === imgs.length - 1} aria-label="เลื่อนขวา"
-                    style={{ width: 22, height: 20, border: `1px solid ${C.line}`, borderRadius: 6, background: "#fff", color: i === imgs.length - 1 ? C.line : C.muted, fontSize: 10, cursor: i === imgs.length - 1 ? "default" : "pointer", lineHeight: 1 }}>▶</button>
-                </div>
+                  style={{ position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: "50%", border: "2px solid #fff", background: C.danger, color: "#fff", fontSize: 11, fontWeight: 800, cursor: "pointer", lineHeight: 1 }}>✕</button>
               </div>
             ))}
             {totalImgs < 10 && (
-              <label style={{ width: 92, height: 92, border: `1.5px dashed ${C.line}`, borderRadius: 12, display: "grid", placeItems: "center", cursor: "pointer", color: C.muted, background: "#FAFBFB", boxSizing: "border-box" }}>
+              <label style={{ width: 92, aspectRatio: f.ratio, transition: "aspect-ratio .25s", border: `1.5px dashed ${C.line}`, borderRadius: 12, display: "grid", placeItems: "center", cursor: "pointer", color: C.muted, background: "#FAFBFB", boxSizing: "border-box" }}>
                 <span style={{ display: "grid", justifyItems: "center", gap: 4 }}>
                   <Camera size={20} />
                   <span style={{ fontSize: 10.5, fontWeight: 700 }}>เพิ่มรูป</span>
@@ -305,6 +353,31 @@ export default function SellClient({ userId, tiers, editProduct = null, aiEnable
               );
             })}
           </div>
+          {imgs.length > 0 && (
+            <div style={{ marginTop: 10 }}>
+              <div style={{ fontSize: 11.5, color: C.muted, marginBottom: 6 }}>พรีวิวการ์ดในตลาด — ปก + สัดส่วนที่เลือกจะออกมาแบบนี้</div>
+              <div style={{ background: "#F4F7F8", borderRadius: 14, padding: 12, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, maxWidth: 340 }}>
+                <div style={{ background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(16,19,20,.09)" }}>
+                  <div style={{ position: "relative", aspectRatio: f.ratio, transition: "aspect-ratio .25s", overflow: "hidden" }}>
+                    <img src={imgs[0].k === "old" ? imgs[0].url : imgs[0].prev} alt=""
+                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    <span style={{ position: "absolute", left: 5, top: 5, background: C.brand, color: "#fff", fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 999 }}>สินค้าเรา</span>
+                  </div>
+                  <div style={{ padding: "7px 9px 9px" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name || "ชื่อสินค้าของคุณ"}</div>
+                    <div style={{ fontSize: 12.5, fontWeight: 800, color: C.brand, marginTop: 2 }}>{price > 0 ? `฿${price.toLocaleString()}` : "฿ —"}</div>
+                  </div>
+                </div>
+                <div style={{ background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(16,19,20,.09)", opacity: 0.55 }}>
+                  <div style={{ aspectRatio: f.ratio, transition: "aspect-ratio .25s", background: "#E3E6E7", display: "grid", placeItems: "center", color: C.muted, fontSize: 11 }}>สินค้าอื่น</div>
+                  <div style={{ padding: "7px 9px 9px" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.muted }}>สินค้าข้างเคียง</div>
+                    <div style={{ fontSize: 12.5, fontWeight: 800, color: C.muted, marginTop: 2 }}>฿3,200</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ── สภาพสินค้า + เกรดแบบ radio card (prototype ภาพ 3) ── */}
           <div style={label}>สภาพสินค้า <span style={{ color: C.danger }}>*</span></div>
