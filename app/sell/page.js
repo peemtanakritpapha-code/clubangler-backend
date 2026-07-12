@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import SellClient from "./SellClient";
+import { getExtraBrands } from "@/lib/brands"; // BRAND-ADM
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,7 @@ export default async function SellPage({ searchParams }) {
     );
   }
   const { data: tiers } = await supabase.from("fee_tiers").select("*").order("min");
+  const extraBrands = await getExtraBrands(supabase); // BRAND-ADM: RLS เปิดอ่าน public
 
   // โหมดแก้ไข: ดึงเฉพาะสินค้าของตัวเอง — ไม่ใช่ของเรา/ไม่มี = เด้งกลับ
   let editProduct = null;
@@ -34,5 +36,5 @@ export default async function SellPage({ searchParams }) {
     editProduct = p;
   }
 
-  return <SellClient userId={user.id} tiers={tiers || []} editProduct={editProduct} aiEnabled={!!process.env.ANTHROPIC_API_KEY} />;
+  return <SellClient userId={user.id} tiers={tiers || []} editProduct={editProduct} aiEnabled={!!process.env.ANTHROPIC_API_KEY} extraBrands={extraBrands} />;
 }

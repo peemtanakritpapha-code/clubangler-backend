@@ -1,6 +1,7 @@
 // app/market/page.js — ตลาดสินค้า (A4 ก้าว 2: ข้อมูลครบสำหรับสกิน Masonry · W5.5 เพิ่ม avatar_path)
 import { createClient } from "@/lib/supabase/server";
 import MarketClient from "./MarketClient";
+import { getExtraBrands } from "@/lib/brands"; // BRAND-ADM
 
 export const dynamic = "force-dynamic";
 
@@ -29,5 +30,6 @@ export default async function MarketPage() {
   const sellerMap = Object.fromEntries((sellers || []).map(s => [s.id, s]));
 
   const rows = (products || []).map(p => ({ ...p, seller: sellerMap[p.seller_id] || null }));
-  return <MarketClient products={rows} loggedIn={!!user} />;
+  const extraBrands = await getExtraBrands(supabase); // BRAND-ADM
+  return <MarketClient products={rows} loggedIn={!!user} extraBrands={extraBrands} />;
 }

@@ -11,6 +11,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { checkContent, filterMessage } from "@/lib/contentFilter";
 import { catPathValid, COND_GRADES, ALL_BRANDS } from "@/lib/catalog";
 import { PREORDER_MAX_DAYS } from "@/lib/preorder"; // PRE-1
+import { getMergedBrands, findBrand } from "@/lib/brands"; // BRAND-ADM
 
 const bad = (msg, status = 400) => NextResponse.json({ error: msg }, { status });
 
@@ -33,7 +34,7 @@ export async function POST(req) {
   const price = Math.round(Number(body?.price));
   const catPath = Array.isArray(body?.catPath)
     ? body.catPath.map(s => String(s).trim().slice(0, 100)).filter(Boolean).slice(0, 6) : [];
-  const brand = String(body?.brand || "").trim().slice(0, 100);
+  let brand = String(body?.brand || "").trim().slice(0, 100);
   const isNew = !!body?.isNew;
   const grade = String(body?.grade || "").trim();
   const condNote = String(body?.condNote || "").trim().slice(0, 1000);
@@ -96,7 +97,10 @@ export async function POST(req) {
   }
 
   // ── server คำนวณเองว่าต้องเข้าคิวตรวจไหม (client สั่ง status ตรงไม่ได้แล้ว) ──
-  const isNewBrand = !!brand && !ALL_BRANDS.some(b => b.toLowerCase() === brand.toLowerCase());
+  // BRAND-ADM: เช็คกับลิสต์รวม (ระบบ + แบรนด์ที่แอดมินเคยอนุมัติ) — เจอแล้วสะกดตามระบบ
+  const brandHit = findBrand(await getMergedBrands(admin), brand);
+  if (brandHit) brand = brandHit;
+  const isNewBrand = !!brand && !brandHit;
   const isNewCat = !catPathValid(catPath); // CAT-VAL: catNodeAt แยกหมวดปลายทางจริงกับหมวดมั่วไม่ออก
   const needsReview = isNewBrand || isNewCat;
   // ลงใหม่: active (หรือ review ถ้าแบรนด์/หมวดใหม่) · แก้ไข: คงสถานะเดิม (ตรรกะเดิมของฟอร์ม)

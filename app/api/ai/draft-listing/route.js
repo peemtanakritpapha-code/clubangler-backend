@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CATEGORY_TREE, ALL_BRANDS, catNodeAt } from "@/lib/catalog";
+import { getMergedBrands, findBrand } from "@/lib/brands"; // BRAND-ADM
 
 const bad = (msg, status = 400) => NextResponse.json({ error: msg }, { status });
 
@@ -149,7 +150,7 @@ export async function POST(req) {
   let brand = draft.brand ? String(draft.brand).trim().slice(0, 100) : null;
   let brandIsNew = false;
   if (brand) {
-    const hit = ALL_BRANDS.find(b => b.toLowerCase() === brand.toLowerCase());
+    const hit = findBrand(await getMergedBrands(admin), brand); // BRAND-ADM: ลิสต์รวมเดียวกับ save
     if (hit) brand = hit;        // สะกดตามลิสต์ระบบ
     else brandIsNew = true;      // AI3: แบรนด์ใหม่ผ่านได้ — ฟอร์ม/save จะพาเข้าคิว review ตามกลไกเดิม
   }

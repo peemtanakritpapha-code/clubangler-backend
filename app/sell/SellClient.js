@@ -21,7 +21,7 @@ const baht = n => "฿" + Number(n || 0).toLocaleString();
 const RATIOS = [["1/1", "จัตุรัส"], ["3/4", "แนวตั้ง"], ["4/3", "แนวนอน"]];
 const PROVINCES = ["กรุงเทพฯ", "กระบี่", "กาญจนบุรี", "กาฬสินธุ์", "กำแพงเพชร", "ขอนแก่น", "จันทบุรี", "ฉะเชิงเทรา", "ชลบุรี", "ชัยนาท", "ชัยภูมิ", "ชุมพร", "เชียงราย", "เชียงใหม่", "ตรัง", "ตราด", "ตาก", "นครนายก", "นครปฐม", "นครพนม", "นครราชสีมา", "นครศรีธรรมราช", "นครสวรรค์", "นนทบุรี", "นราธิวาส", "น่าน", "บึงกาฬ", "บุรีรัมย์", "ปทุมธานี", "ประจวบคีรีขันธ์", "ปราจีนบุรี", "ปัตตานี", "พระนครศรีอยุธยา", "พะเยา", "พังงา", "พัทลุง", "พิจิตร", "พิษณุโลก", "เพชรบุรี", "เพชรบูรณ์", "แพร่", "ภูเก็ต", "มหาสารคาม", "มุกดาหาร", "แม่ฮ่องสอน", "ยโสธร", "ยะลา", "ร้อยเอ็ด", "ระนอง", "ระยอง", "ราชบุรี", "ลพบุรี", "ลำปาง", "ลำพูน", "เลย", "ศรีสะเกษ", "สกลนคร", "สงขลา", "สตูล", "สมุทรปราการ", "สมุทรสงคราม", "สมุทรสาคร", "สระแก้ว", "สระบุรี", "สิงห์บุรี", "สุโขทัย", "สุพรรณบุรี", "สุราษฎร์ธานี", "สุรินทร์", "หนองคาย", "หนองบัวลำภู", "อ่างทอง", "อำนาจเจริญ", "อุดรธานี", "อุตรดิตถ์", "อุทัยธานี", "อุบลราชธานี"];
 
-export default function SellClient({ userId, tiers, editProduct = null, aiEnabled = false }) {
+export default function SellClient({ userId, tiers, editProduct = null, aiEnabled = false, extraBrands = [] }) {
   const router = useRouter();
   const supabase = createClient();
   const isEdit = !!editProduct;
@@ -150,14 +150,15 @@ export default function SellClient({ userId, tiers, editProduct = null, aiEnable
   };
 
   /* ── แบรนด์: แผงจัดกลุ่มตามตัวอักษร + แบรนด์ใหม่ → รอตรวจ ── */
-  const isNewBrand = !!f.brand.trim() && !ALL_BRANDS.some(b => b.toLowerCase() === f.brand.trim().toLowerCase());
+  const BRANDS = useMemo(() => Array.from(new Set([...ALL_BRANDS, ...extraBrands])).sort((a, b) => a.localeCompare(b)), [extraBrands]); // BRAND-ADM
+  const isNewBrand = !!f.brand.trim() && !BRANDS.some(b => b.toLowerCase() === f.brand.trim().toLowerCase());
   const [aiUsed, setAiUsed] = useState(false);          // AI-DISC: โพสต์นี้มีช่องที่ AI เติมสำเร็จอย่างน้อย 1 ช่อง
   const [aiConfirmOpen, setAiConfirmOpen] = useState(false);
   const [brandOpen, setBrandOpen] = useState(false);
   const [provOpen, setProvOpen] = useState(false); // แผงเลือกจังหวัด (พิมพ์ค้นหาได้แบบช่องแบรนด์)
   const brandGroups = useMemo(() => {
     const q = f.brand.trim().toLowerCase();
-    const list = ALL_BRANDS.filter(b => !q || b.toLowerCase().includes(q)).sort((a, b) => a.localeCompare(b));
+    const list = BRANDS.filter(b => !q || b.toLowerCase().includes(q));
     const g = {};
     list.forEach(b => { const k = b.charAt(0).toUpperCase(); (g[k] = g[k] || []).push(b); });
     return Object.entries(g);

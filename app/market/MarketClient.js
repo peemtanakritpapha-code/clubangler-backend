@@ -88,7 +88,8 @@ function MasonryCard({ p, idx, router, hold }) {
   );
 }
 
-export default function MarketClient({ products, loggedIn }) {
+export default function MarketClient({ products, loggedIn, extraBrands = [] }) {
+  const BRANDS = useMemo(() => Array.from(new Set([...ALL_BRANDS, ...extraBrands])).sort((a, b) => a.localeCompare(b)), [extraBrands]); // BRAND-ADM
   const router = useRouter();
   const [q, setQ] = useState("");
   // W5.9: หมวดหมู่แบบเส้นทาง (catPath = [] คือทั้งหมด) + modal ไล่ชั้นแบบ prototype — แทน mainCat/subCat 2 ชั้นเดิม
@@ -231,7 +232,7 @@ export default function MarketClient({ products, loggedIn }) {
       <input value={brandQ} onChange={e => setBrandQ(e.target.value)} placeholder="ค้นหาแบรนด์..."
         style={{ width: "100%", height: 40, border: `1px solid ${C.line}`, borderRadius: 10, padding: "0 12px", fontSize: 12.5, fontFamily: "inherit", outline: "none", color: C.ink, boxSizing: "border-box", marginBottom: 8 }} />
       <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 20, maxHeight: 130, overflowY: "auto" }}>
-        {["ทั้งหมด", ...ALL_BRANDS.filter(b => !brandQ || b.toLowerCase().includes(brandQ.toLowerCase()))].map(b => (
+        {["ทั้งหมด", ...BRANDS.filter(b => !brandQ || b.toLowerCase().includes(brandQ.toLowerCase()))].map(b => (
           <div key={b} onClick={() => setBrand(b)} style={{
             padding: "6px 12px", borderRadius: 999, fontSize: 11.5, fontWeight: 600, cursor: "pointer",
             background: brand === b ? C.brandTint : "#fff", color: brand === b ? C.brand : C.muted, border: `1px solid ${brand === b ? C.brand : C.line}`,
