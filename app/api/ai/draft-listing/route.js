@@ -34,6 +34,9 @@ const CATALOG_TEXT = treeToText(CATEGORY_TREE).join("\n");
 const PROMPT = `คุณคือผู้ช่วยกรอกฟอร์มลงขายสินค้าตกปลามือสองของ ClubAngler วิเคราะห์รูปสินค้าทุกรูปที่แนบมา (สินค้าชิ้นเดียวกัน ถ่ายหลายมุม) แล้วตอบเป็น JSON เท่านั้น ห้ามมีข้อความอื่นหรือ markdown
 
 ขั้นตอนวิเคราะห์ (ทำตามลำดับเคร่งครัด):
+ขั้น 0 — ตัดสินก่อนว่า "ของในรูปเป็นสินค้าสำหรับวงการตกปลาหรือไม่" — ถ้าไม่ใช่ ให้ตอบ JSON นี้อย่างเดียวแล้วจบ ห้ามกรอกช่องอื่น: {"off_topic": true, "reason": "บอกสั้นๆ ว่าเห็นอะไรในรูป"}
+ของที่ถือว่าเกี่ยว: ทุกอย่างในหมวดหมู่ระบบ รวมของก้ำกึ่งที่นักตกปลาใช้จริง เช่น มีด เขียง เก้าอี้สนาม ร่ม ไฟฉาย กล้องแอคชั่นแคม โดรนปล่อยเหยื่อ ถังน้ำแข็ง เสื้อกันแดด แบตเตอรี่
+ของที่ไม่เกี่ยวแน่ๆ: โทรศัพท์มือถือ กล้อง DSLR/มิเรอร์เลส เสื้อผ้าแฟชั่นทั่วไป ของเล่น เครื่องใช้ไฟฟ้าในบ้าน อาหารคน เครื่องสำอาง ฯลฯ
 ขั้น 1 — ระบุประเภทสินค้าจาก "รูปทรงของวัตถุ" เท่านั้น ห้ามใช้ตัวหนังสือตัดสิน: เหยื่อปลอม = วัตถุทรงปลา/กุ้ง/แมลง มักมีตะขอ · รอก = มีสปูลและมือหมุน · คันเบ็ด = แท่งยาวมีไกด์ · เบ็ด = ตะขอเปล่า
 ขั้น 2 — ค่อยอ่านตัวหนังสือในรูปเพื่อหา แบรนด์/รุ่น/สเปก
 คำเตือน: ชื่อรุ่นและตัวเลขบนสินค้าหลอกได้ เช่น "100-215" บนเหยื่อปลอมคือรหัสรุ่น (ความยาว มม. + น้ำหนัก) ไม่ใช่ความยาวคัน 2.15 ม. — ประเภทสินค้าต้องมาจากรูปทรงในขั้น 1 เสมอ ห้ามเปลี่ยนตามตัวหนังสือ
@@ -53,14 +56,14 @@ ${CATALOG_TEXT}
 กติกาเหล็ก:
 1. สเปกกรอกได้ 2 ทาง: (ก) อ่านจากตัวหนังสือในรูปจริง เช่น บนแบลงค์คัน/สปูลรอก/แพ็กเกจ (ข) มั่นใจสูงมากว่าระบุรุ่นถูกและจำสเปกโรงงานได้แม่น — ระบุที่มาใน "spec_source" ต่อ key: "รูป" หรือ "ความรู้รุ่น"
 2. ไม่มั่นใจ = ไม่กรอก key นั้น ห้ามเดา สเปกผิดแย่กว่าเว้นว่าง — ห้ามใส่ค่า "ไม่ทราบ" "ไม่ระบุ" "N/A" หรือคำทำนองนี้เด็ดขาด ไม่รู้ = ตัด key ทิ้งทั้งคู่
-2.1 cat_path พยายามระบุเสมอ ถ้ามั่นใจแค่หมวดหลักให้ส่ง path สั้นแค่ระดับที่มั่นใจ เช่น ["เหยื่อปลอม"] ดีกว่า null
+2.1 cat_path ต้องระบุเสมอ (ห้าม null — ยกเว้นกรณี off_topic เท่านั้น): ไม่มั่นใจหมวดย่อย = ส่ง path สั้นแค่ระดับที่มั่นใจ เช่น ["เหยื่อปลอม"] หรือ ["เหยื่อปลอม", "เหยื่อแข็ง / ปลั๊ก"]
 3. แบรนด์ต้องเห็นโลโก้/ตัวอักษรในรูป ไม่เห็น = null
 4. ห้ามประเมินสภาพ/เกรด/ตำหนิ — ผู้ขายกำหนดเอง
 5. title เขียนแบบประกาศขายไทย กระชับ มีแบรนด์+รุ่น(ถ้ารู้)+สเปกเด่น 1 อย่าง
 6. description 2-4 ประโยค เฉพาะข้อเท็จจริง ห้ามพูดถึงความใหม่เก่า
 
-ตอบ JSON โครงนี้:
-{"title": string|null, "cat_path": string[]|null, "brand": string|null, "brand_country": string|null, "model": string|null, "specs": {"ชื่อสเปก": "ค่า"}, "spec_source": {"ชื่อสเปก": "รูป"|"ความรู้รุ่น"}, "description": string|null, "confidence": 0-100, "note": string|null}`;
+ตอบ JSON โครงนี้ (กรณีสินค้าเกี่ยวกับตกปลา):
+{"off_topic": false, "title": string|null, "cat_path": string[]|null, "brand": string|null, "brand_country": string|null, "model": string|null, "specs": {"ชื่อสเปก": "ค่า"}, "spec_source": {"ชื่อสเปก": "รูป"|"ความรู้รุ่น"}, "description": string|null, "confidence": 0-100, "note": string|null}`;
 
 export async function POST(req) {
   const supabase = await createClient();
@@ -117,13 +120,39 @@ export async function POST(req) {
     return bad("อ่านผลจาก AI ไม่สำเร็จ ลองใหม่อีกครั้ง", 502);
   }
 
-  // ── validate ฝั่ง server: cat_path ต้องมีจริงในต้นไม้ · แบรนด์ต้องอยู่ในลิสต์ · ตัดฟิลด์สภาพทิ้งถ้า AI เผลอส่งมา ──
+  // ── AI3 ด่านขั้น 0: รูปไม่ใช่สินค้าตกปลา → 422 พร้อมเหตุผล ──
+  if (draft && draft.off_topic) {
+    return NextResponse.json(
+      { error: "รูปนี้ดูไม่ใช่สินค้าเกี่ยวกับการตกปลา", offTopic: true, reason: String(draft.reason || "").slice(0, 200) },
+      { status: 422 }
+    );
+  }
+
+  // ── validate ฝั่ง server: cat_path ตัดเหลือ prefix ที่มีจริง · แบรนด์นอกลิสต์ผ่านได้ (เข้าคิว review ตามกลไกเดิม) · ตัดฟิลด์สภาพทิ้งถ้า AI เผลอส่งมา ──
+  const pathOk = (p) => {
+    let n = CATEGORY_TREE;
+    for (let i = 0; i < p.length; i++) {
+      const k = p[i];
+      if (Array.isArray(n)) return n.includes(k) && i === p.length - 1;
+      if (n && typeof n === "object") { if (!(k in n)) return false; n = n[k]; }
+      else return false;
+    }
+    return p.length > 0;
+  };
   let catPath = Array.isArray(draft.cat_path)
     ? draft.cat_path.map(s => String(s).trim()).filter(Boolean).slice(0, 6) : null;
-  if (catPath && !catNodeAt(catPath)) catPath = null;
+  if (catPath) {
+    while (catPath.length && !pathOk(catPath)) catPath.pop(); // AI3: ชั้นย่อยเพี้ยน = ตัดทิ้งเฉพาะชั้นนั้น เหลืออย่างน้อยหมวดหลักที่ถูก
+    if (!catPath.length) catPath = null;
+  }
 
   let brand = draft.brand ? String(draft.brand).trim().slice(0, 100) : null;
-  if (brand && !ALL_BRANDS.some(b => b.toLowerCase() === brand.toLowerCase())) brand = null;
+  let brandIsNew = false;
+  if (brand) {
+    const hit = ALL_BRANDS.find(b => b.toLowerCase() === brand.toLowerCase());
+    if (hit) brand = hit;        // สะกดตามลิสต์ระบบ
+    else brandIsNew = true;      // AI3: แบรนด์ใหม่ผ่านได้ — ฟอร์ม/save จะพาเข้าคิว review ตามกลไกเดิม
+  }
 
   const clean = (v, n) => (v ? String(v).trim().slice(0, n) : null);
   const specs = {};
@@ -146,6 +175,7 @@ export async function POST(req) {
       title: clean(draft.title, 200),
       catPath,
       brand,
+      brandIsNew,
       brandCountry: clean(draft.brand_country, 60),
       model: clean(draft.model, 120),
       specs,

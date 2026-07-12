@@ -39,12 +39,11 @@ export default function AiFillCard({ imgs, onDraft }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [done, setDone] = useState(null); // { filled: string[], skipped: string[] }
-  const [note, setNote] = useState(""); // AI2: โน้ต/ข้อสังเกตจาก AI เช่น "ไม่แน่ใจว่ารูปเป็นสินค้าชิ้นเดียวกัน"
   const newImgs = imgs.filter(it => it.k === "new");
 
   const run = async () => {
     if (!newImgs.length || busy) return;
-    setBusy(true); setErr(""); setDone(null); setNote("");
+    setBusy(true); setErr(""); setDone(null);
     try {
       const images = [];
       for (const it of newImgs.slice(0, 5)) {
@@ -59,7 +58,6 @@ export default function AiFillCard({ imgs, onDraft }) {
       if (!resp.ok) throw new Error(data?.error || "เกิดข้อผิดพลาด");
       const summary = onDraft(data.draft); // หน้า sell เติมเฉพาะช่องว่าง แล้วส่งสรุปกลับมา
       setDone(summary || { filled: [], skipped: [] });
-      setNote(data.draft?.note || "");
     } catch (e) {
       setErr(e.message || "เกิดข้อผิดพลาด ลองใหม่อีกครั้ง");
     }
@@ -96,11 +94,6 @@ export default function AiFillCard({ imgs, onDraft }) {
           {done.skipped.length > 0 && (
             <div style={{ fontSize: 12, color: C.muted }}>
               เว้นไว้ (มีข้อมูลอยู่แล้ว/AI ไม่มั่นใจ): {done.skipped.join(" · ")}
-            </div>
-          )}
-          {note && (
-            <div style={{ fontSize: 12, color: C.warnInk, background: C.warnBg, border: `1px solid ${C.warnLine}`, borderRadius: 10, padding: "8px 12px" }}>
-              💬 ข้อสังเกตจาก AI: {note}
             </div>
           )}
           <div style={{
