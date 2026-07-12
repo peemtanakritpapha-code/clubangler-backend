@@ -22,7 +22,13 @@ export default function NotiBell({ userId }) {
     setItems(data || []);
   };
 
-  useEffect(() => { load(); const t = setInterval(load, 30000); return () => clearInterval(t); }, []);   // eslint-disable-line
+  useEffect(() => {
+    load();
+    const t = setInterval(() => { if (!document.hidden) load(); }, 30000);   // BELL-R: แท็บซ่อนอยู่ไม่ต้องยิง
+    const onVis = () => { if (document.visibilityState === "visible") load(); };   // BELL-R: กลับมาหน้าจอ = โหลดทันที (timer หยุดตอนแอปพับ)
+    document.addEventListener("visibilitychange", onVis);
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", onVis); };
+  }, []);   // eslint-disable-line
   useEffect(() => {
     const close = e => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); };
     document.addEventListener("mousedown", close);

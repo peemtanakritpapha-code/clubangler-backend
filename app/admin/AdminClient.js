@@ -485,6 +485,14 @@ function SystemSettings({ config, onError }) {
 export default function AdminClient({ orders, sellers, buyers, userId, kycQueue = [], users = [], products = [], stats = {}, config = null, tiers = [], reports = [], modPosts = [], bannedWords = [] }) {
   const router = useRouter();
   const supabase = createClient();
+  // ADM-R: ข้อมูลหลังบ้านรีเฟรชเองทุก 30 วิ (เฉพาะตอนแท็บโชว์อยู่) + รีเฟรชทันทีตอนสลับกลับมา/เปิดแอปกลับมา
+  // เหตุผล: มือถือพับแอปแล้ว timer หยุด — visibilitychange คือตัวปลุกตอนกลับมา
+  useEffect(() => {
+    const t = setInterval(() => { if (!document.hidden) router.refresh(); }, 30000);
+    const onVis = () => { if (document.visibilityState === "visible") router.refresh(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", onVis); };
+  }, []);   // eslint-disable-line
   const [tab, setTab] = useState("overview");
   // AD5: เปิดแท็บตรงจาก URL (?tab=...) — รองรับลิงก์จากแจ้งเตือนแอดมิน
   useEffect(() => {
