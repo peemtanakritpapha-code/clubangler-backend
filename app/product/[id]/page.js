@@ -11,13 +11,20 @@ export async function generateMetadata({ params }) {
   const { id: rawId } = await params;
   const id = productIdFromParam(rawId); // SEO2: รับทั้ง /product/14 และ /product/14-ชื่อ
   const supabase = await createClient();
-  const { data: p } = await supabase.from("products").select("name, price, description, images, brand, location, cond, cond_label").eq("id", id).single();
+  const { data: p } = await supabase.from("products").select("name, price, description, images, brand, location, cond, cond_label, cat_main, cat_sub").eq("id", id).single();
   if (!p) return { title: "ไม่พบสินค้า — ClubAngler" };
   // SEO-1: title = ชื่อ + แบรนด์(ถ้าชื่อยังไม่มี) + มือสอง(ตามสภาพจริง) + จังหวัด — คีย์เวิร์ด long-tail ที่คนค้นจริง
   //        เอาราคาออก (stale ง่าย ไม่ช่วยอันดับ — ราคายังโชว์ใน rich result ผ่าน Product schema)
-  const brandWord = p.brand && !p.name.toLowerCase().includes(p.brand.toLowerCase()) ? p.brand : "";
-  const condWord = p.cond === "ของใหม่" ? "" : "มือสอง";
-  let title = [p.name, brandWord, condWord, p.location].filter(Boolean).join(" ");
+  // SEO-1b: หมวด 2 ชั้นท้ายสุด (ข้าม "อื่นๆ") แทนจังหวัด — จังหวัดยังเก็บแต้มอยู่ใน description
+  const catParts = [p.cat_main, ...String(p.cat_sub || "").split(" › ")].map(x => (x || "").trim()).filter(c => c && c !== "อื่นๆ");
+  const nameLow = (p.name || "").toLowerCase();
+  const catWords = catParts.slice(-2).filter(c => !nameLow.includes(c.toLowerCase())); // คำที่มีในชื่อแล้วไม่ต่อซ้ำ กัน keyword stuffing
+  const brandWord = p.brand && !nameLow.includes(p.brand.toLowerCase()) ? p.brand : "";
+  const condWord = p.cond === "ของใหม่" ? "ของใหม่" : "มือสอง";
+  const compose = ws => ws.filter(Boolean).join(" ");
+  let title = compose([p.name, brandWord, ...catWords, condWord]);
+  if (title.length > 60 && catWords.length > 1) title = compose([p.name, brandWord, catWords[catWords.length - 1], condWord]); // ถอดหมวดชั้นบน
+  if (title.length > 60) title = compose([p.name, catWords[catWords.length - 1] || "", condWord]); // ถอดแบรนด์
   if (title.length > 60) title = title.slice(0, 59) + "…";
   title += " | ClubAngler";
   // SEO-1: detail สั้นกว่า 50 ตัวอักษร = ใช้สูตรสำรองแทนปล่อยโหรงเหรง
