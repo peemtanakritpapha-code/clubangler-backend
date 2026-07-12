@@ -9,7 +9,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkContent, filterMessage } from "@/lib/contentFilter";
-import { catNodeAt, COND_GRADES, ALL_BRANDS } from "@/lib/catalog";
+import { catPathValid, COND_GRADES, ALL_BRANDS } from "@/lib/catalog";
 
 const bad = (msg, status = 400) => NextResponse.json({ error: msg }, { status });
 
@@ -87,7 +87,7 @@ export async function POST(req) {
 
   // ── server คำนวณเองว่าต้องเข้าคิวตรวจไหม (client สั่ง status ตรงไม่ได้แล้ว) ──
   const isNewBrand = !!brand && !ALL_BRANDS.some(b => b.toLowerCase() === brand.toLowerCase());
-  const isNewCat = !catNodeAt(catPath);
+  const isNewCat = !catPathValid(catPath); // CAT-VAL: catNodeAt แยกหมวดปลายทางจริงกับหมวดมั่วไม่ออก
   const needsReview = isNewBrand || isNewCat;
   // ลงใหม่: active (หรือ review ถ้าแบรนด์/หมวดใหม่) · แก้ไข: คงสถานะเดิม (ตรรกะเดิมของฟอร์ม)
   const status = needsReview ? "review" : (current ? current.status : "active");

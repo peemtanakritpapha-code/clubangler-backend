@@ -11,7 +11,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Camera, ChevronRight, ChevronLeft, X, Search, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { CAT_MAINS, catNodeAt, catChildren, COND_GRADES, ISSUE_PRESETS, ALL_BRANDS } from "@/lib/catalog";
+import { CAT_MAINS, catNodeAt, catPathValid, catChildren, COND_GRADES, ISSUE_PRESETS, ALL_BRANDS } from "@/lib/catalog";
 import AiFillCard from "@/components/AiFillCard";
 import { feeFor, feeTierRange } from "@/lib/fees";
 
@@ -179,7 +179,7 @@ export default function SellClient({ userId, tiers, editProduct = null, aiEnable
     setCatOpen(false);
   };
   // หมวดใหม่ = เส้นทางที่ resolve ในต้นไม้จริงไม่ได้ (มีชิ้นที่ผู้ใช้ขอเพิ่มเอง)
-  const isNewCat = catPath.length > 0 && !catNodeAt(catPath);
+  const isNewCat = catPath.length > 0 && !catPathValid(catPath); // CAT-VAL
   const needsReview = isNewBrand || isNewCat;
 
   const submit = async () => {

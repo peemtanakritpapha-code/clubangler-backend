@@ -14,7 +14,7 @@ import TimeLeft from "@/components/TimeLeft";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Search, X, ShieldCheck, Fish, Filter, ChevronRight, ChevronLeft, Plus } from "lucide-react";
-import { CAT_MAINS, CATEGORY_TREE, catChildren, ALL_BRANDS, COND_GRADES } from "@/lib/catalog";
+import { CAT_MAINS, CATEGORY_TREE, catNodeAt, catChildren, ALL_BRANDS, COND_GRADES } from "@/lib/catalog";
 
 const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7", bg2: "#F1F3F4" };
 const RATIOS = ["1/1", "3/4", "4/3", "1/1", "3/4", "1/1", "4/3", "3/4"]; // ความสูงแปรผันแบบ prototype (MASONRY_RATIOS)
@@ -120,7 +120,7 @@ export default function MarketClient({ products, loggedIn }) {
   const subs = catPath.length === 0 ? [] : ["ทั้งหมด", ...catChildren(CATEGORY_TREE[catPath[0]]).map(c => c.name)];
   const selectMain = m => setCatPath(m === "ทั้งหมด" ? [] : [m]);
   // modal ไล่ชั้น (แพทเทิร์นเดียวกับหน้าลงขาย)
-  const catNodeOf = path => path.reduce((node, name, i) => (i === 0 ? CATEGORY_TREE[name] : (catChildren(node).find(k => k.name === name))), null);
+  const catNodeOf = catNodeAt; // MKT-CAT: ตัวเดิม reduce คืน {name,hasKids} แทนโหนดต้นไม้จริง — ชั้นลึกเลยโชว์ field ภายใน
   const levelOptions = (() => {
     const opts = mPath.length === 0 ? CAT_MAINS : catChildren(catNodeOf(mPath)).map(k => k.name);
     const qq = catModalQ.trim().toLowerCase();
