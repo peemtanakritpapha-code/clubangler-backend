@@ -247,6 +247,44 @@ export default function SellClient({ userId, tiers, editProduct = null, aiEnable
 
         <div style={{ background: "#fff", borderRadius: 16, padding: "8px 22px 22px", boxShadow: "0 4px 16px rgba(0,0,0,.05)" }}>
 
+          {/* ── รูปภาพ: ช่อง tile ทันสมัย (prototype ภาพ 2) ── */}
+          <div style={label}>รูปภาพสินค้า ({totalImgs}/10) <span style={{ color: C.danger }}>*</span> <span style={{ fontWeight: 500, color: C.muted }}>— รูปแรกคือรูปปกในตลาด</span></div>
+          <div style={{ fontSize: 11.5, color: C.muted, marginTop: -4, marginBottom: 8 }}>ลากรูปเพื่อจัดลำดับ — ช่องแรกคือปก · บนมือถือกดค้างที่รูปแล้วลาก</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 92px)", gap: 12 }}>
+            {imgs.map((it, i) => (
+              <div key={it.k === "old" ? it.url : it.prev} data-imgidx={i} onPointerDown={e => startImgDrag(e, i)}
+                style={{ position: "relative", width: 92, aspectRatio: f.ratio, transition: "aspect-ratio .25s", borderRadius: 12, border: `2px solid ${i === 0 ? C.brand : C.line}`, overflow: "hidden", boxSizing: "border-box", opacity: i === dragIdx ? 0.3 : 1, cursor: "grab", touchAction: "pan-y", userSelect: "none", WebkitUserSelect: "none" }}>
+                <img src={it.k === "old" ? it.url : it.prev} alt="" draggable={false}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", pointerEvents: "none" }} />
+                {i === 0 && <span style={{ position: "absolute", left: 5, top: 5, background: C.brand, color: "#fff", fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 999 }}>ปก</span>}
+                <button type="button" onClick={() => removeImg(i)} aria-label="ลบรูปนี้"
+                  style={{ position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: "50%", border: "2px solid #fff", background: C.danger, color: "#fff", fontSize: 11, fontWeight: 800, cursor: "pointer", lineHeight: 1 }}>✕</button>
+              </div>
+            ))}
+            {totalImgs > 0 && totalImgs < 10 && (
+              <label style={{ width: 92, aspectRatio: f.ratio, transition: "aspect-ratio .25s", border: `1.5px dashed ${C.line}`, borderRadius: 12, display: "grid", placeItems: "center", cursor: "pointer", color: C.muted, background: "#FAFBFB", boxSizing: "border-box" }}>
+                <span style={{ display: "grid", justifyItems: "center", gap: 4 }}>
+                  <Camera size={20} />
+                  <span style={{ fontSize: 10.5, fontWeight: 700 }}>เพิ่มรูป</span>
+                </span>
+                <input type="file" accept="image/*" multiple hidden onChange={pickFiles} />
+              </label>
+            )}
+          </div>
+          {totalImgs === 0 && (
+            <label style={{ display: "grid", placeItems: "center", padding: "26px 12px", border: `1.8px dashed ${C.brand}`, borderRadius: 16, cursor: "pointer", color: C.brand, background: "#F7FBFC", boxSizing: "border-box" }}>
+              <span style={{ display: "grid", justifyItems: "center", gap: 7 }}>
+                <Camera size={34} />
+                <span style={{ fontSize: 14.5, fontWeight: 800 }}>เพิ่มรูปสินค้า</span>
+                <span style={{ fontSize: 11.5, color: C.muted }}>ถ่ายหลายมุม ยิ่งเห็นตัวหนังสือรุ่น/โลโก้ชัด AI ยิ่งกรอกให้แม่น</span>
+              </span>
+              <input type="file" accept="image/*" multiple hidden onChange={pickFiles} />
+            </label>
+          )}
+
+          {/* ── AI1: ปุ่ม AI ช่วยกรอกจากรูป (ใช้รูปใหม่ ≤5 รูปแรก) ── */}
+          {aiEnabled && <AiFillCard imgs={imgs} onDraft={applyDraft} />}
+
           {/* ── ชื่อสินค้า ── */}
           <div style={label}>ชื่อสินค้า <span style={{ color: C.danger }}>*</span></div>
           <input style={input} value={f.name} onChange={e => set("name", e.target.value)} placeholder="เช่น คันเบ็ด Shimano 7ft" />
@@ -306,34 +344,6 @@ export default function SellClient({ userId, tiers, editProduct = null, aiEnable
           <div style={label}>รายละเอียดสินค้า</div>
           <textarea value={f.description} onChange={e => set("description", e.target.value)} rows={4} placeholder="อธิบายสภาพ สเปก ตำหนิ (ถ้ามี) และเหตุผลที่ควรซื้อ..."
             style={{ ...input, height: "auto", padding: 12, resize: "vertical" }} />
-
-          {/* ── รูปภาพ: ช่อง tile ทันสมัย (prototype ภาพ 2) ── */}
-          <div style={label}>รูปภาพสินค้า ({totalImgs}/10) <span style={{ color: C.danger }}>*</span> <span style={{ fontWeight: 500, color: C.muted }}>— รูปแรกคือรูปปกในตลาด</span></div>
-          <div style={{ fontSize: 11.5, color: C.muted, marginTop: -4, marginBottom: 8 }}>ลากรูปเพื่อจัดลำดับ — ช่องแรกคือปก · บนมือถือกดค้างที่รูปแล้วลาก</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 92px)", gap: 12 }}>
-            {imgs.map((it, i) => (
-              <div key={it.k === "old" ? it.url : it.prev} data-imgidx={i} onPointerDown={e => startImgDrag(e, i)}
-                style={{ position: "relative", width: 92, aspectRatio: f.ratio, transition: "aspect-ratio .25s", borderRadius: 12, border: `2px solid ${i === 0 ? C.brand : C.line}`, overflow: "hidden", boxSizing: "border-box", opacity: i === dragIdx ? 0.3 : 1, cursor: "grab", touchAction: "pan-y", userSelect: "none", WebkitUserSelect: "none" }}>
-                <img src={it.k === "old" ? it.url : it.prev} alt="" draggable={false}
-                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", pointerEvents: "none" }} />
-                {i === 0 && <span style={{ position: "absolute", left: 5, top: 5, background: C.brand, color: "#fff", fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 999 }}>ปก</span>}
-                <button type="button" onClick={() => removeImg(i)} aria-label="ลบรูปนี้"
-                  style={{ position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: "50%", border: "2px solid #fff", background: C.danger, color: "#fff", fontSize: 11, fontWeight: 800, cursor: "pointer", lineHeight: 1 }}>✕</button>
-              </div>
-            ))}
-            {totalImgs < 10 && (
-              <label style={{ width: 92, aspectRatio: f.ratio, transition: "aspect-ratio .25s", border: `1.5px dashed ${C.line}`, borderRadius: 12, display: "grid", placeItems: "center", cursor: "pointer", color: C.muted, background: "#FAFBFB", boxSizing: "border-box" }}>
-                <span style={{ display: "grid", justifyItems: "center", gap: 4 }}>
-                  <Camera size={20} />
-                  <span style={{ fontSize: 10.5, fontWeight: 700 }}>เพิ่มรูป</span>
-                </span>
-                <input type="file" accept="image/*" multiple hidden onChange={pickFiles} />
-              </label>
-            )}
-          </div>
-
-          {/* ── AI1: ปุ่ม AI ช่วยกรอกจากรูป (ใช้รูปใหม่ ≤5 รูปแรก) ── */}
-          {aiEnabled && <AiFillCard imgs={imgs} onDraft={applyDraft} />}
 
           {/* ── สัดส่วนรูปภาพในตลาด (prototype ภาพ 2) ── */}
           <div style={label}>สัดส่วนรูปภาพในตลาด</div>
