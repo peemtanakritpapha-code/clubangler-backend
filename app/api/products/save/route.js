@@ -72,10 +72,11 @@ export async function POST(req) {
 
   // ── รูปทุกใบต้องมาจากโฟลเดอร์ของตัวเองใน bucket products ──
   //    (ยกเว้นตอนแก้ไข: รูปเดิมที่อยู่ในประกาศอยู่แล้วผ่านได้เสมอ)
-  const ownPrefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/products/${user.id}/`;
+  const baseUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/products/`; // SPLIT-FIX
+  const ownPrefixes = [`${baseUrl}${user.id}/`, `${baseUrl}product-imgs/${user.id}/`];
   const oldSet = new Set(current?.images || []);
   for (const u of images) {
-    if (!u.startsWith(ownPrefix) && !oldSet.has(u))
+    if (!ownPrefixes.some(pfx => u.startsWith(pfx)) && !oldSet.has(u))
       return bad("พบรูปภาพที่ไม่ได้อัปโหลดจากบัญชีของคุณ");
   }
 

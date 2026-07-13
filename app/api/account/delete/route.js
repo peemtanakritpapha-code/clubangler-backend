@@ -6,11 +6,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 const DONE = ["completed", "refunded"]; // สถานะออเดอร์ที่ถือว่าจบแล้ว
 
 // ลบไฟล์ทั้งหมดใต้โฟลเดอร์ {userId}/ ใน bucket (วนเป็นรอบ กันเกิน 100 ไฟล์)
-async function clearFolder(admin, bucket, userId) {
+async function clearFolder(admin, bucket, prefix) { // SPLIT-FIX
   for (let round = 0; round < 20; round++) {
-    const { data: files, error } = await admin.storage.from(bucket).list(userId, { limit: 100 });
+    const { data: files, error } = await admin.storage.from(bucket).list(prefix, { limit: 100 });
     if (error || !files?.length) return;
-    const paths = files.filter(f => f.id).map(f => `${userId}/${f.name}`);
+    const paths = files.filter(f => f.id).map(f => `${prefix}/${f.name}`);
     if (!paths.length) return;
     await admin.storage.from(bucket).remove(paths);
     if (files.length < 100) return;
@@ -43,7 +43,7 @@ export async function POST() {
 
   // ล้างไฟล์ส่วนตัวใน storage ทั้ง 3 buckets (บัตร/สมุดบัญชี, สลิป, รูปสินค้า+โพสต์)
   for (const bucket of ["kyc", "slips", "products"]) {
-    await clearFolder(admin, bucket, user.id);
+    await clearFolder(admin, bucket, user.id); if (bucket === "products") for (const folder of ["product-imgs", "post-imgs", "profile", "order-evidence"]) await clearFolder(admin, "products", `${folder}/${user.id}`); // SPLIT-FIX: โครงโฟลเดอร์ใหม่ (Iron Rule 55)
   }
 
   // ลบ auth user → cascade ลบ profiles → cascade ลบ addresses/products/posts/likes/comments/follows/notifications
