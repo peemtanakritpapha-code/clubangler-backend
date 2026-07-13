@@ -490,7 +490,7 @@ export default function FeedClient({ posts, latest, user, myLikes, myFollows, my
       <style>{`@media (min-width: 900px) { .feed-grid { grid-template-columns: minmax(0,1fr) 300px !important; } .feed-side { display: flex !important; } }`}</style>
 
       {/* คอลัมน์ฟีด */}
-      <div style={{ display: "grid", gap: 12 }}>
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "minmax(0,1fr)" }}>
         <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
           {FILTERS.map(f => <div key={f} style={chip(filter === f)} onClick={() => setFilter(f)}>{f}</div>)}
         </div>
