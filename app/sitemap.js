@@ -3,6 +3,7 @@
 // ใช้ supabase-js ตรงๆ (ไม่ผ่าน lib/supabase/server) เพราะ sitemap ไม่มี request/cookies context
 import { createClient } from "@supabase/supabase-js";
 import { productPath } from "@/lib/slug";
+import { CAT_MAINS } from "@/lib/catalog"; // SEO-5
 
 export const revalidate = 3600; // cache 1 ชั่วโมง — สินค้าใหม่โผล่ใน sitemap ภายใน 1 ชม.
 
@@ -41,5 +42,12 @@ export default async function sitemap() {
     // ดึงสินค้าไม่ได้ → ส่งอย่างน้อยหน้า static (อย่าให้ sitemap ล่มทั้งไฟล์)
   }
 
-  return [...staticPages, ...productPages];
+  // SEO-5: หน้าหมวดทั้งหมด — landing ให้ Google เก็บ
+  const categoryPages = CAT_MAINS.map((cat) => ({
+    url: `${BASE}/market/${encodeURIComponent(cat)}`,
+    changeFrequency: "daily",
+    priority: 0.8,
+  }));
+
+  return [...staticPages, ...categoryPages, ...productPages];
 }

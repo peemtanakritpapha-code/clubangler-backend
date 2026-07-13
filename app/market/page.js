@@ -1,6 +1,8 @@
 // app/market/page.js — ตลาดสินค้า (A4 ก้าว 2: ข้อมูลครบสำหรับสกิน Masonry · W5.5 เพิ่ม avatar_path)
 import { createClient } from "@/lib/supabase/server";
 import MarketClient from "./MarketClient";
+import Link from "next/link"; // SEO-5
+import { CAT_MAINS } from "@/lib/catalog"; // SEO-5
 import { getExtraBrands } from "@/lib/brands"; // BRAND-ADM
 import { getSeoPage } from "@/lib/seo"; // SEO-4
 
@@ -35,5 +37,21 @@ export default async function MarketPage() {
 
   const rows = (products || []).map(p => ({ ...p, seller: sellerMap[p.seller_id] || null }));
   const extraBrands = await getExtraBrands(supabase); // BRAND-ADM
-  return <MarketClient products={rows} loggedIn={!!user} extraBrands={extraBrands} />;
+  return (
+    <>
+      <MarketClient products={rows} loggedIn={!!user} extraBrands={extraBrands} />
+      {/* SEO-5: ลิงก์หมวดจริงท้ายหน้า — ผู้ใช้กดเข้าหมวดได้ + Google เดินตามลิงก์ไปเก็บหน้าหมวด */}
+      <nav aria-label="หมวดหมู่สินค้า" style={{ maxWidth: 1200, margin: "0 auto", padding: "6px 16px 28px" }}>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: "#6B7678", marginBottom: 8 }}>เลือกดูตามหมวดหมู่</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {CAT_MAINS.map((cat) => (
+            <Link key={cat} href={`/market/${encodeURIComponent(cat)}`} style={{
+              fontSize: 12, padding: "6px 12px", borderRadius: 999, textDecoration: "none",
+              border: "1px solid #E5E9EA", background: "#fff", color: "#0E7E8C", fontWeight: 600,
+            }}>{cat}</Link>
+          ))}
+        </div>
+      </nav>
+    </>
+  );
 }
