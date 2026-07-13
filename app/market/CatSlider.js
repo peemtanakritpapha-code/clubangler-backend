@@ -1,16 +1,33 @@
 "use client";
-// app/market/CatSlider.js — SEO-5e(v6): แถบหมวด "สายพานหมุนการ์ด"
-// - การ์ดชุดเดียว 13 ใบ ไม่มีชุดซ้ำ
-// - โหมดวิ่งเอง (auto): สายพานไหลซ้ายช้าๆ 20px/วิ เท่ากันทุกเครื่อง — ใบที่พ้นจอซ้ายถูกยกไปต่อท้ายแถว
-//   แบบมองไม่เห็น = วนลูปไม่รู้จบด้วยการ์ดชุดเดียว
-// - มือแตะ/ลาก/ล้อเมาส์: สายพานหยุดและส่งตำแหน่งให้เลื่อนเองแบบธรรมชาติ (มีต้น-ปลายปกติ)
-//   ปล่อยสักพัก สายพานม้วนกลับต้นนุ่มๆ แล้ววิ่งต่อ
+// app/market/CatSlider.js — REEL-2 (v7): แถบหมวด "สายพานหมุนการ์ด" 15 ใบ
+// - v7 เปลี่ยนจาก v6 แค่ชั้นข้อมูล: การ์ดเป็น {label, href, img} 15 ใบ
+//   = หมวดหลัก 12 ใบ (ตัด "รอกตกปลา") + การ์ดรอก 3 ใบจาก lib/reelSubs แทรกตำแหน่งเดิม (ช่อง 2-3-4)
+//   ⚠️ เลขรูปการ์ดหมวดหลักอิง CAT_MAINS.indexOf เดิมเสมอ — ห้ามอิงตำแหน่งใน list ใหม่ (เลขรูปจะเพี้ยนยกแผง)
+// - กลไก v6 คงเดิมทั้งหมด: วิ่งเอง 20px/วิ เท่ากันทุกเครื่อง · ใบพ้นจอซ้ายถูกยกไปต่อท้าย
+//   · มือแตะ = หยุดส่งให้ native scroll · ปล่อยสักพักม้วนกลับต้นแล้ววิ่งต่อ · เคารพ prefers-reduced-motion
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { CAT_MAINS } from "@/lib/catalog";
+import { REEL_CAT, REEL_SUBS } from "@/lib/reelSubs";
 
 const C = { brand: "#0E7E8C", tint: "#E3F1F3", ink: "#101314", line: "#EDF0F0" };
-const N = CAT_MAINS.length;
+
+// REEL-2: ประกอบการ์ด 15 ใบครั้งเดียวตอนโหลดโมดูล
+const CARDS = (() => {
+  const mains = CAT_MAINS.filter((c) => c !== REEL_CAT).map((c) => ({
+    label: c,
+    href: `/market/${encodeURIComponent(c)}`,
+    img: `/cats/cat-${String(CAT_MAINS.indexOf(c) + 1).padStart(2, "0")}.png`,
+  }));
+  const reels = REEL_SUBS.map((r) => ({
+    label: r.label,
+    href: `/market/${encodeURIComponent(REEL_CAT)}/${encodeURIComponent(r.slug)}`,
+    img: r.img,
+  }));
+  const at = CAT_MAINS.indexOf(REEL_CAT); // ตำแหน่งเดิมของการ์ดรอกตกปลา
+  return [...mains.slice(0, at), ...reels, ...mains.slice(at)];
+})();
+const N = CARDS.length;
 
 export default function CatSlider({ active = "", title = "", auto = false }) {
   const boxRef = useRef(null);   // กรอบเลื่อน (native scroll ของนิ้ว)
@@ -114,7 +131,7 @@ export default function CatSlider({ active = "", title = "", auto = false }) {
     if (it) el.scrollLeft = Math.max(0, it.offsetLeft - 24);
   }, [active, auto]);
 
-  const LIST = auto ? [...CAT_MAINS.slice(k), ...CAT_MAINS.slice(0, k)] : CAT_MAINS;
+  const LIST = auto ? [...CARDS.slice(k), ...CARDS.slice(0, k)] : CARDS;
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto" }}>
       {title ? (
@@ -124,15 +141,14 @@ export default function CatSlider({ active = "", title = "", auto = false }) {
       ) : null}
       <div ref={boxRef} className="cat-slider" style={{ overflowX: "auto", padding: "6px 10px 10px", cursor: "grab", WebkitOverflowScrolling: "touch" }}>
         <div ref={trackRef} style={{ display: "flex", gap: 4, width: "max-content" }}>
-          {LIST.map((cat) => {
-            const i = CAT_MAINS.indexOf(cat);
-            const on = cat === active;
+          {LIST.map((it) => {
+            const on = it.label === active;
             return (
-              <Link key={cat} href={`/market/${encodeURIComponent(cat)}`} data-active={on ? "1" : "0"} draggable={false}
+              <Link key={it.label} href={it.href} data-active={on ? "1" : "0"} draggable={false}
                 style={{ flex: "none", width: sz + 18, textDecoration: "none", textAlign: "center", color: on ? C.brand : C.ink }}>
-                <img src={`/cats/cat-${String(i + 1).padStart(2, "0")}.png`} alt={cat} loading="lazy" draggable={false}
+                <img src={it.img} alt={it.label} loading="lazy" draggable={false}
                   style={{ width: sz, height: sz, borderRadius: "50%", background: on ? C.tint : "#fff", border: on ? `2px solid ${C.brand}` : `1px solid ${C.line}`, objectFit: "cover", display: "block", margin: "0 auto", boxSizing: "border-box" }} />
-                <div style={{ fontSize: small ? 10.5 : 11.5, fontWeight: on ? 800 : 600, marginTop: 4, lineHeight: 1.25 }}>{cat}</div>
+                <div style={{ fontSize: small ? 10.5 : 11.5, fontWeight: on ? 800 : 600, marginTop: 4, lineHeight: 1.25 }}>{it.label}</div>
               </Link>
             );
           })}

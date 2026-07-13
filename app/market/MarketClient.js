@@ -88,14 +88,14 @@ function MasonryCard({ p, idx, router, hold }) {
   );
 }
 
-export default function MarketClient({ products, loggedIn, extraBrands = [], catBar = null, hideCat = false, searchCat = "" }) { // SEO-5c
-  const BRANDS = useMemo(() => Array.from(new Set([...ALL_BRANDS, ...extraBrands])).sort((a, b) => a.localeCompare(b)), [extraBrands]); // BRAND-ADM
+export default function MarketClient({ products, loggedIn, extraBrands = [], catBar = null, hideCat = false, searchCat = "", basePath = null }) { // SEO-5c · REEL-1FIX2: basePath = เส้นทางฐานตัวกรอง (หน้า sub ส่งมา)
+  const BRANDS = useMemo(() => Array.from(new Set([...ALL_BRANDS, ...extraBrands])).sort((a, b) => { const x = a.toLowerCase(), y = b.toLowerCase(); return x < y ? -1 : x > y ? 1 : 0; }), [extraBrands]); // BRAND-ADM · REEL-1FIX: เรียงแบบคงที่ทุกเครื่อง — localeCompare เดิมให้ผล server/browser ต่างกัน = hydration error
   const router = useRouter();
   const [q, setQ] = useState("");
   const [sr, setSr] = useState(null);      // SEARCH-1: ผลค้นทั้งระบบ (null = ยังไม่ค้น)
   const [srBusy, setSrBusy] = useState(false); // SEARCH-1: กำลังค้น
   // W5.9: หมวดหมู่แบบเส้นทาง (catPath = [] คือทั้งหมด) + modal ไล่ชั้นแบบ prototype — แทน mainCat/subCat 2 ชั้นเดิม
-  const MINP = hideCat && searchCat ? [searchCat] : []; // SEO-5f: ฐานหมวดที่ถอยต่ำกว่านี้ไม่ได้
+  const MINP = basePath || (hideCat && searchCat ? [searchCat] : []); // SEO-5f · REEL-1FIX2: ฐานหมวดที่ถอยต่ำกว่านี้ไม่ได้
   const [catPath, setCatPath] = useState(MINP);
   const [catOpen, setCatOpen] = useState(false);
   const [mPath, setMPath] = useState([]);

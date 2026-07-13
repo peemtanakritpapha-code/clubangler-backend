@@ -3,6 +3,7 @@
 // AI ที่เข้ามาอ่านเว็บ (ChatGPT / Claude / Perplexity / Gemini) ใช้ไฟล์นี้เข้าใจภาพรวมทั้งเว็บใน 1 หน้า
 // เนื้อหา generate จาก CAT_MAINS — เพิ่มหมวดในระบบแล้วไฟล์นี้อัปเดตเอง ไม่ต้องแก้มือ
 import { CAT_MAINS } from "@/lib/catalog";
+import { REEL_CAT, REEL_SUBS } from "@/lib/reelSubs"; // REEL-3
 
 export const revalidate = 86400; // เนื้อหาเปลี่ยนช้า — cache วันละครั้งพอ
 
@@ -29,6 +30,7 @@ export async function GET() {
     "",
     "## หมวดหมู่สินค้า",
     ...cats.map(c => `- [${c} มือสอง](${BASE}/market/${encodeURIComponent(c)}): ประกาศขาย${c} มือสองและมือหนึ่ง ระบุเกรดสภาพทุกชิ้น`),
+    ...REEL_SUBS.map(r => `- [${r.label} มือสอง](${BASE}/market/${encodeURIComponent(REEL_CAT)}/${encodeURIComponent(r.slug)}): ประกาศขาย${r.label} มือสองและมือหนึ่ง ระบุเกรดสภาพทุกชิ้น`), // REEL-3
     "",
     "## กติกาและความปลอดภัย",
     `- [เงื่อนไขการใช้งาน](${BASE}/terms)`,

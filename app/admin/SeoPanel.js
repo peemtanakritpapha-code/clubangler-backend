@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { Globe } from "lucide-react";
 import { CAT_MAINS } from "@/lib/catalog";
+import { REEL_CAT, REEL_SUBS } from "@/lib/reelSubs"; // REEL-3
 
 const C = { brand: "#0E7E8C", brandTint: "#E7F2F3", ink: "#17181A", muted: "#80868D", line: "#E4E2DC", bg: "#F6F5F2", ok: "#0E7E5C", warn: "#B8790A", danger: "#C24D42" };
 
@@ -13,6 +14,7 @@ const PAGE_DEFS = [
   { key: "home", name: "หน้าแรก", url: "" },
   { key: "market", name: "ตลาด", url: "/market" },
   ...CAT_MAINS.map(c => ({ key: `cat:${c}`, name: c, url: `/market/${c}` })),
+  ...REEL_SUBS.map(r => ({ key: `sub:${REEL_CAT}/${r.slug}`, name: r.label, url: `/market/${REEL_CAT}/${r.slug}` })), // REEL-3: หน้าหมวดย่อยรอก
 ];
 
 function Counter({ n, ok, warn }) {
@@ -80,7 +82,7 @@ export default function SeoPanel({ onError }) {
     setBusy(false);
   };
 
-  const isCat = cur.key.startsWith("cat:");
+  const isCat = cur.key.startsWith("cat:") || cur.key.startsWith("sub:"); // REEL-3b: หน้าหมวดย่อยรอกก็มีย่อหน้าแนะนำ
   const inp = { width: "100%", border: `1px solid ${C.line}`, borderRadius: 10, padding: "9px 12px", font: "inherit", fontSize: 13, outlineColor: C.brand, boxSizing: "border-box", background: "#fff" };
   const lbl = { fontSize: 12.5, fontWeight: 700, display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "14px 0 5px" };
 

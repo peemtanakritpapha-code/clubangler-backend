@@ -10,6 +10,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { productPath } from "@/lib/slug";
 import { CAT_MAINS } from "@/lib/catalog";
+import { REEL_CAT, REEL_SUBS } from "@/lib/reelSubs"; // REEL-3
 
 export const revalidate = 3600; // cache 1 ชั่วโมง — สินค้าใหม่โผล่ใน sitemap ภายใน 1 ชม.
 
@@ -27,6 +28,13 @@ export default async function sitemap() {
   // AEO-5: หน้าหมวดถาวร — หน่วยหลักของ SEO/AEO (ประกาศหมดอายุได้ หน้าหมวดอยู่ตลอด)
   const categoryPages = CAT_MAINS.filter(c => !c.includes("/")).map(cat => ({
     url: `${BASE}/market/${encodeURIComponent(cat)}`,
+    changeFrequency: "daily",
+    priority: 0.8,
+  }));
+
+  // REEL-3: หน้าหมวดย่อยรอก 3 หน้า — น้ำหนักเท่าหน้าหมวด
+  const reelPages = REEL_SUBS.map(r => ({
+    url: `${BASE}/market/${encodeURIComponent(REEL_CAT)}/${encodeURIComponent(r.slug)}`,
     changeFrequency: "daily",
     priority: 0.8,
   }));
@@ -70,5 +78,5 @@ export default async function sitemap() {
     // ดึงสินค้าไม่ได้ → ส่งอย่างน้อยหน้า static + หมวด (อย่าให้ sitemap ล่มทั้งไฟล์)
   }
 
-  return [...staticPages, ...categoryPages, ...productPages, ...soldPages];
+  return [...staticPages, ...categoryPages, ...reelPages, ...productPages, ...soldPages];
 }
