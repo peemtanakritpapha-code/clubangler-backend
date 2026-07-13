@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import ReturnSteps from "@/components/ReturnSteps";
-import { BarChart3, Package, ShoppingBag, Wallet, Percent, Settings, LayoutGrid, ChevronRight, CheckCircle, RotateCcw, AlertTriangle, Truck, Users, ShieldCheck, ReceiptText, Search, Flag, FileText, ShieldAlert } from "lucide-react";
+import { BarChart3, Package, ShoppingBag, Wallet, Percent, Settings, LayoutGrid, ChevronRight, CheckCircle, RotateCcw, AlertTriangle, Truck, Users, ShieldCheck, ReceiptText, Search, Flag, FileText, ShieldAlert, Globe } from "lucide-react";
 import ReportsPanel from "./ReportsPanel"; // POST3.2
 import PostsPanel from "./PostsPanel"; // POST3.3
 import BannedWordsPanel from "./BannedWordsPanel"; // AUTO1
+import SeoPanel from "./SeoPanel"; // SEO-4
 import { feeFor, netPayout } from "@/lib/fees";
 
 /* ค่าธรรมเนียม — ตารางเรทตามช่วงราคา ค้นหา/แบ่งหน้า 50 แถว/ปรับทั้งตาราง ±2% (prototype AdminFees 5437–5565) */
@@ -497,7 +498,7 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
   // AD5: เปิดแท็บตรงจาก URL (?tab=...) — รองรับลิงก์จากแจ้งเตือนแอดมิน
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
-    if (["overview", "users", "verify", "returns", "payout", "kyc", "products", "payment", "fees", "settings", "reports", "posts", "words"].includes(t)) setTab(t);
+    if (["overview", "users", "verify", "returns", "payout", "kyc", "products", "payment", "fees", "settings", "reports", "posts", "words", "seo"].includes(t)) setTab(t);
   }, []);
   const [slipUrls, setSlipUrls] = useState({});
   const [reject, setReject] = useState(null);       // orderId ที่กำลังปฏิเสธ
@@ -650,6 +651,7 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
     { k: "reports", icon: Flag, label: "รายงาน", n: reportsQ.length }, // POST3.2
     { k: "posts", icon: FileText, label: "จัดการโพสต์", n: pendingPostsQ.length }, // POST3.3
     { k: "words", icon: ShieldAlert, label: "คำต้องห้าม" }, // AUTO1
+    { k: "seo", icon: Globe, label: "SEO" }, // SEO-4
     { k: "payout", icon: Wallet, label: "โอนเงิน/คืนเงิน", n: payoutQ.length + refundQ.length },
     { k: "kyc", icon: Users, label: "ยืนยันตัวตน (KYC)", n: kycQueue.length },
     { k: "products", icon: Package, label: "จัดการสินค้า" },
@@ -791,6 +793,8 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
 
         {/* ── คำต้องห้าม (AUTO1) ── */}
         {tab === "words" && <BannedWordsPanel words={bannedWords} onError={setErr} />}
+
+        {tab === "seo" && <SeoPanel onError={setErr} />}
 
         {/* ── ค่าธรรมเนียม (A5 ก้าว 4) ── */}
         {tab === "fees" && <FeesSettings tiers={tiers} onError={setErr} />}

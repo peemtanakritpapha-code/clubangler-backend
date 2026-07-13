@@ -2,14 +2,18 @@
 import { createClient } from "@/lib/supabase/server";
 import MarketClient from "./MarketClient";
 import { getExtraBrands } from "@/lib/brands"; // BRAND-ADM
+import { getSeoPage } from "@/lib/seo"; // SEO-4
 
 export const dynamic = "force-dynamic";
 
 // SEO1: title/description เฉพาะหน้าตลาด (เดิมใช้ title กลางจาก layout ซ้ำทุกหน้า)
-export const metadata = {
-  title: "ตลาดสินค้า — ClubAngler ซื้อขายอุปกรณ์ตกปลา มือหนึ่ง/มือสอง",
-  description: "รวมคันเบ็ด รอก เหยื่อปลอม และอุปกรณ์ตกปลาทุกชนิด ซื้อขายปลอดภัยผ่านระบบเงินฝากคนกลาง (escrow)",
-};
+export async function generateMetadata() {
+  const seo = await getSeoPage("market"); // SEO-4: ค่าจากแอดมินมาก่อน ไม่มี/อ่านพลาด = fallback ค่าในโค้ด
+  return {
+    title: seo?.title || "ตลาดสินค้า — ClubAngler ซื้อขายอุปกรณ์ตกปลา มือหนึ่ง/มือสอง",
+    description: seo?.description || "รวมคันเบ็ด รอก เหยื่อปลอม และอุปกรณ์ตกปลาทุกชนิด ซื้อขายปลอดภัยผ่านระบบเงินฝากคนกลาง (escrow)",
+  };
+}
 
 export default async function MarketPage() {
   const supabase = await createClient();

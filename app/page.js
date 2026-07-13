@@ -3,8 +3,18 @@
 import { createClient } from "@/lib/supabase/server";
 import FeedClient from "./FeedClient";
 import LandingClient from "./LandingClient";
+import { getSeoPage } from "@/lib/seo"; // SEO-4
 
 export const dynamic = "force-dynamic";
+
+// SEO-4: title/description หน้าแรก อ่านจากแอดมิน (ไม่มี = ใช้ค่ากลางจาก layout เหมือนเดิม)
+export async function generateMetadata() {
+  const seo = await getSeoPage("home");
+  const out = {};
+  if (seo?.title) out.title = seo.title;
+  if (seo?.description) out.description = seo.description;
+  return out;
+}
 
 export default async function FeedPage() {
   const supabase = await createClient();
