@@ -348,7 +348,7 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
             </div>
           )}
 
-          {catBar}
+          {q.trim() ? null : catBar}{/* SEO-5g: พิมพ์ค้นหา = แถบหมวดหลบ */}
           <div style={{ padding: "8px 14px 6px" }}>
             <span style={{ fontSize: 11.5, color: C.muted }}>
               {catPath.length > 0 && <span style={{ color: C.brand, fontWeight: 700 }}>{catPath.join(" › ")} · </span>}
