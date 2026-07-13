@@ -46,3 +46,4 @@ clubangler-src.zip
 !public/*.txt
 backups/
 restore-imgs/
+!app/llms.txt/
