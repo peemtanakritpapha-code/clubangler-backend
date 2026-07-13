@@ -372,7 +372,7 @@ function PostCard({ p, user, liked0, following0, onNeedLogin, blocks, onBlock })
       {(() => { // W5.6b: โพสต์หลายรูป — โพสต์เก่ามีแต่ image_url ก็ยังแสดงได้
         const pics = pImgs; // POST1: ใช้ state เพื่อสะท้อนการแก้ไขทันที
         if (!pics.length) return null;
-        if (pics.length === 1) return <img src={pics[0]} alt="" style={{ width: "100%", borderRadius: 12, marginTop: 10, border: `1px solid ${C.line}` }} />;
+        if (pics.length === 1) return <a href={pics[0]} target="_blank" rel="noreferrer" style={{ display: "block", marginTop: 10 }}><img src={pics[0]} alt="" style={{ width: "100%", maxHeight: 480, objectFit: "cover", borderRadius: 12, border: `1px solid ${C.line}`, display: "block" }} /></a>; // FEED-IMG
         return (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 10 }}>
             {pics.map((u, i) => (
