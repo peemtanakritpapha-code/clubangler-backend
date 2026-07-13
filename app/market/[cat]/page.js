@@ -63,15 +63,15 @@ export default async function CategoryPage({ params }) {
       <div style={hero ? { backgroundImage: `linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,.5)), url(${hero})` /* SEO-5j */, backgroundSize: "cover", backgroundPosition: "center", borderBottom: "1px solid #E5E9EA" } : undefined}>
       {/* SEO-5d: ปุ่มกลับตลาด (แทนสไลด์หมวด) */}
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "10px 16px 0" }}>
-        <Link href="/market" style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 13, fontWeight: 700, color: hero ? "#fff" : "#0E7E8C", textDecoration: "none", background: hero ? "rgba(0,0,0,.35)" : "#E3F1F3", padding: "6px 13px 6px 8px", borderRadius: 999 }}>
+        <Link href="/market" style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: "clamp(11px, 2.9vw, 13px)", fontWeight: 700, color: "#fff", textDecoration: "none", background: "#0E7E8C", padding: "6px 13px 6px 8px", borderRadius: 999 }}>{/* SEO-5k */}
           <ChevronLeft size={16} />กลับสู่หน้าตลาด
         </Link>
       </div>
       {/* h1 + ย่อหน้าแนะนำ (จากแท็บ SEO) = เนื้อหาที่ทำให้หน้าหมวดติดอันดับ — intro มาจากแอดมินเท่านั้น (เขียนได้เฉพาะ service key) จึงปลอดภัยพอสำหรับ dangerouslySetInnerHTML */}
       <section style={{ maxWidth: 1200, margin: "0 auto", padding: hero ? "8px 16px 12px" : "18px 16px 0" }}>
-        <h1 style={{ fontSize: 20, fontWeight: 800, color: hero ? "#fff" : "#101314", margin: 0, textShadow: hero ? "0 1px 6px rgba(0,0,0,.45)" : "none" }}>{cat} มือสอง และมือหนึ่ง</h1>
+        <h1 style={{ fontSize: "clamp(14px, 3.6vw, 20px)", fontWeight: 800, color: hero ? "#fff" : "#101314", margin: 0, textShadow: hero ? "0 1px 6px rgba(0,0,0,.45)" : "none" }}>{cat} มือสอง และมือหนึ่ง</h1>
         {seo?.intro_html ? (
-          <div style={{ fontSize: 13, color: hero ? "rgba(255,255,255,.94)" : "#6B7678", lineHeight: 1.45, marginTop: 4, maxWidth: 760, textShadow: hero ? "0 1px 5px rgba(0,0,0,.5)" : "none" }}
+          <div style={{ fontSize: "clamp(10px, 2.6vw, 13px)", color: hero ? "rgba(255,255,255,.94)" : "#6B7678", lineHeight: 1.45, marginTop: 4, maxWidth: 760, textShadow: hero ? "0 1px 5px rgba(0,0,0,.5)" : "none" }}
             dangerouslySetInnerHTML={{ __html: seo.intro_html }} />
         ) : null}
       </section>
