@@ -1,6 +1,8 @@
 // app/market/[cat]/page.js — SEO-5: หน้าหมวดหมู่ (ตัวคูณ SEO — 13 หน้า landing ให้ Google เก็บ)
 // URL: /market/รอกตกปลา ฯลฯ · หมวดไม่มีจริง → 404 · title/description/ย่อหน้าแนะนำ อ่านจาก seo_pages (แก้ได้ในแท็บ SEO)
 import { notFound } from "next/navigation";
+import fs from "fs"; // SEO-5h
+import path from "path"; // SEO-5h
 import { createClient } from "@/lib/supabase/server";
 import { CAT_MAINS } from "@/lib/catalog";
 import { getSeoPage } from "@/lib/seo";
@@ -51,8 +53,14 @@ export default async function CategoryPage({ params }) {
   const rows = (products || []).map(p => ({ ...p, seller: sellerMap[p.seller_id] || null }));
   const extraBrands = await getExtraBrands(supabase);
 
+  // SEO-5h: ภาพพื้นหลังหัวหมวด — วางไฟล์ public/cats/cat-hero-XX.jpg (XX = เลขหมวด) แล้วขึ้นเอง
+  const heroFile = `cat-hero-${String(CAT_MAINS.indexOf(cat) + 1).padStart(2, "0")}.jpg`;
+  const hero = fs.existsSync(path.join(process.cwd(), "public", "cats", heroFile)) ? `/cats/${heroFile}` : null;
+
   return (
     <>
+      {/* SEO-5h: ผืนภาพหัวหมวด + ม่านขาวไล่เฉดให้อ่านชัด */}
+      <div style={hero ? { backgroundImage: `linear-gradient(90deg, rgba(246,248,248,.95) 0%, rgba(246,248,248,.85) 45%, rgba(246,248,248,.45) 100%), url(${hero})`, backgroundSize: "cover", backgroundPosition: "center", borderBottom: "1px solid #E5E9EA" } : undefined}>
       {/* SEO-5d: ปุ่มกลับตลาด (แทนสไลด์หมวด) */}
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "12px 16px 0" }}>
         <Link href="/market" style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 13, fontWeight: 700, color: "#0E7E8C", textDecoration: "none", background: "#E3F1F3", padding: "7px 14px 7px 9px", borderRadius: 999 }}>
@@ -60,13 +68,14 @@ export default async function CategoryPage({ params }) {
         </Link>
       </div>
       {/* h1 + ย่อหน้าแนะนำ (จากแท็บ SEO) = เนื้อหาที่ทำให้หน้าหมวดติดอันดับ — intro มาจากแอดมินเท่านั้น (เขียนได้เฉพาะ service key) จึงปลอดภัยพอสำหรับ dangerouslySetInnerHTML */}
-      <section style={{ maxWidth: 1200, margin: "0 auto", padding: "18px 16px 0" }}>
+      <section style={{ maxWidth: 1200, margin: "0 auto", padding: hero ? "18px 16px 16px" : "18px 16px 0" }}>
         <h1 style={{ fontSize: 20, fontWeight: 800, color: "#101314", margin: 0 }}>{cat} มือสอง และมือหนึ่ง</h1>
         {seo?.intro_html ? (
           <div style={{ fontSize: 13, color: "#6B7678", lineHeight: 1.7, marginTop: 6, maxWidth: 760 }}
             dangerouslySetInnerHTML={{ __html: seo.intro_html }} />
         ) : null}
       </section>
+      </div>
       <MarketClient products={rows} loggedIn={!!user} extraBrands={extraBrands} hideCat searchCat={cat} />
     </>
   );
