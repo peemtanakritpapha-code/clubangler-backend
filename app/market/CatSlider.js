@@ -35,17 +35,24 @@ export default function CatSlider({ active = "", title = "", auto = false }) { /
     };
   }, []);
 
-  // SEO-5e: วิ่งเองช้าๆ วนลูป (~30px/วิ) — แตะ/ลาก/ชี้เมาส์ = หยุด ปล่อยสักพักค่อยวิ่งต่อ
+  // SEO-5e(v3): วิ่งเองช้าๆ วนลูป — ความเร็วอิงเวลา (20px/วิ เท่ากันทุกเครื่อง ไม่อิงเฟรมเรต)
+  // ตำแหน่งเก็บเป็นทศนิยมเอง กัน WebView ปัดเศษจนไม่ขยับ · แตะ/ลาก/ชี้เมาส์ = หยุด ปล่อยสักพักวิ่งต่อ
   useEffect(() => {
     if (!auto) return;
     if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const el = ref.current; if (!el) return;
-    let raf, resumeT = null, paused = false;
-    const step = () => {
+    const SPEED = 20;
+    let raf, resumeT = null, paused = false, pos = el.scrollLeft, last = null;
+    const step = (t) => {
+      if (last === null) last = t;
+      const dt = Math.min((t - last) / 1000, 0.1); last = t;
       if (!paused) {
-        el.scrollLeft += 0.5;
+        pos += SPEED * dt;
         const half = el.scrollWidth / 2;
-        if (half > 0 && el.scrollLeft >= half) el.scrollLeft -= half; // วนลูปเนียนด้วยรายการชุดที่สอง
+        if (half > 0 && pos >= half) pos -= half;
+        el.scrollLeft = pos;
+      } else {
+        pos = el.scrollLeft; // ผู้ใช้เลื่อนเอง = จำตำแหน่งล่าสุดไว้วิ่งต่อจากตรงนั้น
       }
       raf = requestAnimationFrame(step);
     };
