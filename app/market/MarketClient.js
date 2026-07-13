@@ -92,6 +92,8 @@ export default function MarketClient({ products, loggedIn, extraBrands = [] }) {
   const BRANDS = useMemo(() => Array.from(new Set([...ALL_BRANDS, ...extraBrands])).sort((a, b) => a.localeCompare(b)), [extraBrands]); // BRAND-ADM
   const router = useRouter();
   const [q, setQ] = useState("");
+  const [sr, setSr] = useState(null);      // SEARCH-1: ผลค้นทั้งระบบ (null = ยังไม่ค้น)
+  const [srBusy, setSrBusy] = useState(false); // SEARCH-1: กำลังค้น
   // W5.9: หมวดหมู่แบบเส้นทาง (catPath = [] คือทั้งหมด) + modal ไล่ชั้นแบบ prototype — แทน mainCat/subCat 2 ชั้นเดิม
   const [catPath, setCatPath] = useState([]);
   const [catOpen, setCatOpen] = useState(false);
@@ -112,6 +114,29 @@ export default function MarketClient({ products, loggedIn, extraBrands = [] }) {
     (priceMin || priceMax ? 1 : 0) + (cond !== "ทั้งหมด" ? 1 : 0) + (brand !== "ทั้งหมด" ? 1 : 0) + (sortBy !== "ล่าสุด" ? 1 : 0);
   const resetFilters = () => { setPriceMin(""); setPriceMax(""); setCond("ทั้งหมด"); setCondGrade("ทั้งหมด"); setBrand("ทั้งหมด"); setBrandQ(""); setSortBy("ล่าสุด"); };
   const goSell = () => router.push(loggedIn ? "/sell" : "/login");
+  // SEARCH-1: หยุดพิมพ์ 0.5 วิ (>=2 ตัวอักษร) = ค้นทั้งระบบผ่าน API · หยุดรวม ~3 วิ = จดคำค้นจริงลง log
+  useEffect(() => {
+    const s = q.trim();
+    if (s.length < 2) { setSr(null); setSrBusy(false); return; }
+    setSrBusy(true);
+    let dead = false, logT = null;
+    const t = setTimeout(async () => {
+      let count = 0;
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(s)}`);
+        const data = await res.json();
+        if (dead) return;
+        setSr(Array.isArray(data.items) ? data.items : []);
+        count = Number.isFinite(Number(data.count)) ? Number(data.count) : 0;
+      } catch { if (!dead) setSr([]); }
+      if (dead) return;
+      setSrBusy(false);
+      logT = setTimeout(() => {
+        fetch("/api/search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ q: s, results: count }) }).catch(() => {});
+      }, 2500);
+    }, 500);
+    return () => { dead = true; clearTimeout(t); if (logT) clearTimeout(logT); };
+  }, [q]);
 
   // responsive: <640→2 / <1024→3 / กว้าง→4 คอลัมน์
   useEffect(() => {
@@ -134,14 +159,14 @@ export default function MarketClient({ products, loggedIn, extraBrands = [] }) {
   const openCatModal = () => { setMPath(catPath.length ? catPath.slice(0, -1) : []); setCatModalQ(""); setCatOpen(true); };
 
   const list = useMemo(() => {
-    let l = products;
+    let l = sr ?? products; // SEARCH-1: ผลค้นทั้งระบบมาแทน (ตัวกรองอื่นยังกรองทับต่อ)
     if (catPath.length) {
       l = l.filter(p => p.cat_main === catPath[0]);
       const sub = catPath.slice(1).join(" › ");
       if (sub) l = l.filter(p => (p.cat_sub || "") === sub || (p.cat_sub || "").startsWith(sub + " › "));
     }
     const s = q.trim().toLowerCase();
-    if (s) l = l.filter(p => `${p.name} ${p.brand || ""} ${p.location || ""} ${p.seller?.name || ""}`.toLowerCase().includes(s));
+    if (s && sr === null) l = l.filter(p => `${p.name} ${p.brand || ""} ${p.location || ""} ${p.seller?.name || ""}`.toLowerCase().includes(s));
     // ฟิลเตอร์ชีต (prototype บรรทัด 934–942)
     if (priceMin) l = l.filter(p => Number(p.price) >= Number(priceMin));
     if (priceMax) l = l.filter(p => Number(p.price) <= Number(priceMax));
@@ -155,7 +180,7 @@ export default function MarketClient({ products, loggedIn, extraBrands = [] }) {
     if (sortBy === "priceDesc") l = [...l].sort((a, b) => b.price - a.price);
     // ขายแล้วจมท้ายเสมอ (stable sort — prototype บรรทัด 944)
     return [...l].sort((a, b) => (a.status === "sold" ? 1 : 0) - (b.status === "sold" ? 1 : 0));
-  }, [products, q, catPath, priceMin, priceMax, cond, condGrade, brand, sortBy]);
+  }, [products, sr, q, catPath, priceMin, priceMax, cond, condGrade, brand, sortBy]);
 
   // ST1 6b: ป้ายมีคนกำลังซื้อ — poll เฉพาะที่แสดง ทุก 20 วิ หยุดเมื่อแท็บถูกซ่อน
   useEffect(() => {
@@ -325,7 +350,7 @@ export default function MarketClient({ products, loggedIn, extraBrands = [] }) {
           <div style={{ padding: "8px 14px 6px" }}>
             <span style={{ fontSize: 11.5, color: C.muted }}>
               {catPath.length > 0 && <span style={{ color: C.brand, fontWeight: 700 }}>{catPath.join(" › ")} · </span>}
-              พบ {list.length} รายการ
+              {srBusy ? "กำลังค้นหา... · " : ""}พบ {list.length} รายการ
             </span>
           </div>
 
