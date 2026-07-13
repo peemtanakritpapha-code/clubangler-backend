@@ -8,6 +8,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { pingIndexNow } from "@/lib/indexnow"; // AEO-4
+import { productPath } from "@/lib/slug"; // AEO-4 (Iron 22)
 import { checkContent, filterMessage } from "@/lib/contentFilter";
 import { catPathValid, COND_GRADES, ALL_BRANDS } from "@/lib/catalog";
 import { PREORDER_MAX_DAYS } from "@/lib/preorder"; // PRE-1
@@ -128,13 +130,15 @@ export async function POST(req) {
     status,
   };
 
-  const { error } = current
-    ? await admin.from("products").update(row).eq("id", current.id).eq("seller_id", user.id)
-    : await admin.from("products").insert({ seller_id: user.id, ...row });
+  const { data: saved, error } = current
+    ? await admin.from("products").update(row).eq("id", current.id).eq("seller_id", user.id).select("id").maybeSingle()
+    : await admin.from("products").insert({ seller_id: user.id, ...row }).select("id").maybeSingle();
   if (error) {
     console.error("products/save:", error);
     return bad("บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง", 500);
   }
 
+  // AEO-4: บอก search engine ทันทีว่ามี URL เกิด/เปลี่ยน (fire-and-forget — ห้าม await)
+  if (status === "active" && saved?.id) pingIndexNow([productPath({ id: saved.id, name }), "/market"]);
   return NextResponse.json({ ok: true, status, needsReview });
 }

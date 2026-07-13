@@ -5,6 +5,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { pingIndexNow } from "@/lib/indexnow"; // AEO-4
+import { productPath } from "@/lib/slug"; // AEO-4 (Iron 22)
 
 const bad = (msg, status = 400) => NextResponse.json({ error: msg }, { status });
 
@@ -24,7 +26,7 @@ export async function POST(req) {
   if (!id || !["active", "sold"].includes(status)) return bad("คำขอไม่ถูกต้อง");
 
   const { data: prod } = await admin.from("products")
-    .select("id, seller_id, status, stock").eq("id", id).single();
+    .select("id, seller_id, status, stock, name").eq("id", id).single();
   if (!prod || prod.seller_id !== user.id) return bad("ไม่พบสินค้า หรือไม่ใช่สินค้าของคุณ", 403);
 
   // สลับได้เฉพาะระหว่าง active ↔ sold — สถานะอื่น (suspended/review/pending) แตะไม่ได้
@@ -43,5 +45,7 @@ export async function POST(req) {
     return bad("อัปเดตไม่สำเร็จ ลองใหม่อีกครั้ง", 500);
   }
 
+  // AEO-4: sold ↔ active = availability เปลี่ยน — ping ให้ index อัปเดตตาม
+  pingIndexNow([productPath({ id, name: prod.name })]);
   return NextResponse.json({ ok: true, status });
 }

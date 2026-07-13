@@ -4,6 +4,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { pingIndexNow } from "@/lib/indexnow"; // AEO-4
+import { productPath } from "@/lib/slug"; // AEO-4 (Iron 22)
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -17,10 +19,11 @@ async function requireAdmin() {
 // ตัดสต็อก / ปิดเป็น sold เมื่อหมด (เหมือนเดิม แยกเป็นฟังก์ชันเพราะใช้หลายออเดอร์)
 async function consumeStock(admin, productId) {
   if (!productId) return;
-  const { data: p } = await admin.from("products").select("stock").eq("id", productId).single();
+  const { data: p } = await admin.from("products").select("stock, name").eq("id", productId).single();
   if (!p) return;
   const left = Math.max(0, (p.stock || 1) - 1);
   await admin.from("products").update({ stock: left, ...(left === 0 ? { status: "sold" } : {}) }).eq("id", productId);
+  if (left === 0) pingIndexNow([productPath({ id: productId, name: p.name })]); // AEO-4: หน้ากลายเป็น SOLD
 }
 
 export async function POST(req) {
