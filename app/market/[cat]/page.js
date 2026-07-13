@@ -6,7 +6,8 @@ import { CAT_MAINS } from "@/lib/catalog";
 import { getSeoPage } from "@/lib/seo";
 import { getExtraBrands } from "@/lib/brands";
 import MarketClient from "../MarketClient";
-import CatSlider from "../CatSlider"; // SEO-5c
+import Link from "next/link"; // SEO-5d
+import { ChevronLeft } from "lucide-react"; // SEO-5d
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +53,12 @@ export default async function CategoryPage({ params }) {
 
   return (
     <>
-      <CatSlider active={cat} />
+      {/* SEO-5d: ปุ่มกลับตลาด (แทนสไลด์หมวด) */}
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "12px 16px 0" }}>
+        <Link href="/market" style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 13, fontWeight: 700, color: "#0E7E8C", textDecoration: "none", background: "#E3F1F3", padding: "7px 14px 7px 9px", borderRadius: 999 }}>
+          <ChevronLeft size={16} />กลับสู่หน้าตลาด
+        </Link>
+      </div>
       {/* h1 + ย่อหน้าแนะนำ (จากแท็บ SEO) = เนื้อหาที่ทำให้หน้าหมวดติดอันดับ — intro มาจากแอดมินเท่านั้น (เขียนได้เฉพาะ service key) จึงปลอดภัยพอสำหรับ dangerouslySetInnerHTML */}
       <section style={{ maxWidth: 1200, margin: "0 auto", padding: "18px 16px 0" }}>
         <h1 style={{ fontSize: 20, fontWeight: 800, color: "#101314", margin: 0 }}>{cat} มือสอง และมือหนึ่ง</h1>

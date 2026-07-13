@@ -336,7 +336,7 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
           </div>
 
           {/* ชิปหมวดหลัก (มือถือเท่านั้น — desktop ใช้ sidebar) */}
-          <div className="mkt-mobile" style={{ padding: "0 14px", display: hideCat ? "none" : "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+          <div className="mkt-mobile" style={{ padding: "0 14px", display: "none", gap: 8, overflowX: "auto", paddingBottom: 2 }}>{/* SEO-5d: สไลด์รูปแทนชิปแล้ว */}
             {mains.map(t => <div key={t} onClick={() => selectMain(t)} style={chip(t === "ทั้งหมด" ? catPath.length === 0 : catPath[0] === t, false)}>{t}</div>)}
           </div>
 

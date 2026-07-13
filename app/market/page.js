@@ -38,7 +38,7 @@ export default async function MarketPage() {
   const extraBrands = await getExtraBrands(supabase); // BRAND-ADM
   return (
     <>
-      <MarketClient products={rows} loggedIn={!!user} extraBrands={extraBrands} catBar={<CatSlider title="ช้อปตามหมวดหมู่" />} />
+      <MarketClient products={rows} loggedIn={!!user} extraBrands={extraBrands} catBar={<CatSlider title="ช้อปตามหมวดหมู่" auto />} />
       {/* SEO-5: ลิงก์หมวดจริงท้ายหน้า — ผู้ใช้กดเข้าหมวดได้ + Google เดินตามลิงก์ไปเก็บหน้าหมวด */}
     </>
   );

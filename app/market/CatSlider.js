@@ -8,7 +8,7 @@ import { CAT_MAINS } from "@/lib/catalog";
 
 const C = { brand: "#0E7E8C", tint: "#E3F1F3", ink: "#101314", line: "#EDF0F0" };
 
-export default function CatSlider({ active = "", title = "" }) {
+export default function CatSlider({ active = "", title = "", auto = false }) { // SEO-5e: auto = วิ่งเองช้าๆ
   const ref = useRef(null);
   const [small, setSmall] = useState(true); // มือถือวง 58 / คอม 72
 
@@ -35,6 +35,34 @@ export default function CatSlider({ active = "", title = "" }) {
     };
   }, []);
 
+  // SEO-5e: วิ่งเองช้าๆ วนลูป (~30px/วิ) — แตะ/ลาก/ชี้เมาส์ = หยุด ปล่อยสักพักค่อยวิ่งต่อ
+  useEffect(() => {
+    if (!auto) return;
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const el = ref.current; if (!el) return;
+    let raf, resumeT = null, paused = false;
+    const step = () => {
+      if (!paused) {
+        el.scrollLeft += 0.5;
+        const half = el.scrollWidth / 2;
+        if (half > 0 && el.scrollLeft >= half) el.scrollLeft -= half; // วนลูปเนียนด้วยรายการชุดที่สอง
+      }
+      raf = requestAnimationFrame(step);
+    };
+    const hold = (ms) => { paused = true; if (resumeT) clearTimeout(resumeT); resumeT = setTimeout(() => { paused = false; }, ms); };
+    const onEnter = () => { paused = true; if (resumeT) clearTimeout(resumeT); };
+    const onLeave = () => hold(1200);
+    const onTouch = () => hold(3500);
+    el.addEventListener("mouseenter", onEnter); el.addEventListener("mouseleave", onLeave);
+    el.addEventListener("touchstart", onTouch, { passive: true }); el.addEventListener("wheel", onTouch, { passive: true });
+    raf = requestAnimationFrame(step);
+    return () => {
+      cancelAnimationFrame(raf); if (resumeT) clearTimeout(resumeT);
+      el.removeEventListener("mouseenter", onEnter); el.removeEventListener("mouseleave", onLeave);
+      el.removeEventListener("touchstart", onTouch); el.removeEventListener("wheel", onTouch);
+    };
+  }, [auto]);
+
   // เปิดหน้าหมวด = เลื่อนให้วงหมวดนั้นโผล่พอดีตา
   useEffect(() => {
     const el = ref.current; if (!el || !active) return;
@@ -51,10 +79,11 @@ export default function CatSlider({ active = "", title = "" }) {
         </div>
       ) : null}
       <div ref={ref} className="cat-slider" style={{ display: "flex", gap: 4, overflowX: "auto", padding: "6px 10px 10px", cursor: "grab", WebkitOverflowScrolling: "touch" }}>
-        {CAT_MAINS.map((cat, i) => {
+        {(auto ? [...CAT_MAINS, ...CAT_MAINS] : CAT_MAINS).map((cat, idx) => {
+          const i = idx % CAT_MAINS.length;
           const on = cat === active;
           return (
-            <Link key={cat} href={`/market/${encodeURIComponent(cat)}`} data-active={on ? "1" : "0"} draggable={false}
+            <Link key={`${cat}-${idx}`} href={`/market/${encodeURIComponent(cat)}`} data-active={on ? "1" : "0"} draggable={false}
               style={{ flex: "none", width: sz + 18, textDecoration: "none", textAlign: "center", color: on ? C.brand : C.ink }}>
               <img src={`/cats/cat-${String(i + 1).padStart(2, "0")}.png`} alt={cat} loading="lazy" draggable={false}
                 style={{ width: sz, height: sz, borderRadius: "50%", background: on ? C.tint : "#fff", border: on ? `2px solid ${C.brand}` : `1px solid ${C.line}`, objectFit: "cover", display: "block", margin: "0 auto", boxSizing: "border-box" }} />
