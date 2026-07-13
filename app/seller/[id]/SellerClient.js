@@ -50,7 +50,7 @@ export default function SellerClient({ seller: s, products, posts, followers: fo
     setUploading(kind);
     try {
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-      const path = `${me.id}/${kind}-${Date.now()}.${ext}`;
+      const path = `profile/${me.id}/${kind}-${Date.now()}.${ext}`; // STORE-SPLIT
       const { error: upErr } = await supabase.storage.from("products").upload(path, file);
       if (upErr) throw upErr;
       const url = supabase.storage.from("products").getPublicUrl(path).data.publicUrl;

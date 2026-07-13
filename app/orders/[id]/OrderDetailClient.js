@@ -116,7 +116,7 @@ function DisputeModal({ order, userId, onClose, onDone }) {
       const urls = [];
       for (const f of dF.files) {
         const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
-        const path = `${userId}/dispute-${order.order_no}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
+        const path = `order-evidence/${userId}/dispute-${order.order_no}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`; // STORE-SPLIT
         const { error } = await supabase.storage.from("products").upload(path, f);
         if (error) throw error;
         urls.push(supabase.storage.from("products").getPublicUrl(path).data.publicUrl);
@@ -243,7 +243,7 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
     const urls = [];
     for (const f of files.slice(0, 5)) {
       const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
-      const path = `${userId}/${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
+      const path = `order-evidence/${userId}/${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`; // STORE-SPLIT
       const { error } = await supabase.storage.from("products").upload(path, f);
       if (error) throw error;
       urls.push(supabase.storage.from("products").getPublicUrl(path).data.publicUrl);

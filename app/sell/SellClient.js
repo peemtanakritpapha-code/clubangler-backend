@@ -208,7 +208,7 @@ export default function SellClient({ userId, tiers, editProduct = null, aiEnable
       for (const it of imgs) {
         if (it.k === "old") { allImgs.push(it.url); continue; }
         const ext = (it.file.name.split(".").pop() || "jpg").toLowerCase();
-        const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const path = `product-imgs/${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`; // STORE-SPLIT
         const { error } = await supabase.storage.from("products").upload(path, it.file, { cacheControl: "3600" });
         if (error) throw error;
         allImgs.push(supabase.storage.from("products").getPublicUrl(path).data.publicUrl);

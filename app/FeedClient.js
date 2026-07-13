@@ -58,7 +58,7 @@ function Composer({ user, myProducts, onPosted }) {
       const imgUrls = [];
       for (const file of files) {
         const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-        const path = `${user.id}/post-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
+        const path = `post-imgs/${user.id}/post-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`; // STORE-SPLIT
         const { error } = await supabase.storage.from("products").upload(path, file);
         if (error) throw error;
         imgUrls.push(supabase.storage.from("products").getPublicUrl(path).data.publicUrl);
