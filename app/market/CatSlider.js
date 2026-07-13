@@ -6,7 +6,7 @@
 // - กลไก v6 คงเดิมทั้งหมด: วิ่งเอง 20px/วิ เท่ากันทุกเครื่อง · ใบพ้นจอซ้ายถูกยกไปต่อท้าย
 //   · มือแตะ = หยุดส่งให้ native scroll · ปล่อยสักพักม้วนกลับต้นแล้ววิ่งต่อ · เคารพ prefers-reduced-motion
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CAT_MAINS } from "@/lib/catalog";
 import { REEL_CAT, REEL_SUBS } from "@/lib/reelSubs";
 
@@ -28,6 +28,8 @@ const CARDS = (() => {
   return [...mains.slice(0, at), ...reels, ...mains.slice(at)];
 })();
 const N = CARDS.length;
+// v7.1: งาน DOM ที่ต้องเสร็จ "ก่อนจอวาด" — บนเซิร์ฟเวอร์ถอยไป useEffect กัน warning
+const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 export default function CatSlider({ active = "", title = "", auto = false }) {
   const boxRef = useRef(null);   // กรอบเลื่อน (native scroll ของนิ้ว)
@@ -88,13 +90,23 @@ export default function CatSlider({ active = "", title = "", auto = false }) {
     };
   }, [auto]);
 
-  // เครื่องยนต์สายพาน: ขยับรางไปซ้าย 1 ใบด้วยความเร็วคงที่ → ยกใบแรกไปต่อท้าย → ทำซ้ำ
-  useEffect(() => {
+  // เครื่องยนต์สายพาน v7.1: ทุกงานขยับราง/สลับการ์ดเกิด "ก่อนจอวาด" (useLayoutEffect)
+  // - ครบ 1 ใบ: setK ใน transitionend → React commit ใหม่ → effect นี้ reset รางก่อน paint = ภาพต่อเนื่องเป๊ะ (แก้กระตุกเดิม)
+  // - ผู้ใช้เลื่อนค้าง: ไม่ม้วนกลับหัวแถวแล้ว — ดูดซับใบเต็มเข้า k + หักออกจาก scrollLeft ในเฟรมเดียว → วิ่งต่อจากจุดค้าง
+  useIsoLayoutEffect(() => {
     if (!auto) return;
     if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const el = boxRef.current, tr = trackRef.current; if (!el || !tr) return;
     if (pausedRef.current) return;
-    let cancelled = false, pollT = null;
+    let cancelled = false;
+
+    // ดูดซับระยะที่ผู้ใช้เลื่อนค้าง (ทำคู่ setK ก่อนจอวาด — ภาพเดิมเป๊ะ ไม่กระโดด)
+    const c = Math.floor(el.scrollLeft / STEP);
+    if (c > 0) {
+      el.scrollLeft = el.scrollLeft - c * STEP;
+      setK(v => (v + c) % N); // effect รอบใหม่จะ run ต่อเองจากเศษที่เหลือ
+      return;
+    }
 
     const run = () => {
       if (cancelled || pausedRef.current) return;
@@ -105,21 +117,13 @@ export default function CatSlider({ active = "", title = "", auto = false }) {
     };
     const onEnd = (e) => {
       if (e.propertyName !== "transform" || cancelled || pausedRef.current) return;
-      setK(v => (v + 1) % N); // หมุนสายพาน 1 ใบ — effect รอบใหม่จะ run ต่อเอง
+      setK(v => (v + 1) % N); // หมุนสายพาน 1 ใบ — effect รอบใหม่ reset รางก่อนจอวาด
     };
     tr.addEventListener("transitionend", onEnd);
-
-    // ถ้ามือคนเพิ่งเลื่อนค้างไว้ ม้วนกลับต้นนุ่มๆ ก่อนแล้วค่อยวิ่ง
-    if (el.scrollLeft > 1) {
-      el.scrollTo({ left: 0, behavior: "smooth" });
-      pollT = setInterval(() => {
-        if (cancelled || pausedRef.current) { clearInterval(pollT); return; }
-        if (el.scrollLeft <= 1) { clearInterval(pollT); run(); }
-      }, 80);
-    } else run();
+    run();
 
     return () => {
-      cancelled = true; if (pollT) clearInterval(pollT);
+      cancelled = true;
       tr.removeEventListener("transitionend", onEnd);
     };
   }, [auto, k, arm, STEP]);
