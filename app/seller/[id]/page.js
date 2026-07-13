@@ -6,6 +6,17 @@ import SellerClient from "./SellerClient";
 
 export const dynamic = "force-dynamic";
 
+// AEO-6: หน้าร้าน = หน้าถาวรอีกชุด (คู่กับหน้าหมวด) — ต้องมี title/description ของตัวเอง
+export async function generateMetadata({ params }) {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data: s } = await supabase.from("profiles").select("name, is_shop").eq("id", id).single();
+  if (!s) return { title: "ไม่พบร้านค้า — ClubAngler" };
+  const title = `${s.is_shop ? "ร้าน " : ""}${s.name || "ผู้ขาย"} — อุปกรณ์ตกปลามือสอง | ClubAngler`;
+  const description = `ดูสินค้าทั้งหมดจาก ${s.name || "ผู้ขาย"} บน ClubAngler ทุกออเดอร์ซื้อขายปลอดภัยผ่านระบบพักเงิน escrow`;
+  return { title, description, openGraph: { title, description, type: "profile", siteName: "ClubAngler" } };
+}
+
 export default async function SellerPage({ params }) {
   const { id } = await params;
   const supabase = await createClient();

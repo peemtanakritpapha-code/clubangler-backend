@@ -28,6 +28,19 @@ export const viewport = {
   viewportFit: "cover",
 };
 
+// AEO-6: ตัวตนแบรนด์ระดับเว็บ — AI ใช้ยืนยันว่า ClubAngler คือใคร ทำอะไร
+const siteLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    { "@type": "Organization", "@id": "https://clubangler.com/#org", name: "ClubAngler",
+      url: "https://clubangler.com", logo: "https://clubangler.com/icon-512.png",
+      description: "ตลาดกลางซื้อขายอุปกรณ์ตกปลามือสองของไทย ทุกออเดอร์ผ่านระบบพักเงิน (escrow)" },
+    { "@type": "WebSite", "@id": "https://clubangler.com/#site", name: "ClubAngler",
+      url: "https://clubangler.com", inLanguage: "th",
+      publisher: { "@id": "https://clubangler.com/#org" } },
+  ],
+};
+
 export default async function RootLayout({ children }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -54,6 +67,7 @@ export default async function RootLayout({ children }) {
   return (
     <html lang="th" className={prompt.className}>
       <body>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteLd) }} />
         <SwRegister />
         <AppShell
           user={user ? { id: user.id, name: profile?.name || user.email, isAdmin: !!profile?.is_admin, avatar: profile?.avatar_path || null } : null}

@@ -11,7 +11,7 @@ export async function generateMetadata({ params }) {
   const { id: rawId } = await params;
   const id = productIdFromParam(rawId); // SEO2: รับทั้ง /product/14 และ /product/14-ชื่อ
   const supabase = await createClient();
-  const { data: p } = await supabase.from("products").select("name, price, description, images, brand, location, cond, cond_label, cat_main, cat_sub").eq("id", id).single();
+  const { data: p } = await supabase.from("products").select("name, price, description, images, brand, location, cond, cond_label, cat_main, cat_sub, status").eq("id", id).single();
   if (!p) return { title: "ไม่พบสินค้า — ClubAngler" };
   // SEO-1: title = ชื่อ + แบรนด์(ถ้าชื่อยังไม่มี) + มือสอง(ตามสภาพจริง) + จังหวัด — คีย์เวิร์ด long-tail ที่คนค้นจริง
   //        เอาราคาออก (stale ง่าย ไม่ช่วยอันดับ — ราคายังโชว์ใน rich result ผ่าน Product schema)
@@ -35,6 +35,8 @@ export async function generateMetadata({ params }) {
   return {
     title,
     description,
+    // AEO-6: active/sold เท่านั้นที่ให้ index — review/suspended เข้าด้วย URL ตรงได้แต่ห้ามติด search
+    ...(["active", "sold"].includes(p.status) ? {} : { robots: { index: false, follow: false } }),
     alternates: { canonical: productPath({ id, name: p.name }) }, // SEO2: ชี้ URL แบบ slug เป็นตัวจริงกัน Google นับซ้ำ
     openGraph: { title, description, images, type: "website", siteName: "ClubAngler" },
     twitter: { card: "summary_large_image", title, description, images },
@@ -81,12 +83,27 @@ export default async function ProductPage({ params }) {
       priceCurrency: "THB",
       price: Number(p.price || 0),
       availability: p.status === "active" ? "https://schema.org/InStock" : "https://schema.org/SoldOut",
+      ...(seller?.name ? { seller: { "@type": seller.is_shop ? "Organization" : "Person", name: seller.name } } : {}),
     },
+  };
+
+  // AEO-6: เส้นทางหมวด — ผูกหน้าสินค้าเข้ากับหน้าหมวดถาวร (ให้บอทเข้าใจโครงเว็บ)
+  const crumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "หน้าแรก", item: "https://clubangler.com" },
+      { "@type": "ListItem", position: 2, name: "ตลาดสินค้า", item: "https://clubangler.com/market" },
+      ...(p.cat_main && !p.cat_main.includes("/")
+        ? [{ "@type": "ListItem", position: 3, name: p.cat_main, item: `https://clubangler.com/market/${encodeURIComponent(p.cat_main)}` }]
+        : []),
+    ],
   };
 
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbLd) }} />
       <ProductClient p={p} seller={seller} views={views} canBuy={canBuy} isOwner={isOwner} similar={similar || []} loggedIn={!!user} />
     </>
   );
