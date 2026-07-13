@@ -13,6 +13,7 @@ const ALLOWED = [
   "auto_confirm_days", "return_auto_confirm_days",
   "ship_within_days", "ship_extend_days", "return_ship_within_days", "extend_receive_days",
   "pay_within_minutes",
+  "ai_daily_limit", "ai_cooldown_sec", // AI-LIMIT
   "ai_notes", // AI2: ความรู้เสริมสำหรับ AI ช่วยกรอกประกาศ
 ];
 

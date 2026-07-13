@@ -77,10 +77,25 @@ export async function POST(req) {
   if (prof?.banned_at) return bad("บัญชีของคุณถูกระงับการใช้งาน", 403);
 
   // AI2: ความรู้เสริมจากแอดมิน (แท็บตั้งค่า) — ต่อท้าย prompt ทุกครั้ง มีผลทันทีไม่ต้อง deploy
-  const { data: cfg } = await admin.from("platform_config").select("ai_notes").single();
+  const { data: cfg } = await admin.from("platform_config").select("ai_notes, ai_daily_limit, ai_cooldown_sec").single();
   const aiNotes = String(cfg?.ai_notes || "").trim();
 
   if (!process.env.ANTHROPIC_API_KEY) return bad("ระบบ AI ยังไม่พร้อมใช้งาน", 503);
+
+  // AI-LIMIT: เพดานต่อวัน + คูลดาวน์ (นับย้อนหลัง 24 ชม. · ค่าปรับได้ใน platform_config)
+  const LIMIT = Number.isFinite(Number(cfg?.ai_daily_limit)) ? Number(cfg.ai_daily_limit) : 10;
+  const COOLDOWN = Number.isFinite(Number(cfg?.ai_cooldown_sec)) ? Number(cfg.ai_cooldown_sec) : 30;
+  const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+  const { data: uses } = await admin.from("ai_usage")
+    .select("used_at").eq("user_id", user.id).gte("used_at", since)
+    .order("used_at", { ascending: false });
+  if ((uses?.length ?? 0) >= LIMIT)
+    return bad(`ใช้ AI ช่วยกรอกครบโควต้าวันนี้แล้ว (${LIMIT} ครั้ง/วัน) — กรอกเองได้เลย หรือกลับมาใหม่พรุ่งนี้`, 429);
+  const lastMs = uses?.[0] ? new Date(uses[0].used_at).getTime() : 0;
+  const waitSec = Math.ceil((lastMs + COOLDOWN * 1000 - Date.now()) / 1000);
+  if (waitSec > 0)
+    return bad(`กดถี่เกินไป รออีก ${waitSec} วินาทีแล้วลองใหม่`, 429);
+  await admin.from("ai_usage").insert({ user_id: user.id }); // นับตั้งแต่ก่อนยิง — กันเงินตรงจุด
 
   const body = await req.json();
   const images = (Array.isArray(body?.images) ? body.images : []).slice(0, MAX_IMAGES);
@@ -111,14 +126,14 @@ export async function POST(req) {
     if (!resp.ok) {
       const t = await resp.text();
       console.error("[ai/draft-listing] anthropic error", resp.status, t.slice(0, 500));
-      return bad("AI ตอบกลับผิดพลาด ลองใหม่อีกครั้ง", 502);
+      return bad("AI ตอบกลับผิดพลาด ลองใหม่อีกครั้ง", 500);
     }
     const data = await resp.json();
     const text = (data.content || []).map(c => c.text || "").join("\n");
     draft = JSON.parse(text.replace(/```json|```/g, "").trim());
   } catch (e) {
     console.error("[ai/draft-listing]", e);
-    return bad("อ่านผลจาก AI ไม่สำเร็จ ลองใหม่อีกครั้ง", 502);
+    return bad("อ่านผลจาก AI ไม่สำเร็จ ลองใหม่อีกครั้ง", 500);
   }
 
   // ── AI3 ด่านขั้น 0: รูปไม่ใช่สินค้าตกปลา → 422 พร้อมเหตุผล ──
