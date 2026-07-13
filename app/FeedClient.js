@@ -1,5 +1,6 @@
 "use client";
 import { productPath } from "@/lib/slug";
+import { avatarDataUri } from "@/lib/avatar"; // AVA-1
 // app/FeedClient.js — ฟีดชุมชนตาม prototype: composer + 4 แท็บ + ไลก์/คอมเมนต์/ติดตาม + แถบข้าง (จอกว้าง)
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -22,7 +23,7 @@ const ago = t => {
 };
 const AV = ({ name, shop, src }) => (
   <span style={{ width: 40, height: 40, borderRadius: 999, flex: "none", background: shop ? C.accent : C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 14, fontWeight: 800, overflow: "hidden" }}>
-    {src ? <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (name || "?").trim().charAt(0).toUpperCase()}
+    {<img src={src || avatarDataUri(name, shop)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
   </span>
 );
 
@@ -412,7 +413,7 @@ function PostCard({ p, user, liked0, following0, onNeedLogin, blocks, onBlock })
             const rowUI = (c, isReply) => (
               <div key={c.id} style={{ display: "flex", gap: 8, marginLeft: isReply ? 34 : 0 }}>
                 <span style={{ width: isReply ? 24 : 28, height: isReply ? 24 : 28, borderRadius: 999, flex: "none", background: c.profiles?.is_shop ? C.accent : C.brand, color: "#fff", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 800, overflow: "hidden" }}>
-                  {c.profiles?.avatar_path ? <img src={c.profiles.avatar_path} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (c.profiles?.name || "?").charAt(0).toUpperCase()}
+                  {<img src={c.profiles?.avatar_path || avatarDataUri(c.profiles?.name, c.profiles?.is_shop)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                 </span>
                 <div style={{ background: "#FAFAF8", borderRadius: 10, padding: "7px 11px", flex: 1 }}>
                   <b style={{ fontSize: 11.5, color: C.ink }}>{c.profiles?.name || "ผู้ใช้"}</b>
