@@ -60,18 +60,18 @@ export default async function CategoryPage({ params }) {
   return (
     <>
       {/* SEO-5h: ผืนภาพหัวหมวด + ม่านขาวไล่เฉดให้อ่านชัด */}
-      <div style={hero ? { backgroundImage: `linear-gradient(90deg, rgba(246,248,248,.95) 0%, rgba(246,248,248,.85) 45%, rgba(246,248,248,.45) 100%), url(${hero})`, backgroundSize: "cover", backgroundPosition: "center", borderBottom: "1px solid #E5E9EA" } : undefined}>
+      <div style={hero ? { backgroundImage: `linear-gradient(rgba(0,0,0,.2), rgba(0,0,0,.2)), url(${hero})` /* SEO-5i */, backgroundSize: "cover", backgroundPosition: "center", borderBottom: "1px solid #E5E9EA" } : undefined}>
       {/* SEO-5d: ปุ่มกลับตลาด (แทนสไลด์หมวด) */}
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "12px 16px 0" }}>
-        <Link href="/market" style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 13, fontWeight: 700, color: "#0E7E8C", textDecoration: "none", background: "#E3F1F3", padding: "7px 14px 7px 9px", borderRadius: 999 }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "10px 16px 0" }}>
+        <Link href="/market" style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 13, fontWeight: 700, color: hero ? "#fff" : "#0E7E8C", textDecoration: "none", background: hero ? "rgba(0,0,0,.35)" : "#E3F1F3", padding: "6px 13px 6px 8px", borderRadius: 999 }}>
           <ChevronLeft size={16} />กลับสู่หน้าตลาด
         </Link>
       </div>
       {/* h1 + ย่อหน้าแนะนำ (จากแท็บ SEO) = เนื้อหาที่ทำให้หน้าหมวดติดอันดับ — intro มาจากแอดมินเท่านั้น (เขียนได้เฉพาะ service key) จึงปลอดภัยพอสำหรับ dangerouslySetInnerHTML */}
-      <section style={{ maxWidth: 1200, margin: "0 auto", padding: hero ? "18px 16px 16px" : "18px 16px 0" }}>
-        <h1 style={{ fontSize: 20, fontWeight: 800, color: "#101314", margin: 0 }}>{cat} มือสอง และมือหนึ่ง</h1>
+      <section style={{ maxWidth: 1200, margin: "0 auto", padding: hero ? "8px 16px 12px" : "18px 16px 0" }}>
+        <h1 style={{ fontSize: 20, fontWeight: 800, color: hero ? "#fff" : "#101314", margin: 0, textShadow: hero ? "0 1px 6px rgba(0,0,0,.45)" : "none" }}>{cat} มือสอง และมือหนึ่ง</h1>
         {seo?.intro_html ? (
-          <div style={{ fontSize: 13, color: "#6B7678", lineHeight: 1.7, marginTop: 6, maxWidth: 760 }}
+          <div style={{ fontSize: 13, color: hero ? "rgba(255,255,255,.94)" : "#6B7678", lineHeight: 1.45, marginTop: 4, maxWidth: 760, textShadow: hero ? "0 1px 5px rgba(0,0,0,.5)" : "none" }}
             dangerouslySetInnerHTML={{ __html: seo.intro_html }} />
         ) : null}
       </section>
