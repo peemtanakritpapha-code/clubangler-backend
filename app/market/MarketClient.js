@@ -88,7 +88,7 @@ function MasonryCard({ p, idx, router, hold }) {
   );
 }
 
-export default function MarketClient({ products, loggedIn, extraBrands = [] }) {
+export default function MarketClient({ products, loggedIn, extraBrands = [], catBar = null, hideCat = false, searchCat = "" }) { // SEO-5c
   const BRANDS = useMemo(() => Array.from(new Set([...ALL_BRANDS, ...extraBrands])).sort((a, b) => a.localeCompare(b)), [extraBrands]); // BRAND-ADM
   const router = useRouter();
   const [q, setQ] = useState("");
@@ -123,7 +123,7 @@ export default function MarketClient({ products, loggedIn, extraBrands = [] }) {
     const t = setTimeout(async () => {
       let count = 0;
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(s)}`);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(s)}${searchCat ? `&cat=${encodeURIComponent(searchCat)}` : ""}`);
         const data = await res.json();
         if (dead) return;
         setSr(Array.isArray(data.items) ? data.items : []);
@@ -272,8 +272,8 @@ export default function MarketClient({ products, loggedIn, extraBrands = [] }) {
 
         {/* ── Sidebar ฟิลเตอร์ (จอกว้างเท่านั้น — prototype WMarketplace บรรทัด 6331–6360) ── */}
         <aside className="mkt-side" style={{ width: 252, flex: "none", background: "#fff", borderRight: `1px solid ${C.line}`, padding: "20px 16px", position: "sticky", top: 74, maxHeight: "calc(100vh - 90px)", overflowY: "auto" }}>
-          <div style={lbl}>หมวดหมู่</div>
-          <div style={{ marginBottom: 4 }}>
+          {!hideCat && <div style={lbl}>หมวดหมู่</div>}
+          <div style={{ marginBottom: 4, display: hideCat ? "none" : "block" }}>
             <div onClick={openCatModal} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, minHeight: 42, border: `1.5px solid ${catPath.length ? C.brand : C.line}`, borderRadius: 12, padding: "8px 12px", cursor: "pointer", background: catPath.length ? C.brandTint : "#fff" }}>
               <span style={{ fontSize: 12.5, color: catPath.length ? C.brand : C.ink, fontWeight: catPath.length ? 700 : 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {catPath.length ? catPath.join(" › ") : "ทั้งหมด"}
@@ -307,7 +307,7 @@ export default function MarketClient({ products, loggedIn, extraBrands = [] }) {
           <div style={{ padding: "0 14px 10px", display: "flex", gap: 8 }}>
             <div style={{ flex: 1, height: 42, border: `1px solid ${C.line}`, borderRadius: 12, display: "flex", alignItems: "center", padding: "0 12px", gap: 8, background: "#fff" }}>
               <Search size={16} color={C.muted} />
-              <input value={q} onChange={e => setQ(e.target.value)} placeholder="ค้นหาสินค้า หรือชื่อร้านค้า..."
+              <input value={q} onChange={e => setQ(e.target.value)} placeholder={searchCat ? `ค้นหาใน${searchCat}...` : "ค้นหาสินค้า หรือชื่อร้านค้า..."}
                 style={{ flex: 1, border: "none", outline: "none", fontSize: 13, fontFamily: "inherit", color: C.ink, background: "transparent" }} />
               {q ? <span onClick={() => setQ("")} style={{ cursor: "pointer", color: C.muted, display: "flex" }}><X size={14} /></span> : null}
             </div>
@@ -336,7 +336,7 @@ export default function MarketClient({ products, loggedIn, extraBrands = [] }) {
           </div>
 
           {/* ชิปหมวดหลัก (มือถือเท่านั้น — desktop ใช้ sidebar) */}
-          <div className="mkt-mobile" style={{ padding: "0 14px", display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+          <div className="mkt-mobile" style={{ padding: "0 14px", display: hideCat ? "none" : "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
             {mains.map(t => <div key={t} onClick={() => selectMain(t)} style={chip(t === "ทั้งหมด" ? catPath.length === 0 : catPath[0] === t, false)}>{t}</div>)}
           </div>
 
@@ -347,6 +347,7 @@ export default function MarketClient({ products, loggedIn, extraBrands = [] }) {
             </div>
           )}
 
+          {catBar}
           <div style={{ padding: "8px 14px 6px" }}>
             <span style={{ fontSize: 11.5, color: C.muted }}>
               {catPath.length > 0 && <span style={{ color: C.brand, fontWeight: 700 }}>{catPath.join(" › ")} · </span>}
@@ -380,8 +381,8 @@ export default function MarketClient({ products, loggedIn, extraBrands = [] }) {
                 </div>
 
                 {/* หมวดหมู่ที่เลือก (เลือก/เปลี่ยนจากชิปด้านนอก) */}
-                <div style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, marginBottom: 8 }}>หมวดหมู่</div>
-                <div onClick={openCatModal} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 42, border: `1px solid ${catPath.length ? C.brand : C.line}`, borderRadius: 10, padding: "8px 12px", marginBottom: 20, background: catPath.length ? C.brandTint : "#fff", cursor: "pointer" }}>
+                {!hideCat && <div style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, marginBottom: 8 }}>หมวดหมู่</div>}
+                <div onClick={openCatModal} style={{ display: hideCat ? "none" : "flex", alignItems: "center", justifyContent: "space-between", minHeight: 42, border: `1px solid ${catPath.length ? C.brand : C.line}`, borderRadius: 10, padding: "8px 12px", marginBottom: 20, background: catPath.length ? C.brandTint : "#fff", cursor: "pointer" }}>
                   <span style={{ fontSize: 12.5, color: catPath.length ? C.brand : C.muted, fontWeight: catPath.length ? 700 : 400 }}>
                     {catPath.length ? catPath.join(" › ") : "ทุกหมวดหมู่ — แตะเพื่อเลือก"}
                   </span>

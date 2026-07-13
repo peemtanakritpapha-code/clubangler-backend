@@ -1,8 +1,7 @@
 // app/market/page.js — ตลาดสินค้า (A4 ก้าว 2: ข้อมูลครบสำหรับสกิน Masonry · W5.5 เพิ่ม avatar_path)
 import { createClient } from "@/lib/supabase/server";
 import MarketClient from "./MarketClient";
-import Link from "next/link"; // SEO-5
-import { CAT_MAINS } from "@/lib/catalog"; // SEO-5
+import CatSlider from "./CatSlider"; // SEO-5c
 import { getExtraBrands } from "@/lib/brands"; // BRAND-ADM
 import { getSeoPage } from "@/lib/seo"; // SEO-4
 
@@ -39,19 +38,8 @@ export default async function MarketPage() {
   const extraBrands = await getExtraBrands(supabase); // BRAND-ADM
   return (
     <>
-      <MarketClient products={rows} loggedIn={!!user} extraBrands={extraBrands} />
+      <MarketClient products={rows} loggedIn={!!user} extraBrands={extraBrands} catBar={<CatSlider title="ช้อปตามหมวดหมู่" />} />
       {/* SEO-5: ลิงก์หมวดจริงท้ายหน้า — ผู้ใช้กดเข้าหมวดได้ + Google เดินตามลิงก์ไปเก็บหน้าหมวด */}
-      <nav aria-label="หมวดหมู่สินค้า" style={{ maxWidth: 1200, margin: "0 auto", padding: "6px 16px 28px" }}>
-        <div style={{ fontSize: 15, fontWeight: 800, color: "#101314", marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 4, height: 18, background: "#0E7E8C", borderRadius: 2 }} />หมวดหมู่</div>{/* SEO-5b */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))", gap: "16px 8px" }}>
-          {CAT_MAINS.map((cat) => (
-            <Link key={cat} href={`/market/${encodeURIComponent(cat)}`} style={{ textDecoration: "none", textAlign: "center", color: "#101314" }}>
-              <img src={`/cats/cat-${String(CAT_MAINS.indexOf(cat) + 1).padStart(2, "0")}.png`} alt={cat} loading="lazy"
-              style={{ width: 76, height: 76, borderRadius: "50%", background: "#fff", border: "1px solid #EDF0F0", objectFit: "cover", display: "block", margin: "0 auto" }} />
-            <div style={{ fontSize: 11.5, fontWeight: 600, marginTop: 6, lineHeight: 1.3 }}>{cat}</div></Link>
-          ))}
-        </div>
-      </nav>
     </>
   );
 }
