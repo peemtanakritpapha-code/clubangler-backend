@@ -60,7 +60,7 @@ export default async function CategoryPage({ params }) {
   return (
     <>
       {/* SEO-5h: ผืนภาพหัวหมวด + ม่านขาวไล่เฉดให้อ่านชัด */}
-      <div style={hero ? { backgroundImage: `linear-gradient(rgba(0,0,0,.2), rgba(0,0,0,.2)), url(${hero})` /* SEO-5i */, backgroundSize: "cover", backgroundPosition: "center", borderBottom: "1px solid #E5E9EA" } : undefined}>
+      <div style={hero ? { backgroundImage: `linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,.5)), url(${hero})` /* SEO-5j */, backgroundSize: "cover", backgroundPosition: "center", borderBottom: "1px solid #E5E9EA" } : undefined}>
       {/* SEO-5d: ปุ่มกลับตลาด (แทนสไลด์หมวด) */}
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "10px 16px 0" }}>
         <Link href="/market" style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 13, fontWeight: 700, color: hero ? "#fff" : "#0E7E8C", textDecoration: "none", background: hero ? "rgba(0,0,0,.35)" : "#E3F1F3", padding: "6px 13px 6px 8px", borderRadius: 999 }}>
