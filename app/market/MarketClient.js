@@ -95,7 +95,8 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
   const [sr, setSr] = useState(null);      // SEARCH-1: ผลค้นทั้งระบบ (null = ยังไม่ค้น)
   const [srBusy, setSrBusy] = useState(false); // SEARCH-1: กำลังค้น
   // W5.9: หมวดหมู่แบบเส้นทาง (catPath = [] คือทั้งหมด) + modal ไล่ชั้นแบบ prototype — แทน mainCat/subCat 2 ชั้นเดิม
-  const [catPath, setCatPath] = useState([]);
+  const MINP = hideCat && searchCat ? [searchCat] : []; // SEO-5f: ฐานหมวดที่ถอยต่ำกว่านี้ไม่ได้
+  const [catPath, setCatPath] = useState(MINP);
   const [catOpen, setCatOpen] = useState(false);
   const [mPath, setMPath] = useState([]);
   const [catModalQ, setCatModalQ] = useState("");
@@ -156,7 +157,7 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
     return qq ? opts.filter(o => o.toLowerCase().includes(qq)) : opts;
   })();
   const hasKids = name => catChildren(catNodeOf([...mPath, name])).length > 0;
-  const openCatModal = () => { setMPath(catPath.length ? catPath.slice(0, -1) : []); setCatModalQ(""); setCatOpen(true); };
+  const openCatModal = () => { setMPath(catPath.length > MINP.length ? catPath.slice(0, -1) : MINP); setCatModalQ(""); setCatOpen(true); };
 
   const list = useMemo(() => {
     let l = sr ?? products; // SEARCH-1: ผลค้นทั้งระบบมาแทน (ตัวกรองอื่นยังกรองทับต่อ)
@@ -272,8 +273,8 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
 
         {/* ── Sidebar ฟิลเตอร์ (จอกว้างเท่านั้น — prototype WMarketplace บรรทัด 6331–6360) ── */}
         <aside className="mkt-side" style={{ width: 252, flex: "none", background: "#fff", borderRight: `1px solid ${C.line}`, padding: "20px 16px", position: "sticky", top: 74, maxHeight: "calc(100vh - 90px)", overflowY: "auto" }}>
-          {!hideCat && <div style={lbl}>หมวดหมู่</div>}
-          <div style={{ marginBottom: 4, display: hideCat ? "none" : "block" }}>
+          <div style={lbl}>{hideCat ? "หมวดย่อย" : "หมวดหมู่"}</div>
+          <div style={{ marginBottom: 4 }}>
             <div onClick={openCatModal} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, minHeight: 42, border: `1.5px solid ${catPath.length ? C.brand : C.line}`, borderRadius: 12, padding: "8px 12px", cursor: "pointer", background: catPath.length ? C.brandTint : "#fff" }}>
               <span style={{ fontSize: 12.5, color: catPath.length ? C.brand : C.ink, fontWeight: catPath.length ? 700 : 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {catPath.length ? catPath.join(" › ") : "ทั้งหมด"}
@@ -281,7 +282,7 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
               <ChevronRight size={15} color={catPath.length ? C.brand : C.muted} style={{ flex: "none" }} />
             </div>
             {catPath.length > 0 && (
-              <span onClick={() => setCatPath([])} style={{ display: "inline-block", marginTop: 7, fontSize: 12, color: C.muted, textDecoration: "underline", cursor: "pointer" }}>ล้างหมวดหมู่</span>
+              <span onClick={() => setCatPath(MINP)} style={{ display: catPath.length > MINP.length ? "inline-block" : "none", marginTop: 7, fontSize: 12, color: C.muted, textDecoration: "underline", cursor: "pointer" }}>ล้างหมวดหมู่</span>
             )}
           </div>
           <div style={lbl}>ช่วงราคา (บาท)</div>
@@ -381,13 +382,13 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
                 </div>
 
                 {/* หมวดหมู่ที่เลือก (เลือก/เปลี่ยนจากชิปด้านนอก) */}
-                {!hideCat && <div style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, marginBottom: 8 }}>หมวดหมู่</div>}
-                <div onClick={openCatModal} style={{ display: hideCat ? "none" : "flex", alignItems: "center", justifyContent: "space-between", minHeight: 42, border: `1px solid ${catPath.length ? C.brand : C.line}`, borderRadius: 10, padding: "8px 12px", marginBottom: 20, background: catPath.length ? C.brandTint : "#fff", cursor: "pointer" }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, marginBottom: 8 }}>{hideCat ? "หมวดย่อย" : "หมวดหมู่"}</div>
+                <div onClick={openCatModal} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 42, border: `1px solid ${catPath.length ? C.brand : C.line}`, borderRadius: 10, padding: "8px 12px", marginBottom: 20, background: catPath.length ? C.brandTint : "#fff", cursor: "pointer" }}>
                   <span style={{ fontSize: 12.5, color: catPath.length ? C.brand : C.muted, fontWeight: catPath.length ? 700 : 400 }}>
                     {catPath.length ? catPath.join(" › ") : "ทุกหมวดหมู่ — แตะเพื่อเลือก"}
                   </span>
                   {catPath.length
-                    ? <span onClick={e => { e.stopPropagation(); setCatPath([]); }} style={{ fontSize: 11.5, color: C.brand, textDecoration: "underline", cursor: "pointer" }}>ล้าง</span>
+                    ? (catPath.length > MINP.length ? <span onClick={e => { e.stopPropagation(); setCatPath(MINP); }} style={{ fontSize: 11.5, color: C.brand, textDecoration: "underline", cursor: "pointer" }}>ล้าง</span> : <ChevronRight size={17} color={C.muted} />)
                     : <ChevronRight size={17} color={C.muted} />}
                 </div>
 
@@ -426,7 +427,7 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
             <div onClick={() => setCatOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(16,19,20,.5)", zIndex: 70, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
               <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 560, maxHeight: "86vh", background: "#fff", borderRadius: 18, display: "flex", flexDirection: "column", overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", borderBottom: `1px solid ${C.line}` }}>
-                  {mPath.length > 0 && (
+                  {mPath.length > MINP.length && (
                     <button onClick={() => { setMPath(p => p.slice(0, -1)); setCatModalQ(""); }} aria-label="ย้อนกลับ"
                       style={{ border: "none", background: "transparent", cursor: "pointer", color: C.ink, display: "flex", padding: 0 }}><ChevronLeft size={20} /></button>
                   )}
