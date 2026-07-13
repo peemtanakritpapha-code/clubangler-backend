@@ -5,7 +5,7 @@ export default function robots() {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
+        allow: ["/", "/seller/", "/api/feed/"], // AEO-FIX: /sell เดิมกินเกิน /seller/ · เปิด /api/feed/ ให้ merchant ดึง feed
         disallow: [
           "/admin",
           "/api/",
@@ -17,7 +17,7 @@ export default function robots() {
           "/notifications",
           "/my-products",
           "/profile",
-          "/sell",
+          "/sell$", // เจาะจงหน้าลงขายหน้าเดียว — กันชน /seller/
           "/login",
         ],
       },
