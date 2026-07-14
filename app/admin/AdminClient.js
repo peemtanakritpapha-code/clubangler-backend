@@ -530,6 +530,7 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
   const [selUser, setSelUser] = useState(null);     // AD1: modal โปรไฟล์เต็ม
   const [selOrder, setSelOrder] = useState(null);   // AD2: modal ศูนย์ข้อมูลออเดอร์
   const [suspendP, setSuspendP] = useState(null);
+  const [purgeP, setPurgeP] = useState(null); // PRODDEL-1: สินค้าที่กำลังยืนยันลบถาวร
   // AD4: ตัวกรอง cascading + bulk (spec แอดมิน §4)
   const [pStatus, setPStatus] = useState("ทั้งหมด");
   const [pCat, setPCat] = useState("ทั้งหมด");
@@ -1220,6 +1221,10 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
                         style={{ height: 34, padding: "0 12px", borderRadius: 8, border: `1.5px solid ${C.ok}`, background: "#fff", color: C.ok, fontWeight: 800, fontSize: 11.5, cursor: "pointer" }}>เปิดขาย</button>
                     : <button onClick={() => setSuspendP(p.id)} disabled={busy}
                         style={{ height: 34, padding: "0 12px", borderRadius: 8, border: `1.5px solid ${C.danger}`, background: "#fff", color: C.danger, fontWeight: 800, fontSize: 11.5, cursor: "pointer" }}>ระงับ</button>}
+                  {p.status === "suspended" && (
+                    <button onClick={() => setPurgeP(p)} disabled={busy} title="ลบถาวร — กู้คืนไม่ได้"
+                      style={{ height: 34, padding: "0 12px", borderRadius: 8, border: "none", background: C.danger, color: "#fff", fontWeight: 800, fontSize: 11.5, cursor: "pointer" }}>🗑️ ลบถาวร</button>
+                  )}
                 </div>
               );
             })}
@@ -1229,6 +1234,9 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
 
       </div>{/* /main */}
 
+      {purgeP && <ReasonModal title={`ลบ "${purgeP.name}" ถาวร — กู้คืนไม่ได้ และรูปจะถูกลบจาก storage ด้วย · ใช้กับสินค้าเทส/ผิดกฎร้ายแรงเท่านั้น — เหตุผล (ผู้ขายจะเห็น)`}
+        onCancel={() => setPurgeP(null)}
+        onSubmit={r => { const id = purgeP.id; setPurgeP(null); call("/api/admin/product-delete", { productId: id, reason: r }); }} />}
       {reject && <ReasonModal title={'ปฏิเสธ = ซื้อไม่สำเร็จทันที · สลิปแค่ไม่ชัดแต่เงินเข้าจริง ให้ใช้ "ขอสลิปใหม่" แทน — เหตุผล (ผู้ซื้อจะเห็น)'} onCancel={() => setReject(null)}
         onSubmit={r => { setReject(null); call("/api/admin/verify", { orderId: reject, action: "reject", reason: r }); }} />}
       {rejectGroup && <ReasonModal title={'ปฏิเสธทั้งกลุ่ม = ซื้อไม่สำเร็จทันทีทุกรายการ · เงินเข้าจริงแต่สลิปไม่ชัด ให้ใช้ "ขอสลิปใหม่" แทน — เหตุผล (ผู้ซื้อจะเห็น)'} onCancel={() => setRejectGroup(null)}
