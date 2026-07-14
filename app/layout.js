@@ -15,6 +15,7 @@ export const metadata = {
   metadataBase: new URL("https://clubangler.com"), // SEO-1: รูป OG/twitter เป็น absolute URL เสมอ
   title: "ClubAngler — ตลาดอุปกรณ์ตกปลา ซื้อขายผ่านระบบเงินฝากปลอดภัย",
   description: "ตลาดซื้อขายอุปกรณ์ตกปลา แบบมีคนกลางถือเงิน (escrow)",
+  itunes: { appId: "6789353247" }, // W1.6: Safari iOS เด้งแถบ "ดูใน App Store" ให้เอง
 };
 
 // สีแถบเบราว์เซอร์บนมือถือ = สีแบรนด์ (มาตรฐาน PWA)

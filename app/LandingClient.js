@@ -132,6 +132,16 @@ export default function LandingClient({ products = [] }) {
           <LBtn size="lg" href="/market">เริ่มเลือกซื้อ</LBtn>
           <LBtn size="lg" variant="outline" href="/login" style={{ borderColor: "#fff", color: "#fff" }}>ลงขายสินค้า</LBtn>
         </div>
+        {/* W1.6: แบดจ์โหลดแอพ — Android ช่วง closed testing ชี้ลิงก์สมัคร tester (เปิด public แล้วแก้ href+ข้อความตรงนี้จุดเดียว) */}
+        <div style={{ display: "flex", gap: 9, justifyContent: "center", flexWrap: "wrap", marginTop: 16 }}>
+          <a href="https://apps.apple.com/th/app/id6789353247" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", background: "#000", color: "#fff", border: "1px solid rgba(255,255,255,.25)", borderRadius: 10, padding: "7px 16px", textDecoration: "none", textAlign: "left" }}>
+            <span><span style={{ display: "block", fontSize: 10, opacity: .85, lineHeight: 1.2 }}>ดาวน์โหลดบน</span><span style={{ display: "block", fontSize: 13.5, fontWeight: 700, lineHeight: 1.3 }}>App Store</span></span>
+          </a>
+          <a href="https://play.google.com/apps/testing/com.clubangler.app" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 9, background: "#000", color: "#fff", border: "1px solid rgba(255,255,255,.25)", borderRadius: 10, padding: "7px 16px", textDecoration: "none", textAlign: "left" }}>
+            <span style={{ fontSize: 20, lineHeight: 1 }} aria-hidden="true">🤖</span>
+            <span><span style={{ display: "block", fontSize: 10, opacity: .85, lineHeight: 1.2 }}>Android — Google Play</span><span style={{ display: "block", fontSize: 13.5, fontWeight: 700, lineHeight: 1.3 }}>ร่วมทดสอบ Alpha ก่อนใคร</span></span>
+          </a>
+        </div>
         </div>
       </section>
 
