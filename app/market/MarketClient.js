@@ -174,6 +174,36 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
     setGridHint(false);
     try { localStorage.setItem("ca_grid_hint_done", "1"); } catch {}
   };
+  // GRID-2: ปุ่ม ⊞ + bubble + popover — ตัวเดียวใช้สองตำแหน่ง (มือถือ: ข้างปุ่มตัวกรอง / จอกว้าง: แถวพบรายการ)
+  const renderGridCtl = (mobile) => (
+    <div className={mobile ? "mkt-mobile" : "mkt-desk"} style={{ position: "relative", flex: "none" }}>
+      <button onClick={() => { dismissGridHint(); setGridOpen(o => !o); }} aria-label="ปรับขนาดตารางสินค้า" style={{ width: mobile ? 42 : 32, height: mobile ? 42 : 32, borderRadius: mobile ? 12 : 8, border: `${mobile ? 1 : 1.5}px solid ${gridOpen || gridHint ? C.brand : C.line}`, background: gridOpen || gridHint ? C.brandTint : "#fff", color: C.brand, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
+        <LayoutGrid size={mobile ? 17 : 16} />
+      </button>
+      {gridHint && (
+        <div style={{ position: "absolute", right: -4, top: mobile ? 50 : 42, width: 226, background: C.brand, color: "#fff", borderRadius: 14, padding: "13px 14px 12px", zIndex: 45, boxShadow: "0 10px 28px rgba(14,126,140,.35)" }}>
+          <div style={{ position: "absolute", top: -8, right: 14, width: 0, height: 0, borderLeft: "9px solid transparent", borderRight: "9px solid transparent", borderBottom: `9px solid ${C.brand}` }} />
+          <div style={{ fontSize: 13.5, fontWeight: 800, marginBottom: 4 }}>🆕 ปรับตารางสินค้าได้แล้วน้า</div>
+          <div style={{ fontSize: 11.5, lineHeight: 1.6, color: "#CDEDE4", marginBottom: 10 }}>แตะปุ่มนี้เพื่อเลือกจำนวนคอลัมน์ที่สบายตาสุด — เลือกครั้งเดียว ระบบจำให้ตลอด</div>
+          <button onClick={dismissGridHint} style={{ width: "100%", height: 34, border: "none", borderRadius: 8, background: "#fff", color: C.brand, fontSize: 12.5, fontWeight: 800, fontFamily: "inherit", cursor: "pointer" }}>เข้าใจแล้ว 👍</button>
+        </div>
+      )}
+      {gridOpen && (<>
+        <div onClick={() => setGridOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 44 }} />
+        <div style={{ position: "absolute", right: 0, top: mobile ? 46 : 38, width: 180, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12, boxShadow: "0 8px 26px rgba(16,19,20,.14)", padding: "11px 12px", zIndex: 45 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: C.ink, marginBottom: 8 }}>จำนวนคอลัมน์</div>
+          <div style={{ display: "flex", gap: 6 }}>
+            {(smallScr ? [2, 3] : [3, 4, 5]).map(n => (
+              <button key={n} onClick={() => pickCols(n)} style={{ flex: 1, height: 38, borderRadius: 8, border: `1.5px solid ${n === nCols ? C.brand : C.line}`, background: n === nCols ? C.brandTint : "#fff", cursor: "pointer", fontFamily: "inherit", color: C.ink, padding: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.1 }}>{n}</div>
+                <div style={{ fontSize: 9, color: C.muted }}>คอลัมน์</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </>)}
+    </div>
+  );
 
   const mains = ["ทั้งหมด", ...CAT_MAINS];
   const subs = catPath.length === 0 ? [] : ["ทั้งหมด", ...catChildren(CATEGORY_TREE[catPath[0]]).map(c => c.name)];
@@ -351,6 +381,7 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
                 <span style={{ position: "absolute", top: -5, right: -5, minWidth: 16, height: 16, padding: "0 3px", borderRadius: 999, background: "#C0392B", color: "#fff", fontSize: 9.5, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #fff" }}>{activeFilterCount}</span>
               ) : null}
             </button>
+            {renderGridCtl(true)}{/* GRID-2: มือถือ — ปุ่มปรับตารางข้างปุ่มตัวกรอง */}
             {/* desktop: dropdown เรียง + ปุ่มลงขาย (prototype บรรทัด 6369–6375) */}
             <div className="mkt-desk" style={{ gap: 8, alignItems: "center", flex: "none" }}>
               <select value={sortBy} onChange={e => setSortBy(e.target.value)}
@@ -383,34 +414,7 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
               {catPath.length > 0 && <span style={{ color: C.brand, fontWeight: 700 }}>{catPath.join(" › ")} · </span>}
               {srBusy ? "กำลังค้นหา... · " : ""}พบ {list.length} รายการ
             </span>
-            {/* GRID: ปุ่มปรับจำนวนคอลัมน์ + กล่องสนทนาแนะนำครั้งแรก */}
-            <div style={{ position: "relative", flex: "none" }}>
-              <button onClick={() => { dismissGridHint(); setGridOpen(o => !o); }} aria-label="ปรับขนาดตารางสินค้า" style={{ width: 32, height: 32, borderRadius: 8, border: `1.5px solid ${gridOpen || gridHint ? C.brand : C.line}`, background: gridOpen || gridHint ? C.brandTint : "#fff", color: C.brand, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
-                <LayoutGrid size={16} />
-              </button>
-              {gridHint && (
-                <div style={{ position: "absolute", right: -4, top: 42, width: 226, background: C.brand, color: "#fff", borderRadius: 14, padding: "13px 14px 12px", zIndex: 45, boxShadow: "0 10px 28px rgba(14,126,140,.35)" }}>
-                  <div style={{ position: "absolute", top: -8, right: 14, width: 0, height: 0, borderLeft: "9px solid transparent", borderRight: "9px solid transparent", borderBottom: `9px solid ${C.brand}` }} />
-                  <div style={{ fontSize: 13.5, fontWeight: 800, marginBottom: 4 }}>🆕 ปรับตารางสินค้าได้แล้วน้า</div>
-                  <div style={{ fontSize: 11.5, lineHeight: 1.6, color: "#CDEDE4", marginBottom: 10 }}>แตะปุ่มนี้เพื่อเลือกจำนวนคอลัมน์ที่สบายตาสุด — เลือกครั้งเดียว ระบบจำให้ตลอด</div>
-                  <button onClick={dismissGridHint} style={{ width: "100%", height: 34, border: "none", borderRadius: 8, background: "#fff", color: C.brand, fontSize: 12.5, fontWeight: 800, fontFamily: "inherit", cursor: "pointer" }}>เข้าใจแล้ว 👍</button>
-                </div>
-              )}
-              {gridOpen && (<>
-                <div onClick={() => setGridOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 44 }} />
-                <div style={{ position: "absolute", right: 0, top: 38, width: 180, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12, boxShadow: "0 8px 26px rgba(16,19,20,.14)", padding: "11px 12px", zIndex: 45 }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: C.ink, marginBottom: 8 }}>จำนวนคอลัมน์</div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    {(smallScr ? [2, 3] : [3, 4, 5]).map(n => (
-                      <button key={n} onClick={() => pickCols(n)} style={{ flex: 1, height: 38, borderRadius: 8, border: `1.5px solid ${n === nCols ? C.brand : C.line}`, background: n === nCols ? C.brandTint : "#fff", cursor: "pointer", fontFamily: "inherit", color: C.ink, padding: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.1 }}>{n}</div>
-                        <div style={{ fontSize: 9, color: C.muted }}>คอลัมน์</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </>)}
-            </div>
+            {renderGridCtl(false)}{/* GRID-2: จอกว้าง — ปุ่มปรับตารางที่แถวพบรายการ (ตำแหน่งเดิม) */}
           </div>
 
           {/* Masonry — คอลัมน์สูงไม่เท่ากัน คอลัมน์คู่เยื้องลง (prototype บรรทัด 1014–1027) */}
@@ -421,7 +425,7 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
           ) : (
             <div style={{ display: "flex", gap: 6, padding: "6px 10px 14px", alignItems: "flex-start" }}>
               {cols.map((col, ci) => (
-                <div key={ci} style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, marginTop: ci % 2 === 1 ? 24 : 0 }}>
+                <div key={ci} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6, marginTop: ci % 2 === 1 ? 24 : 0 }}>
                   {col.map(({ p, i }) => <MasonryCard key={p.id} p={p} idx={i} router={router} hold={holds[p.id]} />)}
                 </div>
               ))}
