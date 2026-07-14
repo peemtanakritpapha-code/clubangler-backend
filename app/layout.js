@@ -4,6 +4,7 @@ import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "@/components/AppShell";
 import SwRegister from "@/components/SwRegister";
+import Script from "next/script"; // MSUET-1
 
 const prompt = Prompt({
   subsets: ["thai", "latin"],
@@ -69,6 +70,8 @@ export default async function RootLayout({ children }) {
     <html lang="th" className={prompt.className}>
       <body>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteLd) }} />
+        {/* MSUET-1: Microsoft UET tag — ยืนยันโดเมนกับ Microsoft Merchant (Tag ID 343260104) */}
+        <Script id="ms-uet" strategy="afterInteractive" dangerouslySetInnerHTML={{ __html: '(function(w, d, t, u, o) {w[u] = w[u] || [], o.ts = (new Date).getTime();var n = d.createElement(t);n.src = "https://bat.bing.net/bat.js?ti=" + o.ti + ("uetq" != u ? "&q=" + u : ""),n.async = 1, n.onload = n.onreadystatechange = function() {var s = this.readyState;s && "loaded" !== s && "complete" !== s ||(o.q = w[u], w[u] = new UET(o), w[u].push("pageLoad"),n.onload = n.onreadystatechange = null)};var i = d.getElementsByTagName(t)[0];i.parentNode.insertBefore(n, i);})(window, document, "script", "uetq", {ti: "343260104",enableAutoSpaTracking: true});' }} />
         <SwRegister />
         <AppShell
           user={user ? { id: user.id, name: profile?.name || user.email, isAdmin: !!profile?.is_admin, avatar: profile?.avatar_path || null } : null}
