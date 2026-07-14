@@ -53,7 +53,7 @@ function MasonryCard({ p, idx, router, hold, priceScale = 1 }) {
         )}
         {/* ราคา — dark pill มุมซ้ายล่าง (prototype บรรทัด 716–732) */}
         <div style={{ position: "absolute", bottom: Math.round(8 * priceScale), left: Math.round(8 * priceScale), background: "rgba(0,0,0,.30)", backdropFilter: "blur(6px)", borderRadius: 999, padding: `${Math.round(5 * priceScale)}px ${Math.round(12 * priceScale)}px` }}>
-          <span style={{ fontSize: +(12.5 * priceScale).toFixed(1), fontWeight: 700, color: "#fff" }}>THB {Number(p.price || 0).toLocaleString()}</span>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: "#fff" }}>THB {Number(p.price || 0).toLocaleString()}</span>
         </div>
         {/* ป้ายส่งฟรีย้ายไปเป็น chip ข้างป้ายสภาพด้านล่าง — ไม่บังรูป/ตัวหนังสือในภาพสินค้า */}
       </div>
@@ -168,7 +168,7 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
   }, [userCols, autoCols, smallScr]);
   // GRID-4: สเกลป้ายราคาตามจำนวนคอลัมน์ (ค่าที่จูนจาก mock: มือถือ 2→86% 3→68% · เว็บ 3→105% 4→92% 5→86%)
   const priceScale = useMemo(() => {
-    const m = smallScr ? { 2: 0.78, 3: 0.52 } : { 3: 1.05, 4: 0.92, 5: 0.86 }; // GRID-5: มือถือหดลงอีก (ป้ายบังภาพ)
+    const m = smallScr ? { 2: 0.6, 3: 0.45 } : { 3: 1, 4: 0.8, 5: 0.7 }; // GRID-6: scale คุมเฉพาะกรอบเบลอ+ระยะมุม (ตัวเลขคงที่ 12.5 เสมอ)
     return m[nCols] ?? 1;
   }, [smallScr, nCols]);
   const pickCols = (n) => {
