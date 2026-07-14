@@ -425,7 +425,7 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
           ) : (
             <div style={{ display: "flex", gap: 6, padding: "6px 10px 14px", alignItems: "flex-start" }}>
               {cols.map((col, ci) => (
-                <div key={ci} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6, marginTop: ci % 2 === 1 ? 24 : 0 }}>
+                <div key={ci} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
                   {col.map(({ p, i }) => <MasonryCard key={p.id} p={p} idx={i} router={router} hold={holds[p.id]} />)}
                 </div>
               ))}
