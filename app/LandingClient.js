@@ -6,6 +6,7 @@ import { productPath } from "@/lib/slug";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import TimeLeft from "@/components/TimeLeft";
+import CatSlider from "@/app/market/CatSlider"; // W1.1: สายพานหมวดหมู่ตัวเดียวกับหน้า /market
 import { Lock, Package, ShieldCheck, RotateCcw, Fish } from "lucide-react";
 
 const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7", bg2: "#F1F3F4", white: "#fff" };
@@ -139,6 +140,11 @@ export default function LandingClient({ products = [] }) {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* W1.1: สายพานหมวดหมู่ — ตัวเดียวกับหน้า /market (กดการ์ด → หน้าหมวด) */}
+      <section style={{ padding: "18px 0 0", background: C.white }}>
+        <CatSlider title="ช้อปตามหมวดหมู่" auto />
       </section>
 
       {/* สินค้าล่าสุด */}
