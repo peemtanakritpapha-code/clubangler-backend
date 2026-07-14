@@ -53,7 +53,7 @@ function MasonryCard({ p, idx, router, hold, priceScale = 1 }) {
         )}
         {/* ราคา — dark pill มุมซ้ายล่าง (prototype บรรทัด 716–732) */}
         <div style={{ position: "absolute", bottom: Math.round(8 * priceScale), left: Math.round(8 * priceScale), background: "rgba(0,0,0,.30)", backdropFilter: "blur(6px)", borderRadius: 7 /* GRID-8: pill กลมเต็มทำให้กรอบไม่รัด */, padding: `${Math.max(2, Math.round(3.5 * priceScale))}px ${Math.max(5, Math.round(8 * priceScale))}px` }}>
-          <span style={{ fontSize: +(12.5 * priceScale).toFixed(1), fontWeight: 700, color: "#fff" }}>THB {Number(p.price || 0).toLocaleString()}</span>
+          <span style={{ fontSize: +(12.5 * priceScale).toFixed(1), fontWeight: 700, color: "#fff", lineHeight: 1, display: "block" }}>THB {Number(p.price || 0).toLocaleString()}</span>{/* GRID-9: lineHeight 1 ตัดที่จองวรรณยุกต์ของฟอนต์ไทย */}
         </div>
         {/* ป้ายส่งฟรีย้ายไปเป็น chip ข้างป้ายสภาพด้านล่าง — ไม่บังรูป/ตัวหนังสือในภาพสินค้า */}
       </div>
