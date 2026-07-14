@@ -19,7 +19,7 @@ import { CAT_MAINS, CATEGORY_TREE, catNodeAt, catChildren, ALL_BRANDS, COND_GRAD
 const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7", bg2: "#F1F3F4" };
 const RATIOS = ["1/1", "3/4", "4/3", "1/1", "3/4", "1/1", "4/3", "3/4"]; // ความสูงแปรผันแบบ prototype (MASONRY_RATIOS)
 
-function MasonryCard({ p, idx, router, hold }) {
+function MasonryCard({ p, idx, router, hold, priceScale = 1 }) {
   const ratio = p.image_ratio || RATIOS[idx % RATIOS.length]; // W5.8: ใช้สัดส่วนที่ผู้ขายเลือก (ของเก่าไม่มีค่า → สุ่มแบบเดิม)
   const s = p.seller;
   const sold = p.status === "sold";
@@ -52,8 +52,8 @@ function MasonryCard({ p, idx, router, hold }) {
           </>
         )}
         {/* ราคา — dark pill มุมซ้ายล่าง (prototype บรรทัด 716–732) */}
-        <div style={{ position: "absolute", bottom: 8, left: 8, background: "rgba(0,0,0,.30)", backdropFilter: "blur(6px)", borderRadius: 999, padding: "5px 12px" }}>
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: "#fff" }}>THB {Number(p.price || 0).toLocaleString()}</span>
+        <div style={{ position: "absolute", bottom: Math.round(8 * priceScale), left: Math.round(8 * priceScale), background: "rgba(0,0,0,.30)", backdropFilter: "blur(6px)", borderRadius: 999, padding: `${Math.round(5 * priceScale)}px ${Math.round(12 * priceScale)}px` }}>
+          <span style={{ fontSize: +(12.5 * priceScale).toFixed(1), fontWeight: 700, color: "#fff" }}>THB {Number(p.price || 0).toLocaleString()}</span>
         </div>
         {/* ป้ายส่งฟรีย้ายไปเป็น chip ข้างป้ายสภาพด้านล่าง — ไม่บังรูป/ตัวหนังสือในภาพสินค้า */}
       </div>
@@ -166,6 +166,11 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
     const lo = smallScr ? 2 : 3, hi = smallScr ? 3 : 5;
     return Math.min(hi, Math.max(lo, userCols));
   }, [userCols, autoCols, smallScr]);
+  // GRID-4: สเกลป้ายราคาตามจำนวนคอลัมน์ (ค่าที่จูนจาก mock: มือถือ 2→86% 3→68% · เว็บ 3→105% 4→92% 5→86%)
+  const priceScale = useMemo(() => {
+    const m = smallScr ? { 2: 0.86, 3: 0.68 } : { 3: 1.05, 4: 0.92, 5: 0.86 };
+    return m[nCols] ?? 1;
+  }, [smallScr, nCols]);
   const pickCols = (n) => {
     setUserCols(n); setGridOpen(false);
     try { localStorage.setItem("ca_grid_cols", String(n)); } catch {}
@@ -426,7 +431,7 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
             <div style={{ display: "flex", gap: 6, padding: "6px 10px 14px", alignItems: "flex-start" }}>
               {cols.map((col, ci) => (
                 <div key={ci} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-                  {col.map(({ p, i }) => <MasonryCard key={p.id} p={p} idx={i} router={router} hold={holds[p.id]} />)}
+                  {col.map(({ p, i }) => <MasonryCard key={p.id} p={p} idx={i} router={router} hold={holds[p.id]} priceScale={priceScale} />)}
                 </div>
               ))}
             </div>
