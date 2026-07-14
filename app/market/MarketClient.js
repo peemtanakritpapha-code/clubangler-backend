@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import TimeLeft from "@/components/TimeLeft";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, X, ShieldCheck, Fish, Filter, ChevronRight, ChevronLeft, Plus } from "lucide-react";
+import { Search, X, ShieldCheck, Fish, Filter, ChevronRight, ChevronLeft, Plus, LayoutGrid } from "lucide-react";
 import { CAT_MAINS, CATEGORY_TREE, catNodeAt, catChildren, ALL_BRANDS, COND_GRADES } from "@/lib/catalog";
 
 const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7", bg2: "#F1F3F4" };
@@ -100,7 +100,11 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
   const [catOpen, setCatOpen] = useState(false);
   const [mPath, setMPath] = useState([]);
   const [catModalQ, setCatModalQ] = useState("");
-  const [nCols, setNCols] = useState(2);
+  const [autoCols, setAutoCols] = useState(2);    // GRID: คอลัมน์อัตโนมัติตามจอ (พฤติกรรมเดิม)
+  const [smallScr, setSmallScr] = useState(false); // GRID: จอเล็ก <640 → ชุดตัวเลือก 2/3
+  const [userCols, setUserCols] = useState(null);  // GRID: ค่าที่ผู้ใช้เลือกเอง (null = อัตโนมัติ)
+  const [gridOpen, setGridOpen] = useState(false); // GRID: popover เลือกคอลัมน์
+  const [gridHint, setGridHint] = useState(false); // GRID: กล่องสนทนาแนะนำครั้งแรก
   const [holds, setHolds] = useState({}); // ST1 6b
   // ฟิลเตอร์ชีต (prototype MarketScreen บรรทัด 912–925, 1030–1090)
   const [filterOpen, setFilterOpen] = useState(false);
@@ -139,12 +143,37 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
     return () => { dead = true; clearTimeout(t); if (logT) clearTimeout(logT); };
   }, [q]);
 
-  // responsive: <640→2 / <1024→3 / กว้าง→4 คอลัมน์
+  // GRID: responsive อัตโนมัติ (<640→2 / <1024→3 / กว้าง→4) + จำว่าจอเล็กไหมไว้เลือกชุดตัวเลือก
   useEffect(() => {
-    const f = () => setNCols(window.innerWidth < 640 ? 2 : window.innerWidth < 1024 ? 3 : 4);
+    const f = () => {
+      setSmallScr(window.innerWidth < 640);
+      setAutoCols(window.innerWidth < 640 ? 2 : window.innerWidth < 1024 ? 3 : 4);
+    };
     f(); window.addEventListener("resize", f);
     return () => window.removeEventListener("resize", f);
   }, []);
+  // GRID: โหลดค่าที่เคยเลือก + สถานะเคยเห็นคำแนะนำ (อ่าน localStorage หลัง mount กัน hydration เพี้ยน)
+  useEffect(() => {
+    try {
+      const v = parseInt(localStorage.getItem("ca_grid_cols") ?? "", 10);
+      if (Number.isFinite(v)) setUserCols(v);
+      if (!localStorage.getItem("ca_grid_hint_done")) setGridHint(true);
+    } catch {}
+  }, []);
+  // GRID: จำนวนคอลัมน์จริง — ค่าผู้ใช้ (บีบให้อยู่ในช่วงของจอ: เล็ก 2-3 / ใหญ่ 3-5) หรืออัตโนมัติ
+  const nCols = useMemo(() => {
+    if (!userCols) return autoCols;
+    const lo = smallScr ? 2 : 3, hi = smallScr ? 3 : 5;
+    return Math.min(hi, Math.max(lo, userCols));
+  }, [userCols, autoCols, smallScr]);
+  const pickCols = (n) => {
+    setUserCols(n); setGridOpen(false);
+    try { localStorage.setItem("ca_grid_cols", String(n)); } catch {}
+  };
+  const dismissGridHint = () => {
+    setGridHint(false);
+    try { localStorage.setItem("ca_grid_hint_done", "1"); } catch {}
+  };
 
   const mains = ["ทั้งหมด", ...CAT_MAINS];
   const subs = catPath.length === 0 ? [] : ["ทั้งหมด", ...catChildren(CATEGORY_TREE[catPath[0]]).map(c => c.name)];
@@ -349,11 +378,39 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
           )}
 
           {q.trim() ? null : catBar}{/* SEO-5g: พิมพ์ค้นหา = แถบหมวดหลบ */}
-          <div style={{ padding: "8px 14px 6px" }}>
+          <div style={{ padding: "8px 14px 6px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
             <span style={{ fontSize: 11.5, color: C.muted }}>
               {catPath.length > 0 && <span style={{ color: C.brand, fontWeight: 700 }}>{catPath.join(" › ")} · </span>}
               {srBusy ? "กำลังค้นหา... · " : ""}พบ {list.length} รายการ
             </span>
+            {/* GRID: ปุ่มปรับจำนวนคอลัมน์ + กล่องสนทนาแนะนำครั้งแรก */}
+            <div style={{ position: "relative", flex: "none" }}>
+              <button onClick={() => { dismissGridHint(); setGridOpen(o => !o); }} aria-label="ปรับขนาดตารางสินค้า" style={{ width: 32, height: 32, borderRadius: 8, border: `1.5px solid ${gridOpen || gridHint ? C.brand : C.line}`, background: gridOpen || gridHint ? C.brandTint : "#fff", color: C.brand, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
+                <LayoutGrid size={16} />
+              </button>
+              {gridHint && (
+                <div style={{ position: "absolute", right: -4, top: 42, width: 226, background: C.brand, color: "#fff", borderRadius: 14, padding: "13px 14px 12px", zIndex: 45, boxShadow: "0 10px 28px rgba(14,126,140,.35)" }}>
+                  <div style={{ position: "absolute", top: -8, right: 14, width: 0, height: 0, borderLeft: "9px solid transparent", borderRight: "9px solid transparent", borderBottom: `9px solid ${C.brand}` }} />
+                  <div style={{ fontSize: 13.5, fontWeight: 800, marginBottom: 4 }}>🆕 ปรับตารางสินค้าได้แล้วน้า</div>
+                  <div style={{ fontSize: 11.5, lineHeight: 1.6, color: "#CDEDE4", marginBottom: 10 }}>แตะปุ่มนี้เพื่อเลือกจำนวนคอลัมน์ที่สบายตาสุด — เลือกครั้งเดียว ระบบจำให้ตลอด</div>
+                  <button onClick={dismissGridHint} style={{ width: "100%", height: 34, border: "none", borderRadius: 8, background: "#fff", color: C.brand, fontSize: 12.5, fontWeight: 800, fontFamily: "inherit", cursor: "pointer" }}>เข้าใจแล้ว 👍</button>
+                </div>
+              )}
+              {gridOpen && (<>
+                <div onClick={() => setGridOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 44 }} />
+                <div style={{ position: "absolute", right: 0, top: 38, width: 180, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12, boxShadow: "0 8px 26px rgba(16,19,20,.14)", padding: "11px 12px", zIndex: 45 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: C.ink, marginBottom: 8 }}>จำนวนคอลัมน์</div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {(smallScr ? [2, 3] : [3, 4, 5]).map(n => (
+                      <button key={n} onClick={() => pickCols(n)} style={{ flex: 1, height: 38, borderRadius: 8, border: `1.5px solid ${n === nCols ? C.brand : C.line}`, background: n === nCols ? C.brandTint : "#fff", cursor: "pointer", fontFamily: "inherit", color: C.ink, padding: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.1 }}>{n}</div>
+                        <div style={{ fontSize: 9, color: C.muted }}>คอลัมน์</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>)}
+            </div>
           </div>
 
           {/* Masonry — คอลัมน์สูงไม่เท่ากัน คอลัมน์คู่เยื้องลง (prototype บรรทัด 1014–1027) */}
