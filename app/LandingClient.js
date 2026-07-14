@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import TimeLeft from "@/components/TimeLeft";
 import CatSlider from "@/app/market/CatSlider"; // W1.1: สายพานหมวดหมู่ตัวเดียวกับหน้า /market
-import { Lock, Package, ShieldCheck, RotateCcw, Fish } from "lucide-react";
+import { ShieldCheck, RotateCcw, Fish, Bot, Tag, Search } from "lucide-react";
 
 const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7", bg2: "#F1F3F4", white: "#fff" };
 
@@ -100,10 +100,18 @@ export default function LandingClient({ products = [] }) {
     const t = setInterval(load, 5000);
     return () => { stop = true; clearInterval(t); };
   }, [products]);
+  // W1.2: จอเล็ก → การ์ดจุดขายจัด 2×2 / จอกว้าง 4 ช่องแถวเดียว (แพทเทิร์นเดียวกับ CatSlider)
+  const [small, setSmall] = useState(false);
+  useEffect(() => {
+    const f = () => setSmall(window.innerWidth < 640);
+    f(); window.addEventListener("resize", f);
+    return () => window.removeEventListener("resize", f);
+  }, []);
   const steps = [
-    { icon: Lock, t: "1 · โอนเข้าบัญชีกลาง", d: "ผู้ซื้อชำระเข้าคนกลาง ไม่ใช่เข้าผู้ขายตรง" },
-    { icon: Package, t: "2 · ได้ของ แล้วยืนยัน", d: "ผู้ขายส่งของ ผู้ซื้อกดยืนยันเมื่อได้รับ" },
-    { icon: ShieldCheck, t: "3 · เงินถึงผู้ขาย", d: "ทีมงานโอนให้ผู้ขายในเวลาทำการ" },
+    { icon: ShieldCheck, t: "Escrow คนกลางถือเงิน", d: "เงินเข้าบัญชีกลาง ไม่เข้าผู้ขายตรง โดนเท = ได้คืน" },
+    { icon: Bot, t: "ระบบขี้เกียจขาย ฟรี", d: "AI Auto Title-Description — ถ่ายรูปอย่างเดียวจบ รอรับเงิน" },
+    { icon: Tag, t: "หมดปัญหานักต่อ", d: "ไม่มีระบบแชทต่อรอง อยากซื้อ..ซื้อ ไม่ซื้อแล้วแต่ !!" },
+    { icon: Search, t: "หาของง่ายๆ", d: "น้ารอช้อนได้ทุกหมวด หมดปัญหาสินค้ากระจัดกระจาย" },
   ];
 
   return (
@@ -117,9 +125,9 @@ export default function LandingClient({ products = [] }) {
         {/* ฟิล์มเข้มจางให้ตัวหนังสือขาวเด้ง — วิดีโอยังเห็นชัด (ปรับที่เลข .38) */}
         <div style={{ position: "absolute", inset: 0, background: "rgba(10,26,32,.38)", zIndex: 0 }} />
         <div style={{ position: "relative", zIndex: 1 }}>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.white, border: `1px solid ${C.line}`, borderRadius: 999, padding: "5px 13px", fontSize: 12, color: C.brand, marginBottom: 16 }}><ShieldCheck size={15} /> ซื้อขายปลอดภัย มีคนกลางถือเงิน</div>
-        <div style={{ fontSize: 25, fontWeight: 800, color: "#fff", textShadow: "0 2px 14px rgba(0,0,0,.45)", lineHeight: 1.4, maxWidth: 520, margin: "0 auto 12px" }}>ตลาดอุปกรณ์ตกปลามือสอง ที่ไม่ต้องกลัวโดนโกง</div>
-        <p style={{ fontSize: 15, color: "rgba(255,255,255,.94)", textShadow: "0 1px 10px rgba(0,0,0,.45)", lineHeight: 1.6, maxWidth: 440, margin: "0 auto 22px" }}>โอนเงินเข้าบัญชีกลางก่อน ได้ของครบค่อยปล่อยให้ผู้ขาย — ปลอดภัยกว่าซื้อในกลุ่ม</p>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.white, border: `1px solid ${C.line}`, borderRadius: 999, padding: "5px 13px", fontSize: 12, color: C.brand, marginBottom: 16 }}><ShieldCheck size={15} /> Escrow ซื้อ-ขายปลอดภัย มั่นใจได้เลยครับน้า</div>
+        <div style={{ fontSize: 25, fontWeight: 800, color: "#fff", textShadow: "0 2px 14px rgba(0,0,0,.45)", lineHeight: 1.4, maxWidth: 520, margin: "0 auto 12px" }}>ตลาดอุปกรณ์ตกปลา หมดปัญหาโอนแล้วโดนเท</div>
+        <p style={{ fontSize: 15, color: "rgba(255,255,255,.94)", textShadow: "0 1px 10px rgba(0,0,0,.45)", lineHeight: 1.6, maxWidth: 440, margin: "0 auto 22px" }}>ลงขายเลย ถ้าน้าร้อน ผมรอช้อนอยู่ครับ</p>
         <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
           <LBtn size="lg" href="/market">เริ่มเลือกซื้อ</LBtn>
           <LBtn size="lg" variant="outline" href="/login" style={{ borderColor: "#fff", color: "#fff" }}>ลงขายสินค้า</LBtn>
@@ -129,9 +137,8 @@ export default function LandingClient({ products = [] }) {
 
       {/* Escrow band */}
       <section style={{ background: C.brand, padding: "30px 24px" }}>
-        <div style={{ textAlign: "center", color: "#fff", fontSize: 18, fontWeight: 700, marginBottom: 6 }}>ทำไมปลอดภัยกว่าซื้อขายในกลุ่มออนไลน์</div>
-        <div style={{ textAlign: "center", color: "#CDEDE4", fontSize: 13, marginBottom: 22 }}>เงินของคุณถูกพักไว้จนกว่าจะได้รับของ</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, maxWidth: 640, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", color: "#fff", fontSize: 18, fontWeight: 700, marginBottom: 22 }}>ทำไมน้าๆ ย้ายมาซื้อขายที่นี่</div>
+        <div style={{ display: "grid", gridTemplateColumns: small ? "1fr 1fr" : "repeat(4,1fr)", gap: small ? 9 : 12, maxWidth: 860, margin: "0 auto" }}>
           {steps.map((s, i) => (
             <div key={i} style={{ background: "rgba(255,255,255,0.12)", borderRadius: 12, padding: 16 }}>
               <s.icon size={22} color="#fff" />
