@@ -136,13 +136,20 @@ export default function LandingClient({ products = [] }) {
       </section>
 
       {/* Escrow band */}
-      <section style={{ background: C.brand, padding: "30px 24px" }}>
+      <section style={{ background: C.brand, padding: small ? "20px 14px" : "30px 24px" }}>
         <div style={{ display: "grid", gridTemplateColumns: small ? "1fr 1fr" : "repeat(4,1fr)", gap: small ? 9 : 12, maxWidth: 860, margin: "0 auto" }}>
           {steps.map((s, i) => (
-            <div key={i} style={{ background: "rgba(255,255,255,0.12)", borderRadius: 12, padding: 16 }}>
-              <s.icon size={22} color="#fff" />
-              <div style={{ color: "#fff", fontSize: 14, fontWeight: 700, margin: "10px 0 4px" }}>{s.t}</div>
-              <div style={{ color: "#CDEDE4", fontSize: 12.5, lineHeight: 1.5 }}>{s.d}</div>
+            <div key={i} style={{ background: "rgba(255,255,255,0.12)", borderRadius: 12, padding: small ? "10px 12px" : 16 }}>
+              {small ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
+                  <s.icon size={16} color="#fff" style={{ flex: "none" }} />
+                  <div style={{ color: "#fff", fontSize: 12.5, fontWeight: 700 }}>{s.t}</div>
+                </div>
+              ) : (<>
+                <s.icon size={22} color="#fff" />
+                <div style={{ color: "#fff", fontSize: 14, fontWeight: 700, margin: "10px 0 4px" }}>{s.t}</div>
+              </>)}
+              <div style={{ color: "#CDEDE4", fontSize: small ? 11 : 12.5, lineHeight: 1.5 }}>{s.d}</div>
             </div>
           ))}
         </div>
