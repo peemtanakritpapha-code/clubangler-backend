@@ -168,7 +168,7 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
   }, [userCols, autoCols, smallScr]);
   // GRID-4: สเกลป้ายราคาตามจำนวนคอลัมน์ (ค่าที่จูนจาก mock: มือถือ 2→86% 3→68% · เว็บ 3→105% 4→92% 5→86%)
   const priceScale = useMemo(() => {
-    const m = smallScr ? { 2: 0.86, 3: 0.68 } : { 3: 1.05, 4: 0.92, 5: 0.86 };
+    const m = smallScr ? { 2: 0.78, 3: 0.52 } : { 3: 1.05, 4: 0.92, 5: 0.86 }; // GRID-5: มือถือหดลงอีก (ป้ายบังภาพ)
     return m[nCols] ?? 1;
   }, [smallScr, nCols]);
   const pickCols = (n) => {
