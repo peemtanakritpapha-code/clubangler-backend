@@ -19,7 +19,7 @@ import { CAT_MAINS, CATEGORY_TREE, catNodeAt, catChildren, ALL_BRANDS, COND_GRAD
 const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7", bg2: "#F1F3F4" };
 const RATIOS = ["1/1", "3/4", "4/3", "1/1", "3/4", "1/1", "4/3", "3/4"]; // ความสูงแปรผันแบบ prototype (MASONRY_RATIOS)
 
-function MasonryCard({ p, idx, router, hold, priceScale = 1 }) {
+function MasonryCard({ p, idx, router, hold, pill = { f: 12.5, v: 4, h: 9, r: 7 } }) {
   const ratio = p.image_ratio || RATIOS[idx % RATIOS.length]; // W5.8: ใช้สัดส่วนที่ผู้ขายเลือก (ของเก่าไม่มีค่า → สุ่มแบบเดิม)
   const s = p.seller;
   const sold = p.status === "sold";
@@ -52,8 +52,8 @@ function MasonryCard({ p, idx, router, hold, priceScale = 1 }) {
           </>
         )}
         {/* ราคา — dark pill มุมซ้ายล่าง (prototype บรรทัด 716–732) */}
-        <div style={{ position: "absolute", bottom: Math.round(8 * priceScale), left: Math.round(8 * priceScale), background: "rgba(0,0,0,.30)", backdropFilter: "blur(6px)", borderRadius: 7 /* GRID-8: pill กลมเต็มทำให้กรอบไม่รัด */, padding: `${Math.max(2, Math.round(3.5 * priceScale))}px ${Math.max(5, Math.round(8 * priceScale))}px` }}>
-          <span style={{ fontSize: +(12.5 * priceScale).toFixed(1), fontWeight: 700, color: "#fff", lineHeight: 1, display: "block" }}>THB {Number(p.price || 0).toLocaleString()}</span>{/* GRID-9: lineHeight 1 ตัดที่จองวรรณยุกต์ของฟอนต์ไทย */}
+        <div style={{ position: "absolute", bottom: 7, left: 7, background: "rgba(0,0,0,.30)", backdropFilter: "blur(6px)", borderRadius: pill.r, padding: `${pill.v}px ${pill.h}px`, display: "flex", alignItems: "center", justifyContent: "center" }}>{/* GRID-10: flex center = ราคากึ่งกลางกรอบเป๊ะ */}
+          <span style={{ fontSize: pill.f, fontWeight: 700, color: "#fff", lineHeight: 1 }}>THB {Number(p.price || 0).toLocaleString()}</span>
         </div>
         {/* ป้ายส่งฟรีย้ายไปเป็น chip ข้างป้ายสภาพด้านล่าง — ไม่บังรูป/ตัวหนังสือในภาพสินค้า */}
       </div>
@@ -166,10 +166,13 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
     const lo = smallScr ? 2 : 3, hi = smallScr ? 3 : 5;
     return Math.min(hi, Math.max(lo, userCols));
   }, [userCols, autoCols, smallScr]);
-  // GRID-4: สเกลป้ายราคาตามจำนวนคอลัมน์ (ค่าที่จูนจาก mock: มือถือ 2→86% 3→68% · เว็บ 3→105% 4→92% 5→86%)
-  const priceScale = useMemo(() => {
-    const m = smallScr ? { 2: 0.86, 3: 0.68 } : { 3: 1.05, 4: 0.92, 5: 0.86 }; // GRID-7: ตัวเลขตามจูนครั้งแรก + กรอบ base เล็กลง (3.5×8) รัดตัวเลขพอดี
-    return m[nCols] ?? 1;
+  // GRID-10: สเปกป้ายราคาที่จูนจาก mock 14 ก.ค. 2026 — f ฟอนต์ / v×h ช่องไฟ / r มุมโค้ง / b ตัวคูณขยายกรอบ
+  const pricePill = useMemo(() => {
+    const T = smallScr
+      ? { 2: { f: 12, v: 3, h: 7, r: 5, b: 1.5 }, 3: { f: 9, v: 4, h: 10, r: 6, b: 0.85 } }
+      : { 3: { f: 14.5, v: 4, h: 10, r: 9, b: 1.65 }, 4: { f: 13, v: 3, h: 8, r: 8, b: 1.6 }, 5: { f: 12, v: 5, h: 8, r: 8, b: 1.35 } };
+    const c = T[nCols] || { f: 12.5, v: 4, h: 9, r: 7, b: 1 };
+    return { f: c.f, v: Math.round(c.v * c.b), h: Math.round(c.h * c.b), r: c.r };
   }, [smallScr, nCols]);
   const pickCols = (n) => {
     setUserCols(n); setGridOpen(false);
@@ -431,7 +434,7 @@ export default function MarketClient({ products, loggedIn, extraBrands = [], cat
             <div style={{ display: "flex", gap: 6, padding: "6px 10px 14px", alignItems: "flex-start" }}>
               {cols.map((col, ci) => (
                 <div key={ci} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-                  {col.map(({ p, i }) => <MasonryCard key={p.id} p={p} idx={i} router={router} hold={holds[p.id]} priceScale={priceScale} />)}
+                  {col.map(({ p, i }) => <MasonryCard key={p.id} p={p} idx={i} router={router} hold={holds[p.id]} pill={pricePill} />)}
                 </div>
               ))}
             </div>
