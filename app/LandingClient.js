@@ -127,7 +127,7 @@ export default function LandingClient({ products = [] }) {
         <div style={{ position: "relative", zIndex: 1 }}>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.white, border: `1px solid ${C.line}`, borderRadius: 999, padding: "5px 13px", fontSize: 12, color: C.brand, marginBottom: 16 }}><ShieldCheck size={15} /> Escrow ซื้อ-ขายปลอดภัย มั่นใจได้เลยครับน้า</div>
         <div style={{ fontSize: 25, fontWeight: 800, color: "#fff", textShadow: "0 2px 14px rgba(0,0,0,.45)", lineHeight: 1.4, maxWidth: 520, margin: "0 auto 12px" }}>ตลาดอุปกรณ์ตกปลา หมดปัญหาโอนแล้วโดนเท</div>
-        <p style={{ fontSize: 15, color: "rgba(255,255,255,.94)", textShadow: "0 1px 10px rgba(0,0,0,.45)", lineHeight: 1.6, maxWidth: 440, margin: "0 auto 22px" }}>ลงขายเลย ถ้าน้าร้อน ผมรอช้อนอยู่ครับ</p>
+        <p style={{ fontSize: 15, color: "rgba(255,255,255,.94)", textShadow: "0 1px 10px rgba(0,0,0,.45)", lineHeight: 1.6, maxWidth: 440, margin: "0 auto 22px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><img src="/rod-money.png" alt="" style={{ width: 26, height: 26, flex: "none" }} />ลงขายเลย ถ้าน้าร้อน ผมรอช้อนอยู่ครับ</p>
         <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
           <LBtn size="lg" href="/market">เริ่มเลือกซื้อ</LBtn>
           <LBtn size="lg" variant="outline" href="/login" style={{ borderColor: "#fff", color: "#fff" }}>ลงขายสินค้า</LBtn>
@@ -137,7 +137,6 @@ export default function LandingClient({ products = [] }) {
 
       {/* Escrow band */}
       <section style={{ background: C.brand, padding: "30px 24px" }}>
-        <div style={{ textAlign: "center", color: "#fff", fontSize: 18, fontWeight: 700, marginBottom: 22 }}>ทำไมน้าๆ ย้ายมาซื้อขายที่นี่</div>
         <div style={{ display: "grid", gridTemplateColumns: small ? "1fr 1fr" : "repeat(4,1fr)", gap: small ? 9 : 12, maxWidth: 860, margin: "0 auto" }}>
           {steps.map((s, i) => (
             <div key={i} style={{ background: "rgba(255,255,255,0.12)", borderRadius: 12, padding: 16 }}>
