@@ -3,7 +3,7 @@ import { productPath } from "@/lib/slug";
 // app/LandingClient.js — หน้า Landing สำหรับผู้ที่ยังไม่ล็อกอิน (W1)
 // derive จาก prototype: WLanding (บรรทัด 6212) + WProductCard (5947) + WBtn (5909)
 // หมายเหตุ: AnnouncementBanner ไม่ใส่ซ้ำ — AppShell แสดงให้อยู่แล้วทุกหน้า
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import TimeLeft from "@/components/TimeLeft";
 import CatSlider from "@/app/market/CatSlider"; // W1.1: สายพานหมวดหมู่ตัวเดียวกับหน้า /market
@@ -107,6 +107,15 @@ export default function LandingClient({ products = [] }) {
     f(); window.addEventListener("resize", f);
     return () => window.removeEventListener("resize", f);
   }, []);
+  // W1.9: การ์ดจุดขายมือถือ = แถวเดียวปัดเลื่อน — จับ scroll คำนวณใบที่กำลังดู (จุดขาว)
+  const perkRef = useRef(null);
+  const [perkIdx, setPerkIdx] = useState(0);
+  const onPerkScroll = () => {
+    const el = perkRef.current; if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    if (max <= 0) return;
+    setPerkIdx(Math.round((el.scrollLeft / max) * (steps.length - 1)));
+  };
   const steps = [
     { icon: ShieldCheck, t: "Escrow คนกลางถือเงิน", d: "เงินเข้าบัญชีกลาง ไม่เข้าผู้ขายตรง โดนเท = ได้คืน" },
     { icon: Bot, t: "ระบบขี้เกียจขาย ฟรี", d: "AI Auto Title-Description — ถ่ายรูปอย่างเดียวจบ รอรับเงิน" },
@@ -141,23 +150,36 @@ export default function LandingClient({ products = [] }) {
       </section>
 
       {/* Escrow band */}
-      <section style={{ background: C.brand, padding: small ? "20px 14px" : "30px 24px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: small ? "1fr 1fr" : "repeat(4,1fr)", gap: small ? 9 : 12, maxWidth: 860, margin: "0 auto" }}>
-          {steps.map((s, i) => (
-            <div key={i} style={{ background: "rgba(255,255,255,0.12)", borderRadius: 12, padding: small ? "10px 12px" : 16 }}>
-              {small ? (
+      <section style={{ background: C.brand, padding: small ? "20px 0" : "30px 24px" }}>
+        {small ? (<>
+          {/* W1.9: มือถือ — แถวเดียวปัดเลื่อน ดูดล็อกทีละใบ (scroll-snap) */}
+          <div ref={perkRef} onScroll={onPerkScroll} style={{ display: "flex", gap: 9, overflowX: "auto", scrollSnapType: "x mandatory", padding: "0 14px", scrollbarWidth: "none" }}>
+            {steps.map((s, i) => (
+              <div key={i} style={{ flex: "none", width: "72%", scrollSnapAlign: "center", background: "rgba(255,255,255,0.12)", borderRadius: 12, padding: "12px 14px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
                   <s.icon size={16} color="#fff" style={{ flex: "none" }} />
-                  <div style={{ color: "#fff", fontSize: 12.5, fontWeight: 700 }}>{s.t}</div>
+                  <div style={{ color: "#fff", fontSize: 13, fontWeight: 700 }}>{s.t}</div>
                 </div>
-              ) : (<>
+                <div style={{ color: "#CDEDE4", fontSize: 11.5, lineHeight: 1.5 }}>{s.d}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 5, justifyContent: "center", marginTop: 10 }}>
+            {steps.map((_, i) => (
+              <span key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: i === perkIdx ? "#fff" : "rgba(255,255,255,.35)" }} />
+            ))}
+          </div>
+        </>) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, maxWidth: 860, margin: "0 auto" }}>
+            {steps.map((s, i) => (
+              <div key={i} style={{ background: "rgba(255,255,255,0.12)", borderRadius: 12, padding: 16 }}>
                 <s.icon size={22} color="#fff" />
                 <div style={{ color: "#fff", fontSize: 14, fontWeight: 700, margin: "10px 0 4px" }}>{s.t}</div>
-              </>)}
-              <div style={{ color: "#CDEDE4", fontSize: small ? 11 : 12.5, lineHeight: 1.5 }}>{s.d}</div>
-            </div>
-          ))}
-        </div>
+                <div style={{ color: "#CDEDE4", fontSize: 12.5, lineHeight: 1.5 }}>{s.d}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* W1.1: สายพานหมวดหมู่ — ตัวเดียวกับหน้า /market (กดการ์ด → หน้าหมวด) */}
