@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Camera, ChevronRight, ChevronLeft, X, Search, Plus } from "lucide-react";
+import { compressImage } from "@/lib/imageTools"; // IMGOPT1
 import { createClient } from "@/lib/supabase/client";
 import { CAT_MAINS, catNodeAt, catPathValid, catChildren, COND_GRADES, ISSUE_PRESETS, ALL_BRANDS } from "@/lib/catalog";
 import { PREORDER_MAX_DAYS } from "@/lib/preorder"; // PRE-1
@@ -207,9 +208,10 @@ export default function SellClient({ userId, tiers, editProduct = null, aiEnable
       const allImgs = [];
       for (const it of imgs) {
         if (it.k === "old") { allImgs.push(it.url); continue; }
-        const ext = (it.file.name.split(".").pop() || "jpg").toLowerCase();
+        const up = await compressImage(it.file, { maxEdge: 1600, quality: 0.82 }); // IMGOPT1: มือสองต้องซูมดูสภาพ -> 1600px
+        const ext = (up.name.split(".").pop() || "jpg").toLowerCase();
         const path = `product-imgs/${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`; // STORE-SPLIT
-        const { error } = await supabase.storage.from("products").upload(path, it.file, { cacheControl: "3600" });
+        const { error } = await supabase.storage.from("products").upload(path, up, { cacheControl: "3600", contentType: up.type || "image/jpeg" }); // IMGOPT1
         if (error) throw error;
         allImgs.push(supabase.storage.from("products").getPublicUrl(path).data.publicUrl);
       }

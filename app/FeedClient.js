@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { Camera, Heart, MessageCircle, Plus, Check, RotateCcw, MoreHorizontal, Pencil, Trash2, X, Flag, Ban, Search, Store, MessageSquare, Users, User } from "lucide-react"; // POST1+POST2+FEEDSEARCH-1
 import ReportModal from "@/components/ReportModal"; // POST2
 import { createClient } from "@/lib/supabase/client";
+import { compressImage } from "@/lib/imageTools"; // IMGOPT1
 
 const C = { brand: "#0E7E8C", brandTint: "#E7F2F3", ink: "#17181A", muted: "#80868D", line: "#E4E2DC", accent: "#D98A3D", danger: "#C24D42" };
 const baht = n => "฿" + Number(n || 0).toLocaleString();
@@ -57,9 +58,10 @@ function Composer({ user, myProducts, onPosted }) {
     try {
       const imgUrls = [];
       for (const file of files) {
-        const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+        const up = await compressImage(file, { maxEdge: 1280, quality: 0.8 }); // IMGOPT1: รูปโพสต์ 1280px พอสำหรับฟีด
+        const ext = (up.name.split(".").pop() || "jpg").toLowerCase();
         const path = `post-imgs/${user.id}/post-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`; // STORE-SPLIT
-        const { error } = await supabase.storage.from("products").upload(path, file);
+        const { error } = await supabase.storage.from("products").upload(path, up, { contentType: up.type || "image/jpeg" }); // IMGOPT1
         if (error) throw error;
         imgUrls.push(supabase.storage.from("products").getPublicUrl(path).data.publicUrl);
       }
