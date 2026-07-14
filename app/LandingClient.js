@@ -126,7 +126,7 @@ export default function LandingClient({ products = [] }) {
   return (
     <div>
       {/* Hero — วิดีโอพื้นหลังวนซ้ำ (public/hero.mp4): autoPlay ต้องคู่กับ muted + playsInline (กติกาเบราว์เซอร์/iOS) */}
-      <section style={{ position: "relative", padding: "44px 24px", textAlign: "center", background: C.bg, overflow: "hidden" }}>
+      <section style={{ position: "relative", padding: small ? "44px 24px 16px" : "44px 24px", textAlign: "center", background: C.bg, overflow: "hidden" }}>
         <video autoPlay muted loop playsInline preload="auto" aria-hidden="true"
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: 0, pointerEvents: "none" }}>
           <source src="/hero.mp4" type="video/mp4" />
@@ -142,7 +142,7 @@ export default function LandingClient({ products = [] }) {
           <LBtn size="lg" variant="outline" href="/login" style={{ borderColor: "#fff", color: "#fff" }}>ลงขายสินค้า</LBtn>
         </div>
         {/* W1.7: แบดจ์ทางการ Apple/Google — Android ช่วง closed testing ชี้ลิงก์สมัคร tester (เปิด public แล้วแก้ href จุดเดียว) */}
-        <div style={{ display: "flex", gap: 10, justifyContent: "center", alignItems: "center", flexWrap: "wrap", marginTop: 16 }}>
+        <div style={{ display: "flex", gap: 10, justifyContent: "center", alignItems: "center", flexWrap: "wrap", marginTop: small ? 26 : 16 }}>
           <a href="https://apps.apple.com/th/app/id6789353247" target="_blank" rel="noopener noreferrer"><img src="/badge-appstore.png" alt="Download on the App Store" style={{ height: 42, display: "block" }} /></a>
           <a href="https://play.google.com/apps/testing/com.clubangler.app" target="_blank" rel="noopener noreferrer"><img src="/badge-googleplay.png" alt="Get it on Google Play" style={{ height: 42, display: "block" }} /></a>
         </div>
@@ -150,7 +150,7 @@ export default function LandingClient({ products = [] }) {
       </section>
 
       {/* Escrow band */}
-      <section style={{ background: C.brand, padding: small ? "20px 0" : "30px 24px" }}>
+      <section style={{ background: C.brand, padding: small ? "16px 0 12px" : "30px 24px" }}>
         {small ? (<>
           {/* W1.9: มือถือ — แถวเดียวปัดเลื่อน ดูดล็อกทีละใบ (scroll-snap) */}
           <div ref={perkRef} onScroll={onPerkScroll} style={{ display: "flex", gap: 9, overflowX: "auto", scrollSnapType: "x mandatory", padding: "0 14px", scrollbarWidth: "none" }}>
