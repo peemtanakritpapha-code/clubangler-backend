@@ -975,7 +975,11 @@ export default function AdminClient({ orders, allOrders = [], sellers, buyers, u
                     {o.product_snapshot.name} · ฿{Number(o.product_snapshot.price).toLocaleString()}
                     {o.product_snapshot.brand ? ` · ${o.product_snapshot.brand}` : ""}
                     {o.product_snapshot.cond ? ` · ${o.product_snapshot.cond}` : ""}
+                    {o.product_snapshot.location ? ` · ${o.product_snapshot.location}` : ""} {/* SNAPSHOT-EXTRA */}
                   </div>
+                  {o.product_snapshot.shipping && (
+                    <div style={{ fontSize: 11.5, color: "#64748B", marginTop: 2 }}>🚚 {o.product_snapshot.shipping.label || (o.product_snapshot.shipping.mode === "free" ? "ส่งฟรี" : `ค่าส่ง ฿${Number(o.product_snapshot.shipping.fee || 0).toLocaleString()}`)}</div>
+                  )}
                   {o.product_snapshot.cond_note && <div style={{ fontSize: 11.5, color: "#475569", marginTop: 3 }}>หมายเหตุสภาพ: {o.product_snapshot.cond_note}</div>}
                   {(o.product_snapshot.issues || []).length > 0 && (
                     <div style={{ fontSize: 11.5, color: "#B45309", marginTop: 3 }}>ตำหนิที่แจ้งตอนลงขาย: {o.product_snapshot.issues.join(", ")}</div>

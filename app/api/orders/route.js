@@ -106,6 +106,7 @@ export async function POST(req) {
       name: l.p.name, description: l.p.description, price: l.p.price,
       brand: l.p.brand, cond: l.p.cond, cond_label: l.p.cond_label, cond_note: l.p.cond_note,
       issues: l.p.issues, cat_main: l.p.cat_main, cat_sub: l.p.cat_sub, images: l.p.images,
+      shipping: l.p.shipping, location: l.p.location, // SNAPSHOT-EXTRA
     },
   }));
 
