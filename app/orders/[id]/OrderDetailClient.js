@@ -224,6 +224,7 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
   const [labelOpen, setLabelOpen] = useState(false);
   const [ship, setShip] = useState({ carrier: CARRIERS[0], no: "" });
   const [shipAgree, setShipAgree] = useState(false); // CONSENT-1: จุดที่ 3
+  const [extendReasonOpen, setExtendReasonOpen] = useState(false); // EXTEND-REASON
   const [ret, setRet] = useState({ carrier: CARRIERS[0], no: "", files: [] });
   const [recvFiles, setRecvFiles] = useState([]);
 
@@ -551,11 +552,26 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
           )}
           {/* ขยายเวลารับของ (ผู้ซื้อขอ 1 ครั้ง — ผู้ขายต้องยืนยัน) */}
           {!isSeller && o.status === "shipped" && !o.extend_status && (
-            <button disabled={busy} onClick={() => call(`/api/orders/${o.id}/extend`, { action: "request" }, `ขอขยายเวลายืนยันรับของ +${E_DAYS} วัน?\n\nต้องได้รับการยืนยันจากผู้ขาย (ขอได้ 1 ครั้ง)`)}
+            <button disabled={busy} onClick={() => setExtendReasonOpen(true)} // EXTEND-REASON
               style={{ marginTop: 8, width: "100%", height: 38, borderRadius: 10, border: `1px solid ${C.line}`, background: "#fff", color: C.muted, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
               ⏳ ยังไม่ได้รับของ? ขอขยายเวลา +{E_DAYS} วัน (ผู้ขายต้องยืนยัน)
             </button>
           )}
+          {extendReasonOpen && (
+            <div onClick={() => setExtendReasonOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(16,19,20,.55)", zIndex: 150, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+              <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 340, background: "#fff", borderRadius: 14, padding: 16 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 800, color: C.ink, marginBottom: 4 }}>ยังไม่ได้รับของ?</div>
+                <div style={{ fontSize: 11.5, color: C.muted, marginBottom: 10 }}>เลือกเหตุผล — ผู้ขายจะเห็นข้อความนี้ในแจ้งเตือน (ขอได้ 1 ครั้ง)</div>
+                <div style={{ display: "grid", gap: 8 }}>
+                <button disabled={busy} onClick={() => { setExtendReasonOpen(false); call(`/api/orders/${o.id}/extend`, { action: "request", reason: "ยังไม่ได้รับพัสดุ" }); }} style={{ width: "100%", textAlign: "left", height: 40, borderRadius: 9, border: `1px solid ${C.line}`, background: "#fff", color: C.ink, fontWeight: 600, fontSize: 12.5, cursor: "pointer", padding: "0 12px" }}>ยังไม่ได้รับพัสดุ</button>
+                <button disabled={busy} onClick={() => { setExtendReasonOpen(false); call(`/api/orders/${o.id}/extend`, { action: "request", reason: "ได้รับแล้วแต่ตรวจไม่ครบ" }); }} style={{ width: "100%", textAlign: "left", height: 40, borderRadius: 9, border: `1px solid ${C.line}`, background: "#fff", color: C.ink, fontWeight: 600, fontSize: 12.5, cursor: "pointer", padding: "0 12px" }}>ได้รับแล้วแต่ตรวจไม่ครบ</button>
+                <button disabled={busy} onClick={() => { setExtendReasonOpen(false); call(`/api/orders/${o.id}/extend`, { action: "request", reason: "ติดธุระ ยังไม่ว่างแกะของ" }); }} style={{ width: "100%", textAlign: "left", height: 40, borderRadius: 9, border: `1px solid ${C.line}`, background: "#fff", color: C.ink, fontWeight: 600, fontSize: 12.5, cursor: "pointer", padding: "0 12px" }}>ติดธุระ ยังไม่ว่างแกะของ</button>
+                </div>
+                <button onClick={() => setExtendReasonOpen(false)} style={{ marginTop: 10, width: "100%", height: 36, border: "none", background: "transparent", color: C.muted, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>ยกเลิก</button>
+              </div>
+            </div>
+          )} // EXTEND-REASON
+
           {!isSeller && o.status === "shipped" && o.extend_status === "pending" && (
             <div style={{ marginTop: 8, fontSize: 12, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 9, padding: "8px 12px" }}>
               ⏳ ส่งคำขอขยายเวลา +{o.extend_days} วันแล้ว — รอผู้ขายยืนยัน (ระหว่างนี้ระบบยังไม่ยืนยันรับแทน)

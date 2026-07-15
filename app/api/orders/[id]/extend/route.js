@@ -11,7 +11,7 @@ export async function POST(req, { params }) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบ" }, { status: 401 });
 
-  const { action, kind = "receive" } = await req.json(); // kind: "receive" (ผู้ซื้อขอขยายรับของ) | "ship" (ผู้ขายขอขยายจัดส่ง)
+  const { action, kind = "receive", reason } = await req.json(); // kind: "receive" (ผู้ซื้อขอขยายรับของ) | "ship" (ผู้ขายขอขยายจัดส่ง) — reason: EXTEND-REASON
   const admin = createAdminClient();
   const { data: o } = await admin.from("orders")
     .select("id, order_no, item, status, buyer_id, seller_id, extend_status, extend_days, ship_extend_status, ship_extend_days")
@@ -58,12 +58,13 @@ export async function POST(req, { params }) {
     if (o.extend_status) return NextResponse.json({ error: "ออเดอร์นี้ขอขยายเวลาไปแล้ว (ขอได้ 1 ครั้ง)" }, { status: 400 });
     const { data: cfgRows } = await admin.from("platform_config").select("*").limit(1);
     const days = Number(cfgRows?.[0]?.extend_receive_days) || 3;
-    const { error } = await admin.from("orders").update({ extend_status: "pending", extend_days: days })
+    const cleanReason = String(reason || "").trim().slice(0, 100) || null; // EXTEND-REASON
+    const { error } = await admin.from("orders").update({ extend_status: "pending", extend_days: days, extend_reason: cleanReason })
       .eq("id", o.id).eq("status", "shipped").is("extend_status", null);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     await admin.from("notifications").insert({
       to_user: o.seller_id, icon: "⏳", title: "ผู้ซื้อขอขยายเวลารับของ",
-      body: `${o.item} — ขอเพิ่ม ${days} วัน กดยืนยัน/ปฏิเสธในหน้าออเดอร์ (ระหว่างรอ เงินจะยังไม่ถูกปล่อยอัตโนมัติ)`, ref: o.order_no,
+      body: `${o.item} — ขอเพิ่ม ${days} วัน${cleanReason ? ` (${cleanReason})` : ""} กดยืนยัน/ปฏิเสธในหน้าออเดอร์ (ระหว่างรอ เงินจะยังไม่ถูกปล่อยอัตโนมัติ)`, ref: o.order_no, // EXTEND-REASON
     });
     return NextResponse.json({ ok: true, days });
   }
