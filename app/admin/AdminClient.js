@@ -967,29 +967,34 @@ export default function AdminClient({ orders, allOrders = [], sellers, buyers, u
                   </div>
                 )}
               </div>
-              {/* DISPUTE-2a-ADMIN: เทียบหลักฐานกับสำเนาประกาศขาย ณ วันสั่งซื้อ */}
+              {/* DISPUTE-2a-ADMIN-FINAL: เหมือนดูโพสต์สินค้าจริง ครบทุกส่วน */}
               {o.product_snapshot ? (
-                <div style={{ background: "#F1F5F9", borderRadius: 10, padding: "10px 12px", marginTop: 8 }}>
-                  <div style={{ fontSize: 11.5, fontWeight: 800, color: "#334155" }}>📋 สำเนาประกาศขาย ณ วันสั่งซื้อ (ผู้ขายแก้ไขทีหลังไม่มีผลย้อนหลัง)</div>
-                  <div style={{ fontSize: 12, color: C.ink, marginTop: 3 }}>
-                    {o.product_snapshot.name} · ฿{Number(o.product_snapshot.price).toLocaleString()}
+                <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 12, padding: 14, marginTop: 8 }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 800, color: "#334155", marginBottom: 10 }}>📋 สำเนาประกาศขาย ณ วันสั่งซื้อ (ผู้ขายแก้ไขทีหลังไม่มีผลย้อนหลัง)</div>
+                  {(o.product_snapshot.images || []).length > 0 && (
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                      {o.product_snapshot.images.map((u, i) => (
+                        <a key={i} href={u} target="_blank" rel="noreferrer"><img src={u} alt="" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 8, border: "1px solid #CBD5E1" }} /></a>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 14.5, fontWeight: 800, color: C.ink }}>{o.product_snapshot.name}</div>
+                  <div style={{ fontSize: 13.5, fontWeight: 800, color: C.brand, marginTop: 2 }}>฿{Number(o.product_snapshot.price).toLocaleString()}</div>
+                  <div style={{ fontSize: 11.5, color: "#64748B", marginTop: 4 }}>
+                    {[o.product_snapshot.cat_main, o.product_snapshot.cat_sub].filter(Boolean).join(" › ")}
                     {o.product_snapshot.brand ? ` · ${o.product_snapshot.brand}` : ""}
                     {o.product_snapshot.cond ? ` · ${o.product_snapshot.cond}` : ""}
-                    {o.product_snapshot.location ? ` · ${o.product_snapshot.location}` : ""} {/* SNAPSHOT-EXTRA */}
+                    {o.product_snapshot.location ? ` · ${o.product_snapshot.location}` : ""}
                   </div>
                   {o.product_snapshot.shipping && (
                     <div style={{ fontSize: 11.5, color: "#64748B", marginTop: 2 }}>🚚 {o.product_snapshot.shipping.label || (o.product_snapshot.shipping.mode === "free" ? "ส่งฟรี" : `ค่าส่ง ฿${Number(o.product_snapshot.shipping.fee || 0).toLocaleString()}`)}</div>
                   )}
-                  {o.product_snapshot.cond_note && <div style={{ fontSize: 11.5, color: "#475569", marginTop: 3 }}>หมายเหตุสภาพ: {o.product_snapshot.cond_note}</div>}
-                  {(o.product_snapshot.issues || []).length > 0 && (
-                    <div style={{ fontSize: 11.5, color: "#B45309", marginTop: 3 }}>ตำหนิที่แจ้งตอนลงขาย: {o.product_snapshot.issues.join(", ")}</div>
+                  {o.product_snapshot.description && (
+                    <div style={{ fontSize: 12.5, color: C.ink, marginTop: 10, whiteSpace: "pre-wrap", lineHeight: 1.65, borderTop: "1px solid #E2E8F0", paddingTop: 10 }}>{o.product_snapshot.description}</div>
                   )}
-                  {(o.product_snapshot.images || []).length > 0 && (
-                    <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
-                      {o.product_snapshot.images.slice(0, 5).map((u, i) => (
-                        <a key={i} href={u} target="_blank" rel="noreferrer"><img src={u} alt="" style={{ width: 54, height: 54, objectFit: "cover", borderRadius: 8, border: "1px solid #CBD5E1" }} /></a>
-                      ))}
-                    </div>
+                  {o.product_snapshot.cond_note && <div style={{ fontSize: 12, color: "#475569", marginTop: 8 }}>หมายเหตุสภาพ: {o.product_snapshot.cond_note}</div>}
+                  {(o.product_snapshot.issues || []).length > 0 && (
+                    <div style={{ fontSize: 12, color: "#B45309", marginTop: 6, fontWeight: 700 }}>⚠ ตำหนิที่แจ้งตอนลงขาย: {o.product_snapshot.issues.join(", ")}</div>
                   )}
                 </div>
               ) : (
