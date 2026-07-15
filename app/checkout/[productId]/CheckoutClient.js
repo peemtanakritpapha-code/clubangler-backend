@@ -1,4 +1,5 @@
 "use client";
+import AddrPicker from "@/components/AddrPicker"; // ADDR-2
 import { productPath } from "@/lib/slug";
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -108,8 +109,8 @@ export default function CheckoutClient({ product: p, addresses, tiers, userId })
             <div style={{ display: "grid", gap: 8 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>{input("name")}{input("phone")}</div>
               {input("addr")}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>{input("sub")}{input("district")}</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>{input("province")}{input("zip")}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}><AddrPicker form={form} setForm={setForm} /></div> {/* ADDR-2 */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}></div>
               <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12.5, color: C.muted, cursor: "pointer" }}>
                 <input type="checkbox" checked={saveToBook} onChange={e => setSaveToBook(e.target.checked)} />
                 บันทึกที่อยู่นี้เข้าสมุดที่อยู่

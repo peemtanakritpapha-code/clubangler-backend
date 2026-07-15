@@ -16,7 +16,10 @@ export async function generateMetadata() {
   };
 }
 
-export default async function MarketPage() {
+export default async function MarketPage({ searchParams }) { // LOADMORE
+  const sp = await searchParams; // Next 15+: searchParams เป็น Promise ต้อง await
+  const page = Math.max(1, parseInt(sp?.page, 10) || 1);
+  const PER = 60;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -25,7 +28,7 @@ export default async function MarketPage() {
     .select("id, name, price, cond, cond_label, brand, location, images, image_ratio, status, cat_main, cat_sub, shipping, views, created_at, seller_id, preorder_days")
     .in("status", ["active", "sold"])
     .order("created_at", { ascending: false })
-    .limit(60);
+    .range((page - 1) * PER, page * PER); // LOADMORE: ดึงเกินไว้ 1 ชิ้นเพื่อเช็คว่ามีหน้าถัดไป
 
   // ข้อมูลผู้ขายสำหรับแถวล่างการ์ด (prototype MasonryCard บรรทัด 753–767)
   const sellerIds = [...new Set((products || []).map(p => p.seller_id).filter(Boolean))];
@@ -34,11 +37,23 @@ export default async function MarketPage() {
     : { data: [] };
   const sellerMap = Object.fromEntries((sellers || []).map(s => [s.id, s]));
 
-  const rows = (products || []).map(p => ({ ...p, seller: sellerMap[p.seller_id] || null }));
+  const hasMore = (products || []).length > PER; // LOADMORE
+  const rows = (products || []).slice(0, PER).map(p => ({ ...p, seller: sellerMap[p.seller_id] || null }));
   const extraBrands = await getExtraBrands(supabase); // BRAND-ADM
   return (
     <>
       <MarketClient products={rows} loggedIn={!!user} extraBrands={extraBrands} catBar={<CatSlider title="ช้อปตามหมวดหมู่" auto />} />
+      {/* LOADMORE: แบ่งหน้าแบบลิงก์จริง — Google เดินตามเก็บสินค้าได้ทุกหน้า */}
+      <div style={{ display: "flex", justifyContent: "center", gap: 10, padding: "6px 0 26px" }}>
+        {page > 1 && (
+          <a href={page === 2 ? "/market" : `/market?page=${page - 1}`}
+            style={{ height: 44, lineHeight: "44px", padding: "0 22px", borderRadius: 999, border: "1.5px solid #E5E9EA", background: "#fff", color: "#6B7678", fontWeight: 800, fontSize: 13, textDecoration: "none" }}>‹ ก่อนหน้า</a>
+        )}
+        {hasMore && (
+          <a href={`/market?page=${page + 1}`}
+            style={{ height: 44, lineHeight: "44px", padding: "0 26px", borderRadius: 999, border: "1.5px solid #0E7E8C", background: "#fff", color: "#0E7E8C", fontWeight: 800, fontSize: 13, textDecoration: "none" }}>ดูเพิ่มเติม ›</a>
+        )}
+      </div>
       {/* SEO-5: ลิงก์หมวดจริงท้ายหน้า — ผู้ใช้กดเข้าหมวดได้ + Google เดินตามลิงก์ไปเก็บหน้าหมวด */}
     </>
   );

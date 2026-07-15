@@ -474,6 +474,31 @@ function PostCard({ p, user, liked0, following0, onNeedLogin, blocks, onBlock })
 }
 
 export default function FeedClient({ posts, latest, user, myLikes, myFollows, myProducts, myBlocks }) {
+  // LOADMORE: โหลดโพสต์ต่อทีละ 40 — query ชุดเดียวกับ app/page.js เป๊ะ (Iron Rule: FK ระบุเส้นทางชัด)
+  const [morePosts, setMorePosts] = useState([]);
+  const [moreLikes, setMoreLikes] = useState([]);
+  const [feedEnd, setFeedEnd] = useState(posts.length < 40);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const loadMore = async () => {
+    if (loadingMore || feedEnd) return;
+    setLoadingMore(true);
+    const sb = createClient();
+    const off = posts.length + morePosts.length;
+    const { data } = await sb.from("posts")
+      .select("*, profiles!posts_author_id_fkey(name, is_shop, avatar_path), products(id, name, price, images), post_likes(count), post_comments(count)")
+      .neq("status", "removed")
+      .order("created_at", { ascending: false })
+      .range(off, off + 39);
+    if ((data || []).length < 40) setFeedEnd(true);
+    const seen = new Set([...posts, ...morePosts].map(x => x.id));
+    const fresh = (data || []).filter(x => !seen.has(x.id)); // กันซ้ำ (มีโพสต์ใหม่แทรกทำ offset ขยับ)
+    if (fresh.length && user) {
+      const { data: lk } = await sb.from("post_likes").select("post_id").eq("user_id", user.id).in("post_id", fresh.map(x => x.id));
+      setMoreLikes(l => [...l, ...(lk || []).map(x => x.post_id)]);
+    }
+    setMorePosts(l => [...l, ...fresh]);
+    setLoadingMore(false);
+  };
   const router = useRouter();
   const [filter, setFilter] = useState("ทั้งหมด");
   const [blocks, setBlocks] = useState(myBlocks || []); // POST2: อัปเดตสดเมื่อกดบล็อกในฟีด
@@ -517,13 +542,13 @@ export default function FeedClient({ posts, latest, user, myLikes, myFollows, my
   const sPeople = (sRes?.people || []).filter(x => sType === "all" ? true : sType === "shop" ? x.is_shop : sType === "people" ? !x.is_shop : false);
   const sPosts = (sType === "all" || sType === "post") ? (sRes?.posts || []) : [];
 
-  const list = useMemo(() => posts.filter(p => {
+  const list = useMemo(() => [...posts, ...morePosts].filter(p => { // LOADMORE: รวมชุดที่โหลดเพิ่ม
     if (blocks.includes(p.author_id)) return false; // POST2
     if (p.status === "removed") return false; // POST3.1: soft delete — แอดมินเห็นในหลังบ้านเท่านั้น
     if (filter === "ติดตาม") return user && (myFollows.includes(p.author_id) || p.author_id === user.id);
     if (filter === "ประกาศ") return p.is_announcement;
     return true;
-  }), [posts, filter, myFollows, user, blocks]);
+  }), [posts, morePosts, filter, myFollows, user, blocks]);
 
   const chip = on => ({ padding: "8px 16px", borderRadius: 999, fontSize: 12.5, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
     border: `1.5px solid ${on ? C.brand : C.line}`, background: on ? C.brand : "#fff", color: on ? "#fff" : C.muted });
@@ -614,10 +639,17 @@ export default function FeedClient({ posts, latest, user, myLikes, myFollows, my
         )}
         {list.map(p => (
           <PostCard key={p.id} p={p} user={user}
-            liked0={myLikes.includes(p.id)} following0={myFollows.includes(p.author_id)}
+            liked0={myLikes.includes(p.id) || moreLikes.includes(p.id)} following0={myFollows.includes(p.author_id)}
             blocks={blocks} onBlock={id => setBlocks(b => [...b, id])}
             onNeedLogin={() => router.push("/login")} />
         ))}
+        {/* LOADMORE: ปุ่มดูเพิ่มเติม — โหลดจนหมดแล้วปุ่มหาย */}
+        {!feedEnd && (
+          <button onClick={loadMore} disabled={loadingMore}
+            style={{ height: 44, borderRadius: 999, border: `1.5px solid ${C.brand}`, background: "#fff", color: C.brand, fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+            {loadingMore ? "กำลังโหลด..." : "ดูเพิ่มเติม"}
+          </button>
+        )}
       </div>
 
       {/* แถบข้าง: สินค้ามาใหม่ (จอกว้าง — prototype ฟีดเว็บ: หัวข้อ + ปุ่มรีเฟรชวงกลม + บรรทัดรอง) */}

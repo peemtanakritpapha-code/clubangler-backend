@@ -1,4 +1,5 @@
 "use client";
+import AddrPicker from "@/components/AddrPicker"; // ADDR-2
 import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -139,10 +140,10 @@ export default function ProfileClient({ initialProfile, initialAddresses, userId
               </div>
               {input("addr", "บ้านเลขที่ / ถนน / หมู่ *")}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {input("sub", "ตำบล/แขวง *")}{input("district", "อำเภอ/เขต *")}
+                <AddrPicker form={form} setForm={setForm} errKeys={showErr ? invalid(form) : []} /> {/* ADDR-2 */}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {input("province", "จังหวัด *")}{input("zip", "รหัสไปรษณีย์ 5 หลัก *")}
+                
               </div>
               {showErr && invalid(form).length > 0 &&
                 <div style={{ fontSize: 12, color: C.danger }}>กรอกช่องที่มี * ให้ครบ (รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก)</div>}
