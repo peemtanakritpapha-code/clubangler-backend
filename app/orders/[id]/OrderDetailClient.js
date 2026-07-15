@@ -90,12 +90,13 @@ function StepTimeline({ status, steps }) {
 
 // ฟอร์มแจ้งปัญหา/ขอคืน — ดีไซน์+พฤติกรรมตาม ClubAngler_dispute_form.jsx (checklist 7 จุด)
 // pill เหตุผล · photo grid 62×62 ลบรายรูป + กล่อง "+" เส้นประ · ปุ่มล็อกจนครบ 3 อย่างและบอกสิ่งที่ขาด
-function DisputeModal({ order, userId, onClose, onDone }) {
+function DisputeModal({ order, userId, onClose, onDone, returnDays }) { // CONSENT-1: returnDays = จุดที่ 4
   const supabase = createClient();
   const [dF, setDF] = useState({ reason: "", detail: "", returnWant: true, files: [], previews: [] });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const dOk = dF.reason && dF.detail.trim() && dF.files.length > 0;
+  const [returnConfirm, setReturnConfirm] = useState(false); // CONSENT-1: จุดที่ 4
 
   const addFiles = e => {
     const add = Array.from(e.target.files || []).slice(0, 5 - dF.files.length);
@@ -109,7 +110,7 @@ function DisputeModal({ order, userId, onClose, onDone }) {
     setDF(f => { f.previews.forEach(u => URL.revokeObjectURL(u)); return { ...f, files, previews: files.map(x => URL.createObjectURL(x)) }; });
   };
 
-  const submit = async () => {
+  const doSubmit = async () => {
     if (!dOk || busy) return;
     setErr(""); setBusy(true);
     try {
@@ -127,6 +128,7 @@ function DisputeModal({ order, userId, onClose, onDone }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "ส่งเรื่องไม่สำเร็จ");
+      if (dF.returnWant) fetch("/api/consent", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ point: "return_terms", order_id: String(order.id) }) }).catch(() => {}); // CONSENT-1
       // toast แยกข้อความสองโหมด (ข้อความตามจริง: SLA เป็นเป้าหมายทีมงาน)
       onDone(dF.returnWant ? "ส่งคำขอคืนสินค้าแล้ว — แอดมินกำลังพิจารณา" : "เปิดข้อพิพาทแล้ว — แอดมินกำลังตรวจสอบ");
     } catch (e) { setErr(e.message); setBusy(false); }
@@ -188,11 +190,24 @@ function DisputeModal({ order, userId, onClose, onDone }) {
         {err && <div style={{ fontSize: 12.5, color: DANGER, background: "#FBEAE8", borderRadius: 8, padding: "8px 12px" }}>{err}</div>}
 
         {/* 5. ปุ่มส่ง — ล็อกจนครบ + บอกสิ่งที่ขาด */}
-        <button onClick={submit} disabled={!dOk || busy}
+        <button onClick={() => (dF.returnWant ? setReturnConfirm(true) : doSubmit())} disabled={!dOk || busy}
           style={{ height: 44, border: "none", borderRadius: 10, background: DANGER, color: "#fff", fontWeight: 800, fontSize: 13.5, cursor: dOk ? "pointer" : "not-allowed", fontFamily: "inherit", opacity: dOk && !busy ? 1 : .4 }}>
           {busy ? "กำลังส่ง..." : dOk ? (dF.returnWant ? "ส่งคำขอคืนสินค้า" : "ยืนยันเปิดข้อพิพาท") : "เลือกเหตุผล + กรอกรายละเอียด + แนบรูปอย่างน้อย 1"}
         </button>
         <button onClick={onClose} style={{ height: 38, border: `1px solid ${C.line}`, borderRadius: 10, background: "#fff", color: C.ink, fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>ยกเลิก</button>
+        {returnConfirm && (
+          <div onClick={e => e.stopPropagation()} style={{ position: "fixed", inset: 0, background: "rgba(16,19,20,.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+            <div style={{ width: "100%", maxWidth: 380, background: "#fff", borderRadius: 14, padding: 18 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 800, color: C.ink, marginBottom: 8 }}>เงื่อนไขการส่งคืน</div>
+              <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.7 }}>หากเคสได้รับอนุมัติ ผู้ซื้อเป็นผู้ดำเนินการส่งคืนสินค้าและ<b>ชำระค่าจัดส่งคืนทั้งหมด</b> ภายใน {returnDays} วัน ตามกติกาที่ท่านยอมรับเมื่อสมัครสมาชิก</div>
+              <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.65, marginTop: 8 }}>เกินกำหนดส่งคืน ระบบจะปิดเคสและโอนเงินให้ผู้ขายอัตโนมัติ</div>
+              <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                <button onClick={() => setReturnConfirm(false)} disabled={busy} style={{ flex: 1, height: 40, border: `1px solid ${C.line}`, borderRadius: 10, background: "#fff", color: C.ink, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>ยกเลิก</button>
+                <button onClick={() => { setReturnConfirm(false); doSubmit(); }} disabled={busy} style={{ flex: 2, height: 40, border: "none", borderRadius: 10, background: DANGER, color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>{busy ? "กำลังดำเนินการ..." : "เข้าใจแล้ว เปิดเคสต่อ"}</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -208,6 +223,7 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
   const [toast, setToast] = useState("");
   const [labelOpen, setLabelOpen] = useState(false);
   const [ship, setShip] = useState({ carrier: CARRIERS[0], no: "" });
+  const [shipAgree, setShipAgree] = useState(false); // CONSENT-1: จุดที่ 3
   const [ret, setRet] = useState({ carrier: CARRIERS[0], no: "", files: [] });
   const [recvFiles, setRecvFiles] = useState([]);
 
@@ -604,7 +620,14 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
                   ❌ ผู้ซื้อไม่อนุมัติการขยายเวลา — กำหนดเดิม {X_DAYS} วันยังมีผล กรุณารีบจัดส่ง
                 </div>
               )}
-              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                            <div style={{ fontSize: 12, color: "#92400E", background: "#FEF3C7", borderRadius: 9, padding: "9px 11px", marginBottom: 10, lineHeight: 1.65 }}>
+                📸 อย่าลืมเก็บหลักฐานก่อนส่งนะครับ หลักฐานสำคัญที่สุดหากเกิดข้อพิพาท<br />ของมูลค่าสูงควรซื้อประกันขนส่ง
+              </div>
+              <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: C.ink, lineHeight: 1.6, cursor: "pointer", marginBottom: 10 }}>
+                <input type="checkbox" checked={shipAgree} onChange={e => setShipAgree(e.target.checked)} style={{ width: 16, height: 16, marginTop: 1, accentColor: C.brand, flexShrink: 0 }} />
+                <span>ฉันเข้าใจว่าฉันเป็นคู่สัญญากับขนส่ง — กรณีพัสดุสูญหายหรือเสียหายระหว่างทาง ฉันเป็นผู้ดำเนินการเคลมกับขนส่ง</span>
+              </label>
+<div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
                 <select value={ship.carrier} onChange={e => setShip({ ...ship, carrier: e.target.value })}
                   style={{ height: 42, border: `1.5px solid ${C.line}`, borderRadius: 9, padding: "0 8px", fontSize: 12.5, background: "#fff" }}>
                   {CARRIERS.map(c => <option key={c}>{c}</option>)}
@@ -612,8 +635,8 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
                 <input value={ship.no} placeholder="เลขพัสดุ (Tracking No.) *" onChange={e => setShip({ ...ship, no: e.target.value })}
                   style={{ flex: 1, height: 42, border: `1.5px solid ${C.line}`, borderRadius: 9, padding: "0 12px", fontSize: 13, outline: "none" }} />
               </div>
-              <button disabled={busy || !ship.no.trim()} onClick={() => call(`/api/orders/${o.id}/ship`, { carrier: ship.carrier, trackingNo: ship.no })}
-                style={{ width: "100%", height: 46, border: "none", borderRadius: 10, background: ship.no.trim() ? C.brand : "#C9D6D8", color: "#fff", fontWeight: 800, fontSize: 13.5, cursor: "pointer" }}>
+              <button disabled={busy || !ship.no.trim() || !shipAgree} onClick={() => { fetch("/api/consent", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ point: "ship_terms", order_id: String(o.id) }) }).catch(() => {}); call(`/api/orders/${o.id}/ship`, { carrier: ship.carrier, trackingNo: ship.no }); }} // CONSENT-1
+                style={{ width: "100%", height: 46, border: "none", borderRadius: 10, background: (ship.no.trim() && shipAgree) ? C.brand : "#C9D6D8", color: "#fff", fontWeight: 800, fontSize: 13.5, cursor: (ship.no.trim() && shipAgree) ? "pointer" : "not-allowed" }}>
                 🚚 ยืนยันแจ้งจัดส่ง
               </button>
               {!o.ship_extend_status && (
@@ -655,7 +678,7 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
         </div>
       </div>
 
-      {dispute && <DisputeModal order={o} userId={userId} onClose={() => setDispute(false)}
+      {dispute && <DisputeModal order={o} userId={userId} returnDays={Y_DAYS} onClose={() => setDispute(false)} /* CONSENT-1: จุดที่ 4 */
         onDone={msg => { setDispute(false); setToast(msg); setTimeout(() => setToast(""), 4000); router.refresh(); }} />}
       {toast && (
         <div style={{ position: "fixed", left: "50%", bottom: 28, transform: "translateX(-50%)", background: C.ink, color: "#fff", fontSize: 12.5, fontWeight: 700, padding: "11px 18px", borderRadius: 999, boxShadow: "0 8px 24px rgba(0,0,0,.25)", zIndex: 200, whiteSpace: "nowrap" }}>
