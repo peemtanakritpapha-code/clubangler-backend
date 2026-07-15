@@ -15,6 +15,7 @@ const ALLOWED = [
   "pay_within_minutes",
   "ai_daily_limit", "ai_cooldown_sec", // AI-LIMIT
   "ai_notes", // AI2: ความรู้เสริมสำหรับ AI ช่วยกรอกประกาศ
+  "dispute_video_retention_days", "dispute_clip_max_sec", "dispute_clip_max_mb", // CONFIG-DISPUTE
 ];
 
 async function requireAdmin() {
@@ -55,6 +56,9 @@ export async function POST(req) {
 
   // ต้องเหลืออย่างน้อย 1 ช่องทางรับเงินที่ใช้งานได้ (กติกาจาก prototype บรรทัด 5343)
     if ("pay_within_minutes" in patch) patch.pay_within_minutes = Math.min(10080, Math.max(5, Number(patch.pay_within_minutes) || 0));
+  if ("dispute_video_retention_days" in patch) patch.dispute_video_retention_days = Math.min(365, Math.max(1, Number(patch.dispute_video_retention_days) || 0)); // CONFIG-DISPUTE
+  if ("dispute_clip_max_sec" in patch) patch.dispute_clip_max_sec = Math.min(300, Math.max(10, Number(patch.dispute_clip_max_sec) || 0));
+  if ("dispute_clip_max_mb" in patch) patch.dispute_clip_max_mb = Math.min(500, Math.max(10, Number(patch.dispute_clip_max_mb) || 0));
 
   // AI2: ความรู้เสริม — จำกัดความยาวกัน prompt บวม (4000 ตัวอักษรพอสำหรับหลายสิบบรรทัด)
   if ("ai_notes" in patch) patch.ai_notes = String(patch.ai_notes ?? "").trim().slice(0, 4000) || null;
