@@ -483,7 +483,7 @@ function SystemSettings({ config, onError }) {
   );
 }
 
-export default function AdminClient({ orders, sellers, buyers, userId, kycQueue = [], users = [], products = [], stats = {}, config = null, tiers = [], reports = [], modPosts = [], bannedWords = [] }) {
+export default function AdminClient({ orders, allOrders = [], sellers, buyers, userId, kycQueue = [], users = [], products = [], stats = {}, config = null, tiers = [], reports = [], modPosts = [], bannedWords = [] }) {
   const router = useRouter();
   const supabase = createClient();
   // ADM-R: ข้อมูลหลังบ้านรีเฟรชเองทุก 30 วิ (เฉพาะตอนแท็บโชว์อยู่) + รีเฟรชทันทีตอนสลับกลับมา/เปิดแอปกลับมา
@@ -498,11 +498,13 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
   // AD5: เปิดแท็บตรงจาก URL (?tab=...) — รองรับลิงก์จากแจ้งเตือนแอดมิน
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
-    if (["overview", "users", "verify", "returns", "payout", "kyc", "products", "payment", "fees", "settings", "reports", "posts", "words", "seo", "approve"].includes(t)) setTab(t);
+    if (["overview", "users", "verify", "returns", "payout", "kyc", "products", "payment", "fees", "settings", "reports", "posts", "words", "seo", "approve", "allorders"].includes(t)) setTab(t);
   }, []);
   const [slipUrls, setSlipUrls] = useState({});
   const [reject, setReject] = useState(null);       // orderId ที่กำลังปฏิเสธ
   const [fail, setFail] = useState(null);           // orderId ที่โอนไม่สำเร็จ
+  const [aoq, setAoq] = useState("");               // ADMIN-UX2: ค้นหาในแท็บคำสั่งซื้อ
+  const [aoStatus, setAoStatus] = useState("ทั้งหมด"); // ADMIN-UX2: กรองสถานะ
   const [rejectReturn, setRejectReturn] = useState(null); // orderId เคสคืนที่กำลังปฏิเสธ
   const [payoutFile, setPayoutFile] = useState({}); // { [orderId]: File }
   const [busy, setBusy] = useState(false);
@@ -652,6 +654,7 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
       { k: "verify", icon: ReceiptText, label: "ตรวจสลิป", n: verifyQ.length },
       { k: "payout", icon: Wallet, label: "โอนเงิน/คืนเงิน", n: payoutQ.length + refundQ.length },
       { k: "returns", icon: RotateCcw, label: "คืนของ/พิพาท", n: returnQ.length },
+      { k: "allorders", icon: ShoppingBag, label: "คำสั่งซื้อ" }, // ADMIN-UX2: ทุกออเดอร์ทุกสถานะ
     ] },
     { h: "คิวตรวจสอบ", items: [
       { k: "approve", icon: Package, label: "อนุมัติสินค้า", n: approveQ.length },
@@ -1144,6 +1147,47 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
           )))}
 
         {/* ── จัดการสินค้า ── */}
+        {/* ── ADMIN-UX2: คำสั่งซื้อทั้งหมด — คลิกเปิดศูนย์ข้อมูลออเดอร์ (AD2 เดิม) ได้ทุกสถานะตลอดเวลา ── */}
+        {tab === "allorders" && (() => {
+          const AO_ST = { pending_payment: ["รอชำระ", "#B7791F"], pending_verification: ["รอตรวจสลิป", "#B45309"], payment_verified: ["ชำระแล้ว รอส่ง", C.brand], shipped: ["จัดส่งแล้ว", "#6D28D9"], delivered: ["ถึงแล้ว รอยืนยัน", "#0E7E5C"], completed: ["เสร็จสิ้น", C.ok], disputed: ["พิพาท", C.danger], return_requested: ["ขอคืนของ", "#C2410C"], return_approved: ["อนุมัติคืน", "#C2410C"], return_shipped: ["กำลังตีกลับ", "#6D28D9"], return_received: ["รับของคืนแล้ว", "#0E7E5C"], refunded: ["คืนเงินแล้ว", C.muted], cancelled: ["ยกเลิก", C.muted] };
+          const list = allOrders.filter(o => (aoStatus === "ทั้งหมด" || o.status === aoStatus)
+            && (!aoq.trim() || `${o.order_no || ""} ${o.item || ""} ${buyerOf(o.buyer_id)?.name || ""} ${sellerOf(o.seller_id)?.name || ""}`.toLowerCase().includes(aoq.toLowerCase())));
+          return (
+          <>
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: C.ink }}>คำสั่งซื้อ</div>
+              <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2 }}>ทุกสถานะ (ล่าสุด {allOrders.length} รายการ) — คลิกรายการเพื่อเปิดศูนย์ข้อมูลออเดอร์</div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input value={aoq} onChange={e => setAoq(e.target.value)} placeholder="ค้นหาเลขออเดอร์ / สินค้า / ชื่อผู้ซื้อ-ผู้ขาย..."
+                style={{ flex: "1 1 220px", height: 38, border: `1.5px solid ${C.line}`, borderRadius: 9, padding: "0 12px", fontSize: 12.5, outline: "none", background: "#fff" }} />
+              <select value={aoStatus} onChange={e => setAoStatus(e.target.value)} style={{ height: 38, border: `1.5px solid ${C.line}`, borderRadius: 9, padding: "0 8px", fontSize: 12, background: "#fff", maxWidth: 170 }}>
+                <option value="ทั้งหมด">ทุกสถานะ</option>
+                {Object.keys(AO_ST).map(k => <option key={k} value={k}>{AO_ST[k][0]}</option>)}
+              </select>
+            </div>
+            {list.length === 0 && <div style={{ textAlign: "center", color: C.muted, fontSize: 13, padding: "30px 0" }}>ไม่พบคำสั่งซื้อตามตัวกรอง</div>}
+            {list.length > 0 && <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+              {list.map((o, i) => {
+                const st = AO_ST[o.status] || [o.status, C.muted];
+                return (
+                  <div key={o.id} onClick={() => setSelOrder(o)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", borderTop: i ? `1px solid ${C.line}` : "none", cursor: "pointer" }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 8, background: "#EDF2F2", overflow: "hidden", flexShrink: 0 }}>
+                      {o.products?.images?.[0] && <img src={o.products.images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 800, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.order_no} · {o.item}</div>
+                      <div style={{ fontSize: 11, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>ผู้ซื้อ {buyerOf(o.buyer_id)?.name || "-"} · ผู้ขาย {sellerOf(o.seller_id)?.name || "-"} · {o.created_at ? new Date(o.created_at).toLocaleDateString("th-TH") : "-"}</div>
+                    </div>
+                    <b style={{ color: C.brand, fontSize: 13, flexShrink: 0 }}>{baht(Number(o.price) + Number(o.buyer_fee || 0) + Number(o.ship_fee || 0))}</b>
+                    <span style={{ fontSize: 10.5, fontWeight: 800, color: st[1], background: `${st[1]}18`, padding: "3px 9px", borderRadius: 999, flexShrink: 0 }}>{st[0]}</span>
+                  </div>
+                );
+              })}
+            </div>}
+          </>
+          );
+        })()}
         {/* ── ADMIN-UX: คิวอนุมัติสินค้า (status review) — API/ปุ่ม/ReasonModal ชุดเดิมจากแท็บสินค้า ── */}
         {tab === "approve" && (approveQ.length === 0
           ? <div style={{ textAlign: "center", color: C.muted, fontSize: 13, padding: "40px 0" }}>ไม่มีสินค้ารออนุมัติ 🎉</div>

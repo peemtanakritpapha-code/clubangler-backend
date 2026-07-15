@@ -18,13 +18,19 @@ export default async function AdminPage() {
     .in("status", ["pending_verification", "delivered", "return_requested", "disputed", "return_shipped", "return_received"])
     .order("created_at");
 
+  // ADMIN-UX2: คำสั่งซื้อทั้งหมด (ทุกสถานะ ล่าสุด 300) — แท็บ "คำสั่งซื้อ" เปิดดูได้แม้พ้นคิวแล้ว
+  const { data: allOrders } = await supabase.from("orders")
+    .select("*, products(images)")
+    .order("created_at", { ascending: false }).limit(300);
+
   // ข้อมูลบัญชีผู้รับเงิน (PayeeInfo)
-  const sellerIds = [...new Set((orders || []).map(o => o.seller_id))];
+  const sellerIds = [...new Set([...(orders || []), ...(allOrders || [])].map(o => o.seller_id))]; // ADMIN-UX2: รวมผู้ขายจากทุกออเดอร์
   const { data: sellers } = sellerIds.length
     ? await supabase.from("profiles").select("id, name, promptpay, bank, kyc_status, phone").in("id", sellerIds)
     : { data: [] };
-  const { data: buyers } = (orders || []).length
-    ? await supabase.from("profiles").select("id, name, phone").in("id", [...new Set(orders.map(o => o.buyer_id))])
+  const buyerIds = [...new Set([...(orders || []), ...(allOrders || [])].map(o => o.buyer_id))]; // ADMIN-UX2
+  const { data: buyers } = buyerIds.length
+    ? await supabase.from("profiles").select("id, name, phone").in("id", buyerIds)
     : { data: [] };
 
   // AD1: รายชื่อผู้ใช้ทั้งหมด (จัดการผู้ใช้ — spec แอดมิน §4)
@@ -112,6 +118,6 @@ export default async function AdminPage() {
     soldProducts: soldCount || 0,
   };
 
-  return <AdminClient orders={orders || []} sellers={sellers || []} buyers={buyers || []} userId={user.id}
+  return <AdminClient orders={orders || []} allOrders={allOrders || []} sellers={sellers || []} buyers={buyers || []} userId={user.id}
     kycQueue={kycQueue || []} users={users || []} products={products || []} stats={stats} config={config || null} tiers={tiers || []} reports={reports} modPosts={modPosts} bannedWords={bannedWords || []} />;
 }

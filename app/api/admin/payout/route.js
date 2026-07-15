@@ -29,7 +29,7 @@ export async function POST(req) {
     await admin.from("profiles").update({ payout_failed_note: failNote.trim() }).eq("id", o.seller_id);
     await admin.from("notifications").insert({
       to_user: o.seller_id, icon: "🔁", title: "โอนเงินไม่สำเร็จ — กรุณาตรวจบัญชีรับเงิน",
-      body: `${o.item} — ${failNote.trim()}`, ref: o.order_no,
+      body: `${o.item} — ${failNote.trim()}`, ref: o.order_no, link: "/kyc", // ADMIN-UX2: กดกระดิ่งไปหน้าบัญชีรับเงินตรง
     });
     return NextResponse.json({ ok: true });
   }

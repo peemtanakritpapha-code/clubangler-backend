@@ -22,9 +22,11 @@ export default function KycClient({ initialProfile, userId }) {
   const savePayee = async () => {
     setBusy(true);
     const bank = payee.accNo.trim() ? { bank: payee.bank, no: payee.accNo.trim(), name: payee.accName.trim() } : null;
-    await supabase.from("profiles").update({ promptpay: payee.promptpay.trim() || null, bank }).eq("id", userId);
-    setProfile(p => ({ ...p, promptpay: payee.promptpay.trim() || null, bank }));
+    // ADMIN-UX2: บันทึกผ่าน API — ฝั่ง server ปิดวงจรแจ้งเตือนแอดมินเมื่อมีธงโอนไม่สำเร็จค้าง
+    const res = await fetch("/api/kyc/payee", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ promptpay: payee.promptpay.trim(), bank }) });
     setBusy(false);
+    if (!res.ok) { const j = await res.json().catch(() => ({})); setPayeeMsg(j.error || "บันทึกไม่สำเร็จ ลองใหม่"); setTimeout(() => setPayeeMsg(""), 3000); return; }
+    setProfile(p => ({ ...p, promptpay: payee.promptpay.trim() || null, bank }));
     setPayeeMsg("บันทึกบัญชีรับเงินแล้ว ✓");
     setTimeout(() => setPayeeMsg(""), 2500);
   };
