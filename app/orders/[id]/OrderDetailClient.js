@@ -570,7 +570,7 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
                 <button onClick={() => setExtendReasonOpen(false)} style={{ marginTop: 10, width: "100%", height: 36, border: "none", background: "transparent", color: C.muted, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>ยกเลิก</button>
               </div>
             </div>
-          )} // EXTEND-REASON
+          )} {/* HOTFIX-LEAKTEXT */}
 
           {!isSeller && o.status === "shipped" && o.extend_status === "pending" && (
             <div style={{ marginTop: 8, fontSize: 12, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 9, padding: "8px 12px" }}>
