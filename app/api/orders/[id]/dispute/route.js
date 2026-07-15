@@ -19,6 +19,7 @@ export async function POST(req, { params }) {
   const admin = createAdminClient();
   const { data: o } = await admin.from("orders").select("*").eq("id", id).single();
   if (!o || o.buyer_id !== user.id) return NextResponse.json({ error: "ไม่พบออเดอร์" }, { status: 404 });
+  if (o.dispute_closed_at) return NextResponse.json({ error: "เคสของออเดอร์นี้ถูกแอดมินพิจารณาแล้ว ไม่สามารถเปิดเคสซ้ำได้" }, { status: 400 }); // DISPUTE-2a
   if (!["shipped", "delivered"].includes(o.status))
     return NextResponse.json({ error: "เปิดเคสได้เฉพาะออเดอร์ที่จัดส่งแล้ว" }, { status: 400 });
 

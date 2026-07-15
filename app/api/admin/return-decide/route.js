@@ -44,7 +44,7 @@ export async function POST(req) {
   } else {
     if (!String(reason || "").trim())
       return NextResponse.json({ error: "ต้องระบุเหตุผลการปฏิเสธ" }, { status: 400 });
-    const { error } = await admin.from("orders").update({ status: "delivered", return_reject_reason: reason.trim() }).eq("id", o.id);
+    const { error } = await admin.from("orders").update({ status: "delivered", return_reject_reason: reason.trim(), dispute_closed_at: new Date().toISOString() }).eq("id", o.id); // DISPUTE-2a: ล็อกไม่ให้เปิดเคสซ้ำ
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     await admin.from("notifications").insert([
       { to_user: o.buyer_id, icon: "❌", title: "คำขอคืนสินค้าไม่ได้รับอนุมัติ", body: `${o.item} — เหตุผล: ${reason.trim()}`, ref: o.order_no },

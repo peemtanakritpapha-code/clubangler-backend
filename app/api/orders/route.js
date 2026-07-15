@@ -102,6 +102,11 @@ export async function POST(req) {
     pay_group: payGroup,
     group_total: multi ? groupTotal : null,
     ship_days: l.shipDays, // PRE-1: เดดไลน์ส่งของใบนี้ตรึงตายตัว — ผู้ขายแก้สินค้าทีหลังไม่มีผลย้อนหลัง
+    product_snapshot: { // DISPUTE-2a: สำเนาประกาศขาย ณ วินาทีสั่งซื้อ — ผู้ขายแก้ไขทีหลังไม่มีผลย้อนหลัง (ไม่ต้องก็อปไฟล์รูป เพราะ path อัปโหลดไม่ซ้ำกันตลอดไป)
+      name: l.p.name, description: l.p.description, price: l.p.price,
+      brand: l.p.brand, cond: l.p.cond, cond_label: l.p.cond_label, cond_note: l.p.cond_note,
+      issues: l.p.issues, cat_main: l.p.cat_main, cat_sub: l.p.cat_sub, images: l.p.images,
+    },
   }));
 
   const { data: orders, error } = await admin.from("orders").insert(inserts).select("id, order_no");
