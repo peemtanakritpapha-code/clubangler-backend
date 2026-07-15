@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { pingIndexNow } from "@/lib/indexnow"; // AEO-4
 import { productPath } from "@/lib/slug"; // AEO-4 (Iron 22)
+import { notifyAdmins } from "@/lib/notifyAdmins"; // ADMIN-UX
 import { checkContent, filterMessage } from "@/lib/contentFilter";
 import { catPathValid, COND_GRADES, ALL_BRANDS } from "@/lib/catalog";
 import { PREORDER_MAX_DAYS } from "@/lib/preorder"; // PRE-1
@@ -140,5 +141,8 @@ export async function POST(req) {
 
   // AEO-4: บอก search engine ทันทีว่ามี URL เกิด/เปลี่ยน (fire-and-forget — ห้าม await)
   if (status === "active" && saved?.id) pingIndexNow([productPath({ id: saved.id, name }), "/market"]);
+  // ADMIN-UX: สินค้าเข้าคิวตรวจ → แจ้งเตือนแอดมินทันที (fire-and-forget แนวเดียว pingIndexNow — ห้าม await)
+  if (status === "review" && (!current || current.status !== "review"))
+    notifyAdmins(admin, { icon: "📦", title: "สินค้ารออนุมัติ", body: name, ref: saved?.id ? String(saved.id) : null, link: "/admin?tab=approve" }).catch(() => {});
   return NextResponse.json({ ok: true, status, needsReview });
 }

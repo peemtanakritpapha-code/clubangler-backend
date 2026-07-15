@@ -498,7 +498,7 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
   // AD5: เปิดแท็บตรงจาก URL (?tab=...) — รองรับลิงก์จากแจ้งเตือนแอดมิน
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
-    if (["overview", "users", "verify", "returns", "payout", "kyc", "products", "payment", "fees", "settings", "reports", "posts", "words", "seo"].includes(t)) setTab(t);
+    if (["overview", "users", "verify", "returns", "payout", "kyc", "products", "payment", "fees", "settings", "reports", "posts", "words", "seo", "approve"].includes(t)) setTab(t);
   }, []);
   const [slipUrls, setSlipUrls] = useState({});
   const [reject, setReject] = useState(null);       // orderId ที่กำลังปฏิเสธ
@@ -641,28 +641,40 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
   const qReturnFlow = useMemo(() => orders.filter(o => o.status === "return_shipped"), [orders]);
   const reportsQ = useMemo(() => reports.filter(r => r.status === "open").map(r => ({ ...r, name: r.reason })), [reports]); // POST3.2
   const pendingPostsQ = useMemo(() => modPosts.filter(p => p.status === "pending").map(p => ({ ...p, name: p.authorName })), [modPosts]); // POST3.3
-  const totalTasks = verifyQ.length + returnQ.length + payoutQ.length + refundQ.length + kycQueue.length + reportsQ.length + pendingPostsQ.length;
+  const approveQ = useMemo(() => products.filter(p => p.status === "review"), [products]); // ADMIN-UX: คิวสินค้ารออนุมัติ
+  const totalTasks = verifyQ.length + returnQ.length + payoutQ.length + refundQ.length + kycQueue.length + reportsQ.length + pendingPostsQ.length + approveQ.length;
 
   // เมนู sidebar (prototype AdminSidebar บรรทัด 4269–4327 — ตัดเมนูที่ยังไม่มีระบบ)
-  const MENU = [
-    { k: "overview", icon: BarChart3, label: "ภาพรวม" },
-    { k: "users", icon: Users, label: "จัดการผู้ใช้", n: kycQueue.length },
-    { k: "verify", icon: ReceiptText, label: "ตรวจสลิป", n: verifyQ.length },
-    { k: "returns", icon: RotateCcw, label: "คืนของ/พิพาท", n: returnQ.length },
-    { k: "reports", icon: Flag, label: "รายงาน", n: reportsQ.length }, // POST3.2
-    { k: "posts", icon: FileText, label: "จัดการโพสต์", n: pendingPostsQ.length }, // POST3.3
-    { k: "words", icon: ShieldAlert, label: "คำต้องห้าม" }, // AUTO1
-    { k: "seo", icon: Globe, label: "SEO" }, // SEO-4
-    { k: "payout", icon: Wallet, label: "โอนเงิน/คืนเงิน", n: payoutQ.length + refundQ.length },
-    { k: "kyc", icon: Users, label: "ยืนยันตัวตน (KYC)", n: kycQueue.length },
-    { k: "products", icon: Package, label: "จัดการสินค้า" },
-    { k: "payment", icon: ShoppingBag, label: "ตั้งค่าการรับชำระเงิน" },
-    { k: "fees", icon: Percent, label: "ค่าธรรมเนียม" },
-    { k: "settings", icon: Settings, label: "ตั้งค่าระบบ" },
+  // ADMIN-UX: เมนูจัดหมวด 5 กลุ่ม — ทุกหน้า/แผงคือของเดิม แค่จัดกลุ่ม + เพิ่มแท็บ "อนุมัติสินค้า"
+  const MENU_GROUPS = [
+    { h: null, items: [{ k: "overview", icon: BarChart3, label: "ภาพรวม" }] },
+    { h: "การเงิน", items: [
+      { k: "verify", icon: ReceiptText, label: "ตรวจสลิป", n: verifyQ.length },
+      { k: "payout", icon: Wallet, label: "โอนเงิน/คืนเงิน", n: payoutQ.length + refundQ.length },
+      { k: "returns", icon: RotateCcw, label: "คืนของ/พิพาท", n: returnQ.length },
+    ] },
+    { h: "คิวตรวจสอบ", items: [
+      { k: "approve", icon: Package, label: "อนุมัติสินค้า", n: approveQ.length },
+      { k: "posts", icon: FileText, label: "จัดการโพสต์", n: pendingPostsQ.length },
+      { k: "reports", icon: Flag, label: "รายงานเนื้อหา", n: reportsQ.length },
+      { k: "kyc", icon: Users, label: "ยืนยันตัวตน (KYC)", n: kycQueue.length },
+    ] },
+    { h: "จัดการข้อมูล", items: [
+      { k: "products", icon: Package, label: "สินค้าทั้งหมด" },
+      { k: "users", icon: Users, label: "ผู้ใช้" },
+    ] },
+    { h: "ตั้งค่า", items: [
+      { k: "words", icon: ShieldAlert, label: "คำต้องห้าม" },
+      { k: "payment", icon: ShoppingBag, label: "การรับชำระเงิน" },
+      { k: "fees", icon: Percent, label: "ค่าธรรมเนียม" },
+      { k: "seo", icon: Globe, label: "SEO" },
+      { k: "settings", icon: Settings, label: "ตั้งค่าระบบ" },
+    ] },
   ];
 
   // การ์ดคิวหน้าภาพรวม: [label, รายการ, แท็บปลายทาง, SLA, สี bg, สี fg, ไอคอน]
   const QCARDS = [
+    ["สินค้ารออนุมัติ", approveQ, "approve", "SLA 12 ชม.", "#E3F1F3", "#0E7E8C", Package], // ADMIN-UX
     ["รายงานเนื้อหา", reportsQ, "reports", "SLA 24 ชม.", "#FBEAE8", "#C24D42", Flag], // POST3.2
     ["โพสต์รออนุมัติ", pendingPostsQ, "posts", "SLA 12 ชม.", "#FEF3C7", "#B45309", FileText], // POST3.3
     ["รอตรวจสลิป", verifyQ, "verify", "SLA 4 ชม.", "#FBEEDD", "#B45309", CheckCircle],
@@ -716,7 +728,12 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
             <LayoutGrid size={15} /> หน้าร้าน
           </Link>
         )}
-        {MENU.map(it => <SideItem key={it.k} it={it} />)}
+        {MENU_GROUPS.map((g, gi) => (
+          <div key={gi} style={narrow ? { display: "flex", gap: 4 } : undefined}>
+            {g.h && !narrow && <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".12em", color: "#6B7075", padding: "14px 10px 5px" }}>{g.h}</div>}
+            {g.items.map(it => <SideItem key={it.k} it={it} />)}
+          </div>
+        ))}
         {!narrow && (
           <div style={{ marginTop: "auto", paddingTop: 18, borderTop: "1px solid rgba(255,255,255,.08)" }}>
             <Link href="/" style={{ width: "100%", boxSizing: "border-box", background: "transparent", border: "1px solid rgba(255,255,255,.18)", color: "#D8DADC", fontSize: 12.5, padding: "10px 12px", borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, justifyContent: "center", textDecoration: "none" }}>
@@ -872,7 +889,7 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
                   <div>
                     <div style={{ fontSize: 13.5, fontWeight: 800, color: C.ink }}>{o.item}</div>
                     <div style={{ fontSize: 11.5, color: C.muted }}>{o.order_no} · ผู้ซื้อ {buyerOf(o.buyer_id)?.name || "-"}</div>
-                    <span onClick={() => setSelOrder(o)} style={{ display: "inline-block", marginTop: 2, fontSize: 11, color: C.brand, fontWeight: 800, cursor: "pointer" }}>ดูรายละเอียดทั้งหมด ›</span>
+                    <span onClick={() => setSelOrder(o)} style={{ display: "inline-block", marginTop: 4, fontSize: 11.5, color: C.brand, fontWeight: 800, cursor: "pointer", background: C.brandTint, padding: "4px 10px", borderRadius: 8 }}>ดูรายละเอียดทั้งหมด ›</span>
                   </div>
                   <b style={{ color: C.brand }}>{baht(Number(o.price) + Number(o.buyer_fee || 0) + Number(o.ship_fee || 0))}</b>
                 </div>
@@ -917,7 +934,7 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
                 <div>
                   <div style={{ fontSize: 13.5, fontWeight: 800, color: C.ink }}>{o.item}</div>
                   <div style={{ fontSize: 11.5, color: C.muted }}>{o.order_no} · ผู้ซื้อ {buyerOf(o.buyer_id)?.name || "-"} · ผู้ขาย {sellerOf(o.seller_id)?.name || "-"}</div>
-                    <span onClick={() => setSelOrder(o)} style={{ display: "inline-block", marginTop: 2, fontSize: 11, color: C.brand, fontWeight: 800, cursor: "pointer" }}>ดูรายละเอียดทั้งหมด ›</span>
+                    <span onClick={() => setSelOrder(o)} style={{ display: "inline-block", marginTop: 4, fontSize: 11.5, color: C.brand, fontWeight: 800, cursor: "pointer", background: C.brandTint, padding: "4px 10px", borderRadius: 8 }}>ดูรายละเอียดทั้งหมด ›</span>
                 </div>
                 <span style={{ fontSize: 10.5, fontWeight: 800, color: "#C2410C", background: "#C2410C18", padding: "3px 9px", borderRadius: 999, whiteSpace: "nowrap", alignSelf: "start" }}>
                   {o.status === "disputed" ? "พิพาท · ไกล่เกลี่ย" : o.status === "return_requested" ? "ขอคืน · รอพิจารณา" : "ส่งคืนแล้ว · รอผู้ขายรับ"}
@@ -977,7 +994,7 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
                   <div>
                     <div style={{ fontSize: 13.5, fontWeight: 800, color: C.ink }}>{o.item}</div>
                     <div style={{ fontSize: 11.5, color: C.muted }}>{o.order_no} · ผู้ซื้อยืนยันรับแล้ว {o.delivered_at ? new Date(o.delivered_at).toLocaleDateString("th-TH") : ""}</div>
-                    <span onClick={() => setSelOrder(o)} style={{ display: "inline-block", marginTop: 2, fontSize: 11, color: C.brand, fontWeight: 800, cursor: "pointer" }}>ดูรายละเอียดทั้งหมด ›</span>
+                    <span onClick={() => setSelOrder(o)} style={{ display: "inline-block", marginTop: 4, fontSize: 11.5, color: C.brand, fontWeight: 800, cursor: "pointer", background: C.brandTint, padding: "4px 10px", borderRadius: 8 }}>ดูรายละเอียดทั้งหมด ›</span>
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontSize: 11, color: C.muted }}>ยอดโอนสุทธิ (หักเรท {baht(o.seller_fee)})</div>
@@ -1023,7 +1040,7 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
                     <div>
                       <div style={{ fontSize: 13.5, fontWeight: 800, color: C.ink }}>{o.item}</div>
                       <div style={{ fontSize: 11.5, color: C.muted }}>{o.order_no} · {o.status === "cancelled" ? "ยกเลิกอัตโนมัติ: ผู้ขายไม่จัดส่งตามกำหนด" : o.require_return === false ? "คำตัดสิน: คืนเงินไม่ต้องคืนของ" : `รับของคืนแล้ว${o.auto_confirmed ? " (ระบบยืนยันแทน)" : ""}`}</div>
-                    <span onClick={() => setSelOrder(o)} style={{ display: "inline-block", marginTop: 2, fontSize: 11, color: C.brand, fontWeight: 800, cursor: "pointer" }}>ดูรายละเอียดทั้งหมด ›</span>
+                    <span onClick={() => setSelOrder(o)} style={{ display: "inline-block", marginTop: 4, fontSize: 11.5, color: C.brand, fontWeight: 800, cursor: "pointer", background: C.brandTint, padding: "4px 10px", borderRadius: 8 }}>ดูรายละเอียดทั้งหมด ›</span>
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: 11, color: C.muted }}>ยอดคืนผู้ซื้อ (เต็มจำนวน)</div>
@@ -1079,6 +1096,7 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
                       <div style={{ fontSize: 11.5, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email || "-"}{u.phone ? ` · ${u.phone}` : ""} · สมัคร {u.created_at ? new Date(u.created_at).toLocaleDateString("th-TH") : "-"}</div>
                     </div>
                     <span style={{ fontSize: 10.5, fontWeight: 800, color: kb[1], background: kb[2], padding: "3px 10px", borderRadius: 999, flex: "none" }}>{kb[0]}</span>
+                    <a href={`/seller/${u.id}`} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ flex: "none", fontSize: 11, fontWeight: 800, color: C.brand, background: C.brandTint, padding: "5px 10px", borderRadius: 8, textDecoration: "none" }}>โปรไฟล์ ↗</a>
                   </div>
                 );
               })}
@@ -1126,6 +1144,25 @@ export default function AdminClient({ orders, sellers, buyers, userId, kycQueue 
           )))}
 
         {/* ── จัดการสินค้า ── */}
+        {/* ── ADMIN-UX: คิวอนุมัติสินค้า (status review) — API/ปุ่ม/ReasonModal ชุดเดิมจากแท็บสินค้า ── */}
+        {tab === "approve" && (approveQ.length === 0
+          ? <div style={{ textAlign: "center", color: C.muted, fontSize: 13, padding: "40px 0" }}>ไม่มีสินค้ารออนุมัติ 🎉</div>
+          : approveQ.map(p => (
+            <div key={p.id} style={{ ...card, display: "flex", gap: 12, alignItems: "center" }}>
+              <div style={{ width: 48, height: 48, borderRadius: 8, background: "#EDF2F2", overflow: "hidden", flexShrink: 0 }}>
+                {p.images?.[0] && <img src={p.images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
+                <div style={{ fontSize: 11.5, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{baht(p.price)} · {p.cat_main || "-"}{p.cat_sub ? ` › ${p.cat_sub}` : ""}{p.brand ? ` · ${p.brand}` : ""} · ผู้ขาย {sellerOf(p.seller_id)?.name || p.seller_name || "-"}</div>
+                <a href={`/product/${p.id}`} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 3, fontSize: 11.5, color: C.brand, fontWeight: 800, background: C.brandTint, padding: "4px 10px", borderRadius: 8, textDecoration: "none" }}>ดูหน้าสินค้าจริง ↗</a>
+              </div>
+              <button onClick={() => call("/api/admin/product-status", { productId: p.id, action: "restore" })} disabled={busy}
+                style={{ height: 34, padding: "0 12px", borderRadius: 8, border: "none", background: C.ok, color: "#fff", fontWeight: 800, fontSize: 11.5, cursor: "pointer", flexShrink: 0 }}>✓ อนุมัติ</button>
+              <button onClick={() => setSuspendP(p.id)} disabled={busy}
+                style={{ height: 34, padding: "0 12px", borderRadius: 8, border: `1.5px solid ${C.danger}`, background: "#fff", color: C.danger, fontWeight: 800, fontSize: 11.5, cursor: "pointer", flexShrink: 0 }}>ปฏิเสธ</button>
+            </div>
+          )))}
         {tab === "products" && (() => {
           // ตัวเลือก cascading: เฉพาะค่าที่มีสินค้าจริง (spec §4) — หมวดย่อยล็อกจนเลือกหมวดหลัก
           const uniq = arr => [...new Set(arr.filter(Boolean))].sort((x, y) => x.localeCompare(y, "th"));

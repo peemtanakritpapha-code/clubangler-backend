@@ -1,0 +1,46 @@
+{
+ "at": "2026-07-15T00:20:24.747Z",
+ "bucket": "products",
+ "files": [
+  {
+   "path": "8214a6f2-b329-44b2-b7d8-1d299705fb2f/1783902105426-ga0oth.jpg",
+   "size": 2200365
+  },
+  {
+   "path": "8214a6f2-b329-44b2-b7d8-1d299705fb2f/1783902490727-zcnkcd.jpg",
+   "size": 2423911
+  },
+  {
+   "path": "8214a6f2-b329-44b2-b7d8-1d299705fb2f/1783905503129-uc2if7.jpg",
+   "size": 2122723
+  },
+  {
+   "path": "post-imgs/02e66250-422f-4f1e-9183-eddcc985dfa3/post-1784027249709-d8dq.jpeg",
+   "size": 1838643
+  },
+  {
+   "path": "post-imgs/8214a6f2-b329-44b2-b7d8-1d299705fb2f/post-1783907115828-p2sf.jpg",
+   "size": 2391386
+  },
+  {
+   "path": "product-imgs/8214a6f2-b329-44b2-b7d8-1d299705fb2f/1783909100082-w71a2a.jpg",
+   "size": 3470349
+  },
+  {
+   "path": "product-imgs/8214a6f2-b329-44b2-b7d8-1d299705fb2f/1783909117088-zqt6bc.jpg",
+   "size": 3470349
+  },
+  {
+   "path": "product-imgs/8214a6f2-b329-44b2-b7d8-1d299705fb2f/1783909195798-cd5jtp.jpg",
+   "size": 3470349
+  },
+  {
+   "path": "product-imgs/8214a6f2-b329-44b2-b7d8-1d299705fb2f/1783909298354-oz697e.jpg",
+   "size": 3470349
+  },
+  {
+   "path": "product-imgs/8214a6f2-b329-44b2-b7d8-1d299705fb2f/1783909799934-vszvs6.jpg",
+   "size": 3470349
+  }
+ ]
+}

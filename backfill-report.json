@@ -1,0 +1,58 @@
+{
+ "at": "2026-07-15T00:21:26.300Z",
+ "backupDir": "backups\\imgopt-backfill_2026-07-15_0021",
+ "done": [
+  {
+   "path": "8214a6f2-b329-44b2-b7d8-1d299705fb2f/1783902105426-ga0oth.jpg",
+   "before": 2200365,
+   "after": 324803
+  },
+  {
+   "path": "8214a6f2-b329-44b2-b7d8-1d299705fb2f/1783902490727-zcnkcd.jpg",
+   "before": 2423911,
+   "after": 413333
+  },
+  {
+   "path": "8214a6f2-b329-44b2-b7d8-1d299705fb2f/1783905503129-uc2if7.jpg",
+   "before": 2122723,
+   "after": 192001
+  },
+  {
+   "path": "post-imgs/02e66250-422f-4f1e-9183-eddcc985dfa3/post-1784027249709-d8dq.jpeg",
+   "before": 1838643,
+   "after": 133446
+  },
+  {
+   "path": "post-imgs/8214a6f2-b329-44b2-b7d8-1d299705fb2f/post-1783907115828-p2sf.jpg",
+   "before": 2391386,
+   "after": 192088
+  },
+  {
+   "path": "product-imgs/8214a6f2-b329-44b2-b7d8-1d299705fb2f/1783909100082-w71a2a.jpg",
+   "before": 3470349,
+   "after": 194570
+  },
+  {
+   "path": "product-imgs/8214a6f2-b329-44b2-b7d8-1d299705fb2f/1783909117088-zqt6bc.jpg",
+   "before": 3470349,
+   "after": 194570
+  },
+  {
+   "path": "product-imgs/8214a6f2-b329-44b2-b7d8-1d299705fb2f/1783909195798-cd5jtp.jpg",
+   "before": 3470349,
+   "after": 194570
+  },
+  {
+   "path": "product-imgs/8214a6f2-b329-44b2-b7d8-1d299705fb2f/1783909298354-oz697e.jpg",
+   "before": 3470349,
+   "after": 194570
+  },
+  {
+   "path": "product-imgs/8214a6f2-b329-44b2-b7d8-1d299705fb2f/1783909799934-vszvs6.jpg",
+   "before": 3470349,
+   "after": 194570
+  }
+ ],
+ "skipped": [],
+ "failed": []
+}

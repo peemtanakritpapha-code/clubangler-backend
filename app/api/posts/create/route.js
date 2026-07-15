@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkContent, filterMessage } from "@/lib/contentFilter"; // AUTO1
+import { notifyAdmins } from "@/lib/notifyAdmins"; // ADMIN-UX
 
 export async function POST(req) {
   const supabase = await createClient();
@@ -63,5 +64,8 @@ export async function POST(req) {
     return NextResponse.json({ error: "โพสต์ไม่สำเร็จ ลองใหม่อีกครั้ง" }, { status: 500 });
   }
 
+  // ADMIN-UX: โพสต์เข้าคิวอนุมัติ → แจ้งเตือนแอดมิน (แนวเดียวกับสลิป/KYC/รายงาน)
+  if (status === "pending")
+    notifyAdmins(admin, { icon: "📝", title: "โพสต์รออนุมัติ", body: (text || "").slice(0, 80), link: "/admin?tab=posts" }).catch(() => {});
   return NextResponse.json({ ok: true, status });
 }
