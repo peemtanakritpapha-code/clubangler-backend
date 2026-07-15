@@ -15,11 +15,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [agree, setAgree] = useState(false); // CONSENT-1: จุดยอมรับที่ 1
 
   const submit = async () => {
     setErr("");
     if (!email.trim() || !password) { setErr("กรอกอีเมลและรหัสผ่านให้ครบ"); return; }
     if (mode === "signup" && !name.trim()) { setErr("กรอกชื่อที่ใช้แสดง"); return; }
+    if (mode === "signup" && !agree) { setErr("กรุณายอมรับกติกาการซื้อขายและข้อพิพาทก่อนสมัครสมาชิก"); return; }
     if (password.length < 6) { setErr("รหัสผ่านอย่างน้อย 6 ตัวอักษร"); return; }
     setBusy(true);
     const { error } = mode === "signup"
@@ -34,6 +36,7 @@ export default function LoginPage() {
       setErr(map[error.message] || error.message);
       return;
     }
+    if (mode === "signup") await fetch("/api/consent", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ point: "signup" }) }).catch(() => {}); // CONSENT-1
     router.push("/");
     router.refresh();
   };
@@ -70,8 +73,14 @@ export default function LoginPage() {
           <input style={input} type="password" placeholder="รหัสผ่าน (6 ตัวขึ้นไป)" value={password}
             onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} />
           {err && <div style={{ fontSize: 12.5, color: C.danger, background: "#FBEAE8", borderRadius: 8, padding: "8px 12px" }}>{err}</div>}
-          <button onClick={submit} disabled={busy}
-            style={{ height: 46, border: "none", borderRadius: 10, background: C.brand, color: "#fff", fontWeight: 800, fontSize: 14.5, cursor: "pointer", opacity: busy ? .6 : 1 }}>
+          {mode === "signup" && (
+            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12.5, color: C.ink, lineHeight: 1.6, cursor: "pointer" }}>
+              <input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} style={{ width: 17, height: 17, marginTop: 2, accentColor: C.brand, flexShrink: 0 }} />
+              <span>ฉันได้อ่านและยอมรับ <Link href="/terms" style={{ color: C.brand, fontWeight: 700 }}>กติกาการซื้อขายและข้อพิพาท</Link> ของ ClubAngler</span>
+            </label>
+          )}
+          <button onClick={submit} disabled={busy || (mode === "signup" && !agree)}
+            style={{ height: 46, border: "none", borderRadius: 10, background: C.brand, color: "#fff", fontWeight: 800, fontSize: 14.5, cursor: "pointer", opacity: busy || (mode === "signup" && !agree) ? .6 : 1 }}>
             {busy ? "กำลังดำเนินการ..." : mode === "signup" ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}
           </button>
           {/* P2: การยอมรับข้อกำหนด — จำเป็นสำหรับสโตร์ */}
