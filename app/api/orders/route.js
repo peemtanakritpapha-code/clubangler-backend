@@ -111,6 +111,8 @@ export async function POST(req) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  await admin.from("consent_logs").insert({ user_id: user.id, point: "order_terms", order_id: String(orders[0].id) }); // CONSENT-1: จุดที่ 2 — UI บังคับผ่าน popup ยอมรับก่อนถึงจุดนี้เสมอ
+
   return NextResponse.json({
     ok: true,
     orderId: orders[0].id,            // ใช้พาไปหน้าจ่าย (back-compat กับโค้ดเดิม)

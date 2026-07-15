@@ -12,6 +12,7 @@ export default async function CheckoutCartPage() {
   const { data: addresses } = await supabase.from("addresses").select("*")
     .eq("user_id", user.id).order("is_default", { ascending: false }).order("id");
   const { data: tiers } = await supabase.from("fee_tiers").select("*").order("min");
+  const { data: cfgRows } = await supabase.from("platform_config").select("auto_confirm_days").limit(1); // CONSENT-1
 
-  return <CheckoutCartClient addresses={addresses || []} tiers={tiers || []} userId={user.id} />;
+  return <CheckoutCartClient addresses={addresses || []} tiers={tiers || []} userId={user.id} autoDays={Number(cfgRows?.[0]?.auto_confirm_days) || 5} />;
 }

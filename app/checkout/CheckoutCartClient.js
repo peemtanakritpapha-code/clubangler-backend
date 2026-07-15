@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { feeFor } from "@/lib/fees";
 import { getCart, clearCart } from "@/lib/cart";
+import ConsentBuyModal from "@/components/ConsentBuyModal"; // CONSENT-1
 
 const C = { brand: "#0E7E8C", brandTint: "#E3F1F3", ink: "#101314", muted: "#6B7678", line: "#E5E9EA", bg: "#F4F7F7", danger: "#C0392B" };
 const baht = n => "฿" + Number(n || 0).toLocaleString();
@@ -18,7 +19,7 @@ const EMPTY = { name: "", phone: "", addr: "", sub: "", district: "", province: 
 const REQ = ["name", "phone", "addr", "sub", "district", "province", "zip"];
 const fmtAddr = a => [a.addr, a.sub && `ต.${a.sub}`, a.district && `อ.${a.district}`, a.province && `จ.${a.province}`, a.zip].filter(Boolean).join(" ");
 
-export default function CheckoutCartClient({ addresses, tiers, userId }) {
+export default function CheckoutCartClient({ addresses, tiers, userId, autoDays }) {
   const router = useRouter();
   const supabase = createClient();
   const [items, setItems] = useState(null);   // null = กำลังโหลด
@@ -29,6 +30,7 @@ export default function CheckoutCartClient({ addresses, tiers, userId }) {
   const [showErr, setShowErr] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [consentOpen, setConsentOpen] = useState(false); // CONSENT-1: จุดที่ 2
 
   // โหลดตะกร้า + ข้อมูลสดจาก DB (ราคา/สถานะจริง ณ วินาทีจ่าย)
   useEffect(() => {
@@ -207,12 +209,13 @@ export default function CheckoutCartClient({ addresses, tiers, userId }) {
             🛡 โอนก้อนเดียว สลิปเดียว — ระบบแยกเป็น {good.length} ออเดอร์ คุ้มครองด้วย escrow รายชิ้น ผู้ขายแต่ละร้านได้เงินเมื่อคุณยืนยันรับสินค้าชิ้นนั้น
           </div>
           {err && <div style={{ marginTop: 10, fontSize: 12.5, color: C.danger, background: "#FBEAE8", borderRadius: 8, padding: "8px 12px" }}>{err}</div>}
-          <button onClick={submit} disabled={busy || !good.length || bad.length > 0}
+          <button onClick={() => setConsentOpen(true)} disabled={busy || !good.length || bad.length > 0}
             style={{ marginTop: 12, width: "100%", height: 48, border: "none", borderRadius: 10, fontWeight: 800, fontSize: 15,
               cursor: (busy || !good.length || bad.length) ? "not-allowed" : "pointer",
               background: (!good.length || bad.length) ? "#C9D6D8" : C.brand, color: "#fff", opacity: busy ? .6 : 1 }}>
             {busy ? "กำลังสร้างคำสั่งซื้อ..." : `ยืนยันสั่งซื้อ ${good.length} รายการ · ${baht(total)}`}
           </button>
+          <ConsentBuyModal open={consentOpen} days={autoDays} busy={busy} onClose={() => setConsentOpen(false)} onAccept={() => { setConsentOpen(false); submit(); }} />
         </div>
       </div>
     </div>
