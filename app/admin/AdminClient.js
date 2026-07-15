@@ -967,6 +967,30 @@ export default function AdminClient({ orders, allOrders = [], sellers, buyers, u
                   </div>
                 )}
               </div>
+              {/* DISPUTE-2a-ADMIN: เทียบหลักฐานกับสำเนาประกาศขาย ณ วันสั่งซื้อ */}
+              {o.product_snapshot ? (
+                <div style={{ background: "#F1F5F9", borderRadius: 10, padding: "10px 12px", marginTop: 8 }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 800, color: "#334155" }}>📋 สำเนาประกาศขาย ณ วันสั่งซื้อ (ผู้ขายแก้ไขทีหลังไม่มีผลย้อนหลัง)</div>
+                  <div style={{ fontSize: 12, color: C.ink, marginTop: 3 }}>
+                    {o.product_snapshot.name} · ฿{Number(o.product_snapshot.price).toLocaleString()}
+                    {o.product_snapshot.brand ? ` · ${o.product_snapshot.brand}` : ""}
+                    {o.product_snapshot.cond ? ` · ${o.product_snapshot.cond}` : ""}
+                  </div>
+                  {o.product_snapshot.cond_note && <div style={{ fontSize: 11.5, color: "#475569", marginTop: 3 }}>หมายเหตุสภาพ: {o.product_snapshot.cond_note}</div>}
+                  {(o.product_snapshot.issues || []).length > 0 && (
+                    <div style={{ fontSize: 11.5, color: "#B45309", marginTop: 3 }}>ตำหนิที่แจ้งตอนลงขาย: {o.product_snapshot.issues.join(", ")}</div>
+                  )}
+                  {(o.product_snapshot.images || []).length > 0 && (
+                    <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+                      {o.product_snapshot.images.slice(0, 5).map((u, i) => (
+                        <a key={i} href={u} target="_blank" rel="noreferrer"><img src={u} alt="" style={{ width: 54, height: 54, objectFit: "cover", borderRadius: 8, border: "1px solid #CBD5E1" }} /></a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 8 }}>ออเดอร์นี้สร้างก่อนมีระบบสำเนา — ไม่มีข้อมูลเปรียบเทียบ</div>
+              )}
               {/* AD3: ตัดสิน 3 ทาง (spec §3) — ทุกทางเขียน state กลางผ่าน return-decide ตัวเดียว */}
               {["return_requested", "disputed"].includes(o.status) && (
                 <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
