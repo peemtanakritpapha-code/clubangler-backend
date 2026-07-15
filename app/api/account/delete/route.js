@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const DONE = ["completed", "refunded"]; // สถานะออเดอร์ที่ถือว่าจบแล้ว
+const DONE = ["completed", "refunded", "expired"]; // สถานะออเดอร์ที่ถือว่าจบแล้ว (expired ไม่มีเงิน/สต็อกพัวพัน — HOTFIX-DELETE)
 
 // ลบไฟล์ทั้งหมดใต้โฟลเดอร์ {userId}/ ใน bucket (วนเป็นรอบ กันเกิน 100 ไฟล์)
 async function clearFolder(admin, bucket, prefix) { // SPLIT-FIX
