@@ -522,6 +522,13 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
                   </div>
                 </>
               )}
+              {/* DISPUTE-2b-CLIP-ORDERVIEW: จุดที่ผมลืม patch รอบแรก — คลิปเปิดกล่องที่ผู้ซื้อแนบ */}
+              {o.evidence_video_path && (
+                <>
+                  <div style={{ fontSize: 11.5, color: C.muted, marginTop: 8 }}>คลิปเปิดกล่องที่{isSeller ? "ผู้ซื้อ" : "คุณ"}แนบ</div>
+                  <video src={o.evidence_video_path} controls style={{ width: 200, borderRadius: 8, border: `1px solid ${C.line}`, marginTop: 4, display: "block" }} />
+                </>
+              )}
               {(o.return_condition_paths || []).length > 0 && (
                 <>
                   <div style={{ fontSize: 11.5, color: C.muted, marginTop: 8 }}>รูปสภาพของคืนที่ผู้ขายถ่ายตอนรับ:</div>
