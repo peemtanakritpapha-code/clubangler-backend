@@ -42,7 +42,7 @@ async function run(req) {
 
   const now = Date.now();
   const nowIso = new Date().toISOString();
-  const result = { stamped: 0, buyer_confirmed: [], seller_received: [], return_expired: [], cancelled: [], expired: [], slip_expired: [] };
+  const result = { stamped: 0, buyer_confirmed: [], seller_received: [], return_expired: [], cancelled: [], expired: [], slip_expired: [], reminders_day3: [], reminders_24h: [], snapshot_cleared: 0 }; // TIMER-1
 
   /* ── 0) ประทับเวลา self-healing ── */
   for (const [status, col] of [["shipped", "shipped_at"], ["return_shipped", "return_shipped_at"],
@@ -72,6 +72,34 @@ async function run(req) {
       { to_user: o.seller_id, icon: "✅", title: "ออเดอร์ถูกยืนยันอัตโนมัติ", body: `${o.item} — ครบกำหนด ระบบยืนยันรับแทนผู้ซื้อ เงินเข้าคิวโอนให้คุณแล้ว`, ref: o.order_no },
     ]);
     result.buyer_confirmed.push(o.order_no);
+  }
+
+  /* ── TIMER-1: แจ้งเตือน 2 จังหวะ ก่อนระบบยืนยันรับแทนผู้ซื้อ (กันเซอร์ไพรส์ — ไม่แก้ logic เดิมของ A) ── */
+  const { data: candRemind } = await admin.from("orders")
+    .select("id, order_no, item, buyer_id, shipped_at, extend_status, extend_days, reminder_day3_sent, reminder_24h_sent")
+    .eq("status", "shipped").not("shipped_at", "is", null)
+    .or("reminder_day3_sent.eq.false,reminder_24h_sent.eq.false").limit(300);
+  for (const o of candRemind || []) {
+    if (o.extend_status === "pending") continue; // รอผู้ขายตอบคำขอขยาย — พักแจ้งเตือนไว้ก่อนเหมือนกัน
+    const extra = o.extend_status === "approved" ? (Number(o.extend_days) || 0) : 0;
+    const shippedMs = new Date(o.shipped_at).getTime();
+    const deadlineMs = shippedMs + daysMs(N + extra);
+    const elapsedMs = now - shippedMs;
+
+    if (!o.reminder_day3_sent && N > 3 && elapsedMs >= daysMs(3)) {
+      await admin.from("notifications").insert([
+        { to_user: o.buyer_id, icon: "🔔", title: "อย่าลืมตรวจสอบสินค้า", body: `${o.item} — เหลืออีก ${Math.max(0, N + extra - 3)} วัน ระบบจะยืนยันรับแทนถ้าไม่แจ้งปัญหาก่อน`, ref: o.order_no },
+      ]);
+      await admin.from("orders").update({ reminder_day3_sent: true }).eq("id", o.id);
+      result.reminders_day3.push(o.order_no);
+    }
+    if (!o.reminder_24h_sent && now >= deadlineMs - 24 * 3600000) {
+      await admin.from("notifications").insert([
+        { to_user: o.buyer_id, icon: "⏰", title: "เหลือเวลาอีก 24 ชม.", body: `${o.item} — ระบบจะยืนยันรับสินค้าแทนคุณใน 24 ชม. หากพบปัญหากดแจ้งได้ก่อนถึงเวลา`, ref: o.order_no },
+      ]);
+      await admin.from("orders").update({ reminder_24h_sent: true }).eq("id", o.id);
+      result.reminders_24h.push(o.order_no);
+    }
   }
 
   /* ── B) ครบ M วันหลังส่งคืน → ยืนยันรับของคืนแทนผู้ขาย ── */
@@ -163,6 +191,14 @@ async function run(req) {
       { to_user: o.seller_id, icon: "ℹ️", title: "ออเดอร์ถูกปิด — ผู้ซื้อไม่แนบสลิปใหม่", body: `${o.item} — สินค้ายังลงขายตามปกติ`, ref: o.order_no },
     ]);
     result.slip_expired.push(o.order_no);
+  }
+
+  /* ── TIMER-1: ลบ snapshot ของใบที่ปิดแบบไม่มีทางเปิดข้อพิพาทได้อีก (expired/cancelled) ── */
+  const { data: snapRows } = await admin.from("orders")
+    .select("id").in("status", ["expired", "cancelled"]).not("product_snapshot", "is", null).limit(500);
+  if (snapRows?.length) {
+    await admin.from("orders").update({ product_snapshot: null }).in("id", snapRows.map(x => x.id));
+    result.snapshot_cleared = snapRows.length;
   }
 
   // AD5: สรุปแจ้งแอดมิน — เฉพาะรอบที่มีงานเกิด
