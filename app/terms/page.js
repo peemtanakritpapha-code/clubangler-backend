@@ -1,3 +1,4 @@
+// D4B-RULES-LINKS
 // app/terms/page.js — ข้อกำหนดการใช้บริการ — P2
 import Link from "next/link";
 
@@ -42,6 +43,9 @@ export default function TermsPage() {
           </ul>
 
           <H>3. กระบวนการซื้อขายผ่านระบบเงินฝากปลอดภัย</H>
+          <P>
+            รายละเอียดขั้นตอน เส้นตายแต่ละช่วง และกติกาข้อพิพาททั้งหมด เป็นไปตาม <Link href="/rules" style={{ color: C.brand, fontWeight: 700 }}>หน้ากติกาการซื้อขายและข้อพิพาท</Link> ซึ่งถือเป็นส่วนหนึ่งของข้อกำหนดฉบับนี้
+          </P>
           <ul style={{ paddingLeft: 22, margin: "0 0 10px" }}>
             <LI>ผู้ซื้อชำระเงินเข้าบัญชีกลางของแพลตฟอร์มและแนบสลิป — คำสั่งซื้อจะมีผลเมื่อทีมงานตรวจสอบยอดโอนเรียบร้อยแล้วเท่านั้น (สถานะ "รอตรวจสอบ" ยังไม่ถือว่าชำระสำเร็จ)</LI>
             <LI>เมื่อเงินเข้าระบบฝากปลอดภัย ผู้ขายจึงเห็นที่อยู่จัดส่งและต้องจัดส่งพร้อมกรอกเลขพัสดุภายในเวลาที่กำหนด</LI>
@@ -120,7 +124,7 @@ export default function TermsPage() {
           </P>
 
           <div style={{ fontSize: 12, color: C.muted, background: C.brandTint, borderRadius: 8, padding: "10px 14px", marginTop: 16 }}>
-            อ่านคู่กับ <Link href="/privacy" style={{ color: C.brand, fontWeight: 700 }}>นโยบายความเป็นส่วนตัว</Link>
+            อ่านคู่กับ <Link href="/rules" style={{ color: C.brand, fontWeight: 700 }}>กติกาการซื้อขายและข้อพิพาท</Link> และ <Link href="/privacy" style={{ color: C.brand, fontWeight: 700 }}>นโยบายความเป็นส่วนตัว</Link>
           </div>
         </div>
       </div>

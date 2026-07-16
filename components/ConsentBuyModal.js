@@ -1,3 +1,4 @@
+// D4B-RULES-LINKS
 // components/ConsentBuyModal.js — CONSENT-1: popup จุดที่ 2 ยอมรับกติกาก่อนยืนยันสั่งซื้อ
 // เลขวันดึงจาก platform_config (auto_confirm_days) — แอดมินแก้ได้ ข้อความเปลี่ยนตาม
 "use client";
@@ -28,7 +29,7 @@ export default function ConsentBuyModal({ open, days, busy, onAccept, onClose })
           <button onClick={onClose} disabled={busy} style={{ flex: 1, height: 42, border: `1px solid ${C.line}`, borderRadius: 10, background: "#fff", color: C.ink, fontWeight: 700, fontSize: 13.5, cursor: "pointer" }}>ยกเลิก</button>
           <button onClick={onAccept} disabled={busy} style={{ flex: 2, height: 42, border: "none", borderRadius: 10, background: C.brand, color: "#fff", fontWeight: 800, fontSize: 13.5, cursor: "pointer", opacity: busy ? .6 : 1 }}>{busy ? "กำลังดำเนินการ..." : "ยอมรับและสั่งซื้อ"}</button>
         </div>
-        <div style={{ fontSize: 11, color: C.muted, marginTop: 10, textAlign: "center" }}>การกดยอมรับถูกบันทึกเวลาไว้ ใช้อ้างอิงกรณีพิพาท · <Link href="/terms" style={{ color: C.brand, fontWeight: 700 }}>อ่านกติกาฉบับเต็ม</Link></div>
+        <div style={{ fontSize: 11, color: C.muted, marginTop: 10, textAlign: "center" }}>การกดยอมรับถูกบันทึกเวลาไว้ ใช้อ้างอิงกรณีพิพาท · <Link href="/rules" style={{ color: C.brand, fontWeight: 700 }}>อ่านกติกาฉบับเต็ม</Link></div>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+// D4B-RULES-LINKS
 "use client";
 import { useState } from "react";
 import Link from "next/link";
@@ -76,7 +77,7 @@ export default function LoginPage() {
           {mode === "signup" && (
             <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12.5, color: C.ink, lineHeight: 1.6, cursor: "pointer" }}>
               <input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} style={{ width: 17, height: 17, marginTop: 2, accentColor: C.brand, flexShrink: 0 }} />
-              <span>ฉันได้อ่านและยอมรับ <Link href="/terms" style={{ color: C.brand, fontWeight: 700 }}>กติกาการซื้อขายและข้อพิพาท</Link> ของ ClubAngler</span>
+              <span>ฉันได้อ่านและยอมรับ <Link href="/rules" style={{ color: C.brand, fontWeight: 700 }}>กติกาการซื้อขายและข้อพิพาท</Link> ของ ClubAngler</span>
             </label>
           )}
           <button onClick={submit} disabled={busy || (mode === "signup" && !agree)}

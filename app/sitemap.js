@@ -1,3 +1,4 @@
+// D4B-RULES-LINKS
 // app/sitemap.js — SEO1 + AEO-5: แผนที่เว็บ (static + หมวดหมู่ + สินค้า active + สินค้า sold ล่าสุด)
 // วางแทนที่ไฟล์เดิมทั้งไฟล์
 // เข้าถึงที่ https://clubangler.com/sitemap.xml — Next สร้าง XML ให้อัตโนมัติ
@@ -22,6 +23,7 @@ export default async function sitemap() {
     { url: BASE, changeFrequency: "daily", priority: 1 },
     { url: `${BASE}/market`, changeFrequency: "hourly", priority: 0.9 },
     { url: `${BASE}/terms`, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${BASE}/rules`, changeFrequency: "monthly", priority: 0.3 },
     { url: `${BASE}/privacy`, changeFrequency: "monthly", priority: 0.3 },
   ];
 
