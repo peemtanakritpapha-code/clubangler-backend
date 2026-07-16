@@ -458,10 +458,10 @@ function SystemSettings({ config, onError }) {
           <input type="number" value={draft.dispute_video_retention_days} onChange={e => set({ dispute_video_retention_days: num(e.target.value, 1, 365) })} style={inputS} />
         </Row>
         <Row label="คลิปหลักฐานยาวสุด (วินาที)" hint="ด่านตรวจตอนผู้ซื้อแนบคลิปเปิดกล่องในฟอร์มเปิดเคส">
-          <input type="number" value={draft.dispute_clip_max_sec} onChange={e => set({ dispute_clip_max_sec: num(e.target.value, 10, 300) })} style={inputS} />
+          <input type="number" value={draft.dispute_clip_max_sec} onChange={e => set({ dispute_clip_max_sec: e.target.value })} onBlur={e => set({ dispute_clip_max_sec: num(e.target.value, 10, 300) })} style={inputS} /> {/* FIX-CLIP-INPUT-BLUR */}
         </Row>
         <Row label="คลิปหลักฐานใหญ่สุด (MB)" hint="เกินกำหนด ระบบปฏิเสธไฟล์ตั้งแต่ก่อนอัปโหลด">
-          <input type="number" value={draft.dispute_clip_max_mb} onChange={e => set({ dispute_clip_max_mb: num(e.target.value, 10, 500) })} style={inputS} />
+          <input type="number" value={draft.dispute_clip_max_mb} onChange={e => set({ dispute_clip_max_mb: e.target.value })} onBlur={e => set({ dispute_clip_max_mb: num(e.target.value, 10, 500) })} style={inputS} /> {/* FIX-CLIP-INPUT-BLUR */}
         </Row>
         <Row label="แบนเนอร์ประกาศ (ตัววิ่ง)" hint="แสดงบนหัวเว็บ/แอปทุกหน้า">
           <Toggle on={draft.banner_enabled} onClick={() => set({ banner_enabled: !draft.banner_enabled })} />
