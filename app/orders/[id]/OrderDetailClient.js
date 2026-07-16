@@ -90,12 +90,15 @@ function StepTimeline({ status, steps }) {
 
 // ฟอร์มแจ้งปัญหา/ขอคืน — ดีไซน์+พฤติกรรมตาม ClubAngler_dispute_form.jsx (checklist 7 จุด)
 // pill เหตุผล · photo grid 62×62 ลบรายรูป + กล่อง "+" เส้นประ · ปุ่มล็อกจนครบ 3 อย่างและบอกสิ่งที่ขาด
-function DisputeModal({ order, userId, onClose, onDone, returnDays }) { // CONSENT-1: returnDays = จุดที่ 4
+function DisputeModal({ order, userId, onClose, onDone, returnDays, config }) { // CONSENT-1: returnDays = จุดที่ 4 · DISPUTE-2b-CLIP: config = เพดานคลิป
   const supabase = createClient();
   const [dF, setDF] = useState({ reason: "", detail: "", returnWant: true, files: [], previews: [] });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const dOk = dF.reason && dF.detail.trim() && dF.files.length > 0;
+  const [clip, setClip] = useState({ file: null, preview: null, valid: false, msg: "" }); // DISPUTE-2b-CLIP
+  const CLIP_MAX_SEC = Number(config?.dispute_clip_max_sec) || 60;
+  const CLIP_MAX_MB = Number(config?.dispute_clip_max_mb) || 100;
+  const dOk = dF.reason && dF.detail.trim() && dF.files.length > 0 && clip.valid; // DISPUTE-2b-CLIP
   const [returnConfirm, setReturnConfirm] = useState(false); // CONSENT-1: จุดที่ 4
 
   const addFiles = e => {
@@ -108,6 +111,34 @@ function DisputeModal({ order, userId, onClose, onDone, returnDays }) { // CONSE
   const removePhoto = i => {
     const files = dF.files.filter((_, j) => j !== i);
     setDF(f => { f.previews.forEach(u => URL.revokeObjectURL(u)); return { ...f, files, previews: files.map(x => URL.createObjectURL(x)) }; });
+  };
+  // DISPUTE-2b-CLIP: เลือกคลิป 1 ไฟล์ → เช็คขนาดทันที + เช็คความยาวหลังโหลด metadata
+  const addClip = e => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    if (clip.preview) URL.revokeObjectURL(clip.preview);
+    const url = URL.createObjectURL(f);
+    const sizeMb = f.size / (1024 * 1024);
+    if (sizeMb > CLIP_MAX_MB) {
+      setClip({ file: null, preview: null, valid: false, msg: `ไฟล์ใหญ่เกิน ${CLIP_MAX_MB}MB (ไฟล์นี้ ${sizeMb.toFixed(1)}MB) — เลือกคลิปใหม่` });
+      return;
+    }
+    const v = document.createElement("video");
+    v.preload = "metadata";
+    v.onloadedmetadata = () => {
+      if (v.duration > CLIP_MAX_SEC) {
+        setClip({ file: null, preview: null, valid: false, msg: `คลิปยาวเกิน ${CLIP_MAX_SEC} วินาที (คลิปนี้ ${Math.round(v.duration)} วิ) — ตัดให้สั้นลง` });
+      } else {
+        setClip({ file: f, preview: url, valid: true, msg: `${Math.round(v.duration)} วินาที · ${sizeMb.toFixed(1)}MB` });
+      }
+    };
+    v.onerror = () => setClip({ file: null, preview: null, valid: false, msg: "เปิดไฟล์วิดีโอนี้ไม่ได้ — ลองไฟล์อื่น" });
+    v.src = url;
+  };
+  const removeClip = () => {
+    if (clip.preview) URL.revokeObjectURL(clip.preview);
+    setClip({ file: null, preview: null, valid: false, msg: "" });
   };
 
   const doSubmit = async () => {
@@ -122,9 +153,15 @@ function DisputeModal({ order, userId, onClose, onDone, returnDays }) { // CONSE
         if (error) throw error;
         urls.push(supabase.storage.from("products").getPublicUrl(path).data.publicUrl);
       }
+      // DISPUTE-2b-CLIP: อัปโหลดคลิปเปิดกล่อง (ผ่านการตรวจความยาว/ขนาดจาก addClip แล้ว)
+      const clipExt = (clip.file.name.split(".").pop() || "mp4").toLowerCase();
+      const clipPath = `order-evidence/${userId}/dispute-clip-${order.order_no}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${clipExt}`;
+      const { error: clipErr } = await supabase.storage.from("products").upload(clipPath, clip.file);
+      if (clipErr) throw clipErr;
+      const clipUrl = supabase.storage.from("products").getPublicUrl(clipPath).data.publicUrl;
       const res = await fetch(`/api/orders/${order.id}/dispute`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason: dF.reason, detail: dF.detail.trim(), requireReturn: dF.returnWant, evidencePaths: urls }),
+        body: JSON.stringify({ reason: dF.reason, detail: dF.detail.trim(), requireReturn: dF.returnWant, evidencePaths: urls, evidenceVideoPath: clipUrl }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "ส่งเรื่องไม่สำเร็จ");
@@ -181,6 +218,31 @@ function DisputeModal({ order, userId, onClose, onDone, returnDays }) { // CONSE
           </div>
         </div>
 
+        {/* 3.5 คลิปเปิดกล่อง — DISPUTE-2b-CLIP บังคับ 1 ไฟล์ */}
+        <div>
+          <div style={label}>คลิปเปิดกล่อง <span style={{ color: DANGER }}>*</span> <span style={{ fontWeight: 400, color: C.muted }}>(1 คลิป ไม่เกิน {CLIP_MAX_SEC} วินาที ไม่เกิน {CLIP_MAX_MB}MB)</span></div>
+          {!clip.file ? (
+            <>
+              <label style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, width: "100%", height: 64, border: `1.5px dashed ${C.line}`, borderRadius: 10, color: C.muted, cursor: "pointer" }}>
+                <span style={{ fontSize: 20 }}>🎬</span>
+                <span style={{ fontSize: 11.5, fontWeight: 600 }}>แตะเพื่อเลือกวิดีโอ</span>
+                <input type="file" accept="video/*" onChange={addClip} style={{ display: "none" }} />
+              </label>
+              {clip.msg && <div style={{ fontSize: 11.5, color: DANGER, marginTop: 6 }}>✕ {clip.msg}</div>}
+            </>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, border: `1px solid ${C.line}`, borderRadius: 10, padding: 8 }}>
+              <video src={clip.preview} muted style={{ width: 84, height: 64, objectFit: "cover", borderRadius: 7, background: "#000" }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.ok }}>✓ ใช้ได้ — {clip.msg}</div>
+                <div style={{ fontSize: 11, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{clip.file.name}</div>
+              </div>
+              <span onClick={removeClip} style={{ width: 24, height: 24, borderRadius: "50%", background: DANGER, color: "#fff", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>✕</span>
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: C.muted, marginTop: 6, lineHeight: 1.6 }}>📌 ถ่ายตั้งแต่ยังไม่แกะกล่อง ให้เห็นสภาพกล่อง/เทปรอบด้านก่อนเปิด — หลักฐานสำคัญที่สุดกรณีของไม่ตรงปก</div>
+        </div>
+
         {/* 4. โหมด: คืนของ (default) vs พิพาทไกล่เกลี่ย */}
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.ink, cursor: "pointer" }}>
           <input type="checkbox" checked={dF.returnWant} onChange={e => setDF(f => ({ ...f, returnWant: e.target.checked }))} style={{ accentColor: C.brand }} />
@@ -192,7 +254,7 @@ function DisputeModal({ order, userId, onClose, onDone, returnDays }) { // CONSE
         {/* 5. ปุ่มส่ง — ล็อกจนครบ + บอกสิ่งที่ขาด */}
         <button onClick={() => (dF.returnWant ? setReturnConfirm(true) : doSubmit())} disabled={!dOk || busy}
           style={{ height: 44, border: "none", borderRadius: 10, background: DANGER, color: "#fff", fontWeight: 800, fontSize: 13.5, cursor: dOk ? "pointer" : "not-allowed", fontFamily: "inherit", opacity: dOk && !busy ? 1 : .4 }}>
-          {busy ? "กำลังส่ง..." : dOk ? (dF.returnWant ? "ส่งคำขอคืนสินค้า" : "ยืนยันเปิดข้อพิพาท") : "เลือกเหตุผล + กรอกรายละเอียด + แนบรูปอย่างน้อย 1"}
+          {busy ? "กำลังส่ง..." : dOk ? (dF.returnWant ? "ส่งคำขอคืนสินค้า" : "ยืนยันเปิดข้อพิพาท") : "เลือกเหตุผล + รายละเอียด + รูป + คลิปเปิดกล่องให้ครบ"}
         </button>
         <button onClick={onClose} style={{ height: 38, border: `1px solid ${C.line}`, borderRadius: 10, background: "#fff", color: C.ink, fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>ยกเลิก</button>
         {returnConfirm && (
@@ -694,7 +756,7 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
         </div>
       </div>
 
-      {dispute && <DisputeModal order={o} userId={userId} returnDays={Y_DAYS} onClose={() => setDispute(false)} /* CONSENT-1: จุดที่ 4 */
+      {dispute && <DisputeModal order={o} userId={userId} returnDays={Y_DAYS} config={config} onClose={() => setDispute(false)} /* CONSENT-1: จุดที่ 4 · DISPUTE-2b-CLIP: ส่ง config ไปคำนวณเพดานคลิป */
         onDone={msg => { setDispute(false); setToast(msg); setTimeout(() => setToast(""), 4000); router.refresh(); }} />}
       {toast && (
         <div style={{ position: "fixed", left: "50%", bottom: 28, transform: "translateX(-50%)", background: C.ink, color: "#fff", fontSize: 12.5, fontWeight: 700, padding: "11px 18px", borderRadius: 999, boxShadow: "0 8px 24px rgba(0,0,0,.25)", zIndex: 200, whiteSpace: "nowrap" }}>

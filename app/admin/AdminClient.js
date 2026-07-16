@@ -966,6 +966,10 @@ export default function AdminClient({ orders, allOrders = [], sellers, buyers, u
                     ))}
                   </div>
                 )}
+                {/* DISPUTE-2b-CLIP */}
+                {o.evidence_video_path && (
+                  <video src={o.evidence_video_path} controls style={{ width: 160, borderRadius: 8, border: `1px solid ${C.line}`, marginTop: 6, display: "block" }} />
+                )}
               </div>
               {/* DISPUTE-2a-ADMIN-FINAL: เหมือนดูโพสต์สินค้าจริง ครบทุกส่วน */}
               {o.product_snapshot ? (
@@ -1462,6 +1466,10 @@ export default function AdminClient({ orders, allOrders = [], sellers, buyers, u
                     <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
                       {o.evidence_paths.map((u, i) => <a key={i} href={u} target="_blank" rel="noreferrer"><img src={u} alt="" style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 8, border: `1px solid ${C.line}` }} /></a>)}
                     </div>
+                  )}
+                  {/* DISPUTE-2b-CLIP */}
+                  {o.evidence_video_path && (
+                    <video src={o.evidence_video_path} controls style={{ width: 140, borderRadius: 8, border: `1px solid ${C.line}`, marginTop: 6, display: "block" }} />
                   )}
                   {(o.return_condition_paths || []).length > 0 && (
                     <>

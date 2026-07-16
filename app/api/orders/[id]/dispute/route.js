@@ -10,11 +10,13 @@ export async function POST(req, { params }) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบ" }, { status: 401 });
 
-  const { reason, detail, requireReturn, evidencePaths } = await req.json();
+  const { reason, detail, requireReturn, evidencePaths, evidenceVideoPath } = await req.json();
   if (!reason) return NextResponse.json({ error: "เลือกเหตุผล" }, { status: 400 });
   if (!String(detail || "").trim()) return NextResponse.json({ error: "กรอกคำอธิบายปัญหา (บังคับ)" }, { status: 400 });
   if (!Array.isArray(evidencePaths) || evidencePaths.length < 1)
     return NextResponse.json({ error: "แนบรูปหลักฐานอย่างน้อย 1 รูป" }, { status: 400 });
+  if (!String(evidenceVideoPath || "").trim()) // DISPUTE-2b-CLIP
+    return NextResponse.json({ error: "แนบคลิปเปิดกล่องอย่างน้อย 1 คลิป" }, { status: 400 });
 
   const admin = createAdminClient();
   const { data: o } = await admin.from("orders").select("*").eq("id", id).single();
@@ -27,6 +29,7 @@ export async function POST(req, { params }) {
   const { data: upd, error } = await admin.from("orders").update({
     status, dispute_reason: reason, dispute_detail: detail.trim(),
     require_return: !!requireReturn, evidence_paths: evidencePaths.slice(0, 5),
+    evidence_video_path: evidenceVideoPath.trim(), // DISPUTE-2b-CLIP
   }).eq("id", id).in("status", ["shipped", "delivered"]).select("id"); // กันชน: ชนกับการโอนเงิน/ปิดออเดอร์
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!upd?.length) return NextResponse.json({ error: "สถานะออเดอร์เปลี่ยนไปแล้ว — รีเฟรชหน้าแล้วดูสถานะล่าสุด" }, { status: 409 });
