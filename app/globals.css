@@ -1,3 +1,4 @@
+/* FOOTER-1 */
 /* ธีมกลางยกจาก prototype (const C) */
 :root {
   --bg: #F6F5F2; --bg2: #ECEBE7; --ink: #17181A; --muted: #80868D;
@@ -20,11 +21,13 @@ a { color: inherit; }
 .shell-mobile-top { display: flex; }
 .shell-tabbar { display: flex; }
 .shell-content { padding-bottom: 84px; }           /* กันเนื้อหาโดน tabbar บัง */
+.shell-footer { display: none; }                    /* FOOTER-1: จอแคบไม่มี footer (ลิงก์อยู่ในเมนูโปรไฟล์แทน) */
 @media (min-width: 900px) {
   .shell-web { display: flex; }
   .shell-mobile-top { display: none; }
   .shell-tabbar { display: none; }
   .shell-content { padding-bottom: 0; }
+  .shell-footer { display: block; }
 }
 /* W2: ตลาด 2 โหมด — <900px = ชีตฟิลเตอร์ (เดิม) / ≥900px = sidebar ตาม prototype WMarketplace */
 .mkt-side { display: none; }

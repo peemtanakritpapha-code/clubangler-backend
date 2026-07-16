@@ -1,3 +1,4 @@
+// FOOTER-1
 "use client";
 // components/AppShell.js — เปลือก 2 ร่างจาก prototype:
 // จอแคบ = ทรงแอป (header + tabbar ล่าง) · จอกว้าง = ทรงเว็บ (เมนูบน)
@@ -214,7 +215,20 @@ export default function AppShell({ user, banner, children, buyCount = 0, sellCou
 
       <AnnouncementBanner banner={banner} />
 
-      <div className="shell-content">{children}</div>
+      <div className="shell-content">{children}
+        {/* FOOTER-1: footer เว็บ — โชว์เฉพาะจอกว้าง (globals.css คุม) */}
+        <footer className="shell-footer" style={{ borderTop: `1px solid ${C.line}`, padding: "18px 16px 20px", textAlign: "center" }}>
+          <div style={{ fontSize: 12, lineHeight: 2 }}>
+            <Link href="/rules" style={{ color: C.muted, textDecoration: "none" }}>กติกาการซื้อขายและข้อพิพาท</Link>
+            <span style={{ color: C.line, margin: "0 6px" }}>·</span>
+            <Link href="/terms" style={{ color: C.muted, textDecoration: "none" }}>ข้อกำหนดการใช้บริการ</Link>
+            <span style={{ color: C.line, margin: "0 6px" }}>·</span>
+            <Link href="/privacy" style={{ color: C.muted, textDecoration: "none" }}>นโยบายความเป็นส่วนตัว</Link>
+          </div>
+          <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>ติดต่อ: <a href="mailto:peem.tanakritpapha@gmail.com" style={{ color: C.muted, textDecoration: "none" }}>peem.tanakritpapha@gmail.com</a></div>
+          <div style={{ fontSize: 11, color: C.muted, opacity: .75, marginTop: 6 }}>© 2026 ClubAngler</div>
+        </footer>
+      </div>
 
       {/* ── NAV1 (M2+M5): bottom sheet เมนูบัญชี (จอแคบ) — รายการเดียวกับ dropdown เว็บ ── */}
       {sheetOpen && user && (
@@ -243,6 +257,14 @@ export default function AppShell({ user, banner, children, buyCount = 0, sellCou
             {/* NAV2: ทางเข้าหลังบ้านบนมือถือ — เห็นเฉพาะแอดมิน (สิทธิ์จริงกันที่ /admin ฝั่งเซิร์ฟเวอร์) */}
             {user.isAdmin && <MenuRow icon={Wrench} label="หลังบ้านแอดมิน" href="/admin" onClick={closeSheet} dark />}
             <MenuRow icon={X} label="ออกจากระบบ" onClick={logout} danger />
+            {/* FOOTER-1: ลิงก์กติกา (จอแคบไม่มี footer — เก็บไว้ท้ายเมนูโปรไฟล์ตามภาษาแอพ) */}
+            <div style={{ textAlign: "center", fontSize: 11, color: C.muted, padding: "10px 14px 4px" }}>
+              <Link href="/rules" onClick={closeSheet} style={{ color: C.muted, textDecoration: "none" }}>กติกาการซื้อขาย</Link>
+              <span style={{ color: C.line, margin: "0 6px" }}>·</span>
+              <Link href="/terms" onClick={closeSheet} style={{ color: C.muted, textDecoration: "none" }}>ข้อกำหนด</Link>
+              <span style={{ color: C.line, margin: "0 6px" }}>·</span>
+              <Link href="/privacy" onClick={closeSheet} style={{ color: C.muted, textDecoration: "none" }}>ความเป็นส่วนตัว</Link>
+            </div>
           </div>
         </>
       )}
