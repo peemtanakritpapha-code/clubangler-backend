@@ -1,3 +1,4 @@
+// FOOTER-1b
 // FOOTER-1
 "use client";
 // components/AppShell.js — เปลือก 2 ร่างจาก prototype:
@@ -217,7 +218,7 @@ export default function AppShell({ user, banner, children, buyCount = 0, sellCou
 
       <div className="shell-content">{children}
         {/* FOOTER-1: footer เว็บ — โชว์เฉพาะจอกว้าง (globals.css คุม) */}
-        <footer className="shell-footer" style={{ borderTop: `1px solid ${C.line}`, padding: "18px 16px 20px", textAlign: "center" }}>
+        <footer className="shell-footer" style={{ borderTop: `1px solid ${C.line}`, background: "#fff", padding: "18px 16px 20px", textAlign: "center", marginTop: 24 }}>
           <div style={{ fontSize: 12, lineHeight: 2 }}>
             <Link href="/rules" style={{ color: C.muted, textDecoration: "none" }}>กติกาการซื้อขายและข้อพิพาท</Link>
             <span style={{ color: C.line, margin: "0 6px" }}>·</span>
