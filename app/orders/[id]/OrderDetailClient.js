@@ -613,11 +613,18 @@ export default function OrderDetailClient({ order: o, role, counterpart, sender,
               ✅ ยืนยันได้รับสินค้า
             </button>
           )}
+          {/* DISPUTE-2c: เคสปิดแล้ว (dispute_closed_at) → ซ่อนปุ่มถาวร โชว์ข้อความแทน — เหตุผลปฏิเสธแสดงแยกอยู่แล้วด้านบน (o.return_reject_reason) */}
           {!isSeller && ["shipped", "delivered"].includes(o.status) && (
-            <button onClick={() => setDispute(true)}
-              style={{ marginTop: 8, width: "100%", height: 40, borderRadius: 10, border: `1.5px solid ${C.ret}`, background: "#fff", color: C.ret, fontWeight: 800, fontSize: 12.5, cursor: "pointer" }}>
-              ⚠ แจ้งปัญหา / ขอคืนสินค้า
-            </button>
+            o.dispute_closed_at ? (
+              <div style={{ marginTop: 8, fontSize: 12, color: C.muted, background: "#F6F9F9", borderRadius: 10, padding: "10px 13px", lineHeight: 1.6, textAlign: "center" }}>
+                🔒 เคสของออเดอร์นี้ถูกแอดมินพิจารณาแล้ว — ไม่สามารถเปิดเคสใหม่ได้อีก
+              </div>
+            ) : (
+              <button onClick={() => setDispute(true)}
+                style={{ marginTop: 8, width: "100%", height: 40, borderRadius: 10, border: `1.5px solid ${C.ret}`, background: "#fff", color: C.ret, fontWeight: 800, fontSize: 12.5, cursor: "pointer" }}>
+                ⚠ แจ้งปัญหา / ขอคืนสินค้า
+              </button>
+            )
           )}
           {/* ขยายเวลารับของ (ผู้ซื้อขอ 1 ครั้ง — ผู้ขายต้องยืนยัน) */}
           {!isSeller && o.status === "shipped" && !o.extend_status && (
