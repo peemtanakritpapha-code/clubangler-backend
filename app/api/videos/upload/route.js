@@ -1,5 +1,6 @@
+// V4-KEEP-AUDIO
 // app/api/videos/upload/route.js — V2: รับคลิป → ffmpeg ตัดเสียง+ทำภาพปก → อัปขึ้น R2 → บันทึก videos
-// สเปกที่เคาะไว้: ยาวสุด 60 วิ / ไฟล์ไม่เกิน 100MB / ตัดเสียงทิ้งเสมอ (จบเรื่องเพลงลิขสิทธิ์)
+// สเปกที่เคาะไว้: ยาวสุด 60 วิ / ไฟล์ไม่เกิน 100MB / เก็บเสียงไว้ + เตือนห้ามใช้เพลงลิขสิทธิ์ตอนอัป (V4)
 // moderation: ขึ้นฟีดทันที ไม่ต้องรอแอดมินตรวจก่อน (เคาะไว้แล้ว) — V5 จะเพิ่มปุ่มลบ+report ทีหลัง
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -70,10 +71,10 @@ export async function POST(req) {
     if (!duration || duration > MAX_SEC + 1)
       return NextResponse.json({ error: `คลิปต้องยาวไม่เกิน ${MAX_SEC} วินาที` }, { status: 400 });
 
-    // ตัดเสียงทิ้งเสมอ (สเปกที่เคาะไว้ — จบเรื่องเพลงลิขสิทธิ์) + faststart ให้เล่นบนเว็บลื่น
-    // -c:v copy = ก็อปวิดีโอเดิม ไม่ encode ใหม่ → เร็วมาก ไม่กิน CPU
+    // V4: เก็บเสียงไว้ (เลิกตัดอัตโนมัติ) + faststart ให้เล่นบนเว็บลื่น
+    // -c copy = ก็อปทั้งวิดีโอ+เสียงเดิม ไม่ encode ใหม่ → เร็วมาก ไม่กิน CPU
     await execFileAsync("ffmpeg", [
-      "-y", "-i", inPath, "-c:v", "copy", "-an", "-movflags", "+faststart", outPath,
+      "-y", "-i", inPath, "-c", "copy", "-movflags", "+faststart", outPath,
     ]);
 
     // ภาพปกจากเฟรมแรก ย่อกว้าง 480px (ไฟล์เล็ก โหลดไว)

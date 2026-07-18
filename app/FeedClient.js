@@ -1,3 +1,4 @@
+// V4-KEEP-AUDIO
 // V3-FEED-VIDEO
 "use client";
 import { productPath } from "@/lib/slug";
@@ -126,7 +127,7 @@ function Composer({ user, myProducts, onPosted }) {
           {files.length > 0 && <span style={{ position: "absolute", top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 999, background: C.brand, color: "#fff", fontSize: 10, fontWeight: 800, display: "grid", placeItems: "center", padding: "0 3px" }}>{files.length}</span>}
           <input type="file" accept="image/*" multiple hidden onChange={pickImgs} />
         </label>
-        <label title="แนบคลิป (สูงสุด 60 วิ)" style={{ width: 42, height: 42, borderRadius: 999, border: `1px solid ${video || videoBusy ? C.brand : C.line}`, background: video || videoBusy ? C.brandTint : "#fff", display: "grid", placeItems: "center", cursor: videoBusy ? "default" : "pointer", color: video || videoBusy ? C.brand : C.muted }}>
+        <label title="แนบคลิป (สูงสุด 60 วิ) — ห้ามมีเพลงลิขสิทธิ์ในคลิป" style={{ width: 42, height: 42, borderRadius: 999, border: `1px solid ${video || videoBusy ? C.brand : C.line}`, background: video || videoBusy ? C.brandTint : "#fff", display: "grid", placeItems: "center", cursor: videoBusy ? "default" : "pointer", color: video || videoBusy ? C.brand : C.muted }}>
           <Video size={18} />
           <input type="file" accept="video/mp4,video/quicktime,video/webm" hidden disabled={videoBusy || !!video} onChange={pickVideo} />
         </label>
@@ -141,6 +142,7 @@ function Composer({ user, myProducts, onPosted }) {
           </div>
         )}
         {videoErr && <div style={{ fontSize: 11.5, color: C.danger, width: "100%" }}>{videoErr}</div>}
+        {videoPreview && !videoErr && <div style={{ fontSize: 11, color: C.accent, width: "100%" }}>⚠️ ห้ามใช้เพลงที่มีลิขสิทธิ์ในคลิป มิฉะนั้นอาจถูกลบ</div>}
         {previews.length > 0 && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", width: "100%" }}>
             {previews.map((src, i) => (
