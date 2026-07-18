@@ -1,3 +1,4 @@
+// V3-FEED-VIDEO
 // app/api/posts/create/route.js — POST3.1: สร้างโพสต์ผ่าน API (แทน insert ตรงจาก client)
 // เหตุผลที่ย้ายมา API:
 //   1) สถานะโพสต์ (pending/visible ตามสวิตช์อนุมัติ) ต้องแปะฝั่ง server — client bypass ไม่ได้
@@ -25,8 +26,10 @@ export async function POST(req) {
   const images = Array.isArray(body?.images) ? body.images.filter(u => typeof u === "string").slice(0, 4) : [];
   const productId = body?.productId ? Number(body.productId) : null;
   const announce = !!body?.announce;
+  const videoUrl = typeof body?.videoUrl === "string" ? body.videoUrl : null; // V3-FEED-VIDEO
+  const videoThumbUrl = typeof body?.videoThumbUrl === "string" ? body.videoThumbUrl : null;
 
-  if (!text && !images.length)
+  if (!text && !images.length && !videoUrl)
     return NextResponse.json({ error: "พิมพ์ข้อความหรือแนบรูปอย่างน้อย 1 อย่าง" }, { status: 400 });
   if (text.length > 5000)
     return NextResponse.json({ error: "ข้อความยาวเกินไป (สูงสุด 5,000 ตัวอักษร)" }, { status: 400 });
@@ -44,6 +47,13 @@ export async function POST(req) {
   }
 
   // ประกาศ: เฉพาะแอดมิน/ร้านค้า (ตรรกะเดียวกับ canAnnounce ฝั่ง client — แต่บังคับจริงที่นี่)
+  // V3-FEED-VIDEO: คลิปต้องเป็นของตัวเองจริง (กันยิง url คลิปคนอื่น)
+  if (videoUrl) {
+    const { data: vid } = await admin.from("videos").select("id, owner_id").eq("url", videoUrl).single();
+    if (!vid || vid.owner_id !== user.id)
+      return NextResponse.json({ error: "คลิปไม่ถูกต้อง" }, { status: 400 });
+  }
+
   const canAnnounce = !!prof?.is_admin || !!prof?.is_shop;
 
   // สวิตช์อนุมัติโพสต์: เปิด = โพสต์ใหม่ pending (ยกเว้นแอดมิน) / ปิด = visible ทันที
@@ -57,6 +67,8 @@ export async function POST(req) {
     images,
     product_id: productId,
     is_announcement: canAnnounce && announce,
+    video_url: videoUrl,
+    video_thumb_url: videoThumbUrl,
     status,
   });
   if (error) {

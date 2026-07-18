@@ -1,3 +1,4 @@
+// V3-FEED-VIDEO
 "use client";
 import { productPath } from "@/lib/slug";
 import { avatarDataUri } from "@/lib/avatar"; // AVA-1
@@ -5,7 +6,7 @@ import { avatarDataUri } from "@/lib/avatar"; // AVA-1
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Camera, Heart, MessageCircle, Plus, Check, RotateCcw, MoreHorizontal, Pencil, Trash2, X, Flag, Ban, Search, Store, MessageSquare, Users, User } from "lucide-react"; // POST1+POST2+FEEDSEARCH-1
+import { Camera, Video, Heart, MessageCircle, Plus, Check, RotateCcw, MoreHorizontal, Pencil, Trash2, X, Flag, Ban, Search, Store, MessageSquare, Users, User } from "lucide-react"; // POST1+POST2+FEEDSEARCH-1+V3-FEED-VIDEO
 import ReportModal from "@/components/ReportModal"; // POST2
 import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/imageTools"; // IMGOPT1
@@ -44,6 +45,33 @@ function Composer({ user, myProducts, onPosted }) {
     setFiles(list);
     setPreviews(p => { p.forEach(u => URL.revokeObjectURL(u)); return list.map(x => URL.createObjectURL(x)); });
   };
+  // V3-FEED-VIDEO: แนบคลิป 1 อัน — อัปทันทีตอนเลือกไฟล์ (ต้องผ่าน ffmpeg ตัดเสียงที่ server ก่อน)
+  const [video, setVideo] = useState(null);
+  const [videoPreview, setVideoPreview] = useState("");
+  const [videoBusy, setVideoBusy] = useState(false);
+  const [videoErr, setVideoErr] = useState("");
+  const pickVideo = async e => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setVideoErr("");
+    if (file.size > 100 * 1024 * 1024) { setVideoErr("ไฟล์ใหญ่เกิน 100MB"); return; }
+    setVideoPreview(URL.createObjectURL(file));
+    setVideoBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/videos/upload", { method: "POST", body: fd });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || "อัปคลิปไม่สำเร็จ");
+      setVideo(j.video);
+    } catch (err) {
+      setVideoErr(err.message || String(err));
+      setVideoPreview("");
+    }
+    setVideoBusy(false);
+  };
+  const removeVideo = () => { setVideo(null); setVideoPreview(""); setVideoErr(""); };
   const [prodId, setProdId] = useState("");
   const [announce, setAnnounce] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -68,12 +96,12 @@ function Composer({ user, myProducts, onPosted }) {
       // POST3.1: สร้างโพสต์ผ่าน API — server แปะสถานะตามสวิตช์อนุมัติ + กันคนโดนแบน (Iron Rule 17 แนวเดียวกับคอมเมนต์)
       const res = await fetch("/api/posts/create", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: text.trim(), images: imgUrls, productId: prodId ? Number(prodId) : null, announce: canAnnounce && announce }),
+        body: JSON.stringify({ text: text.trim(), images: imgUrls, productId: prodId ? Number(prodId) : null, announce: canAnnounce && announce, videoUrl: video?.url || null, videoThumbUrl: video?.thumb_url || null }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || "โพสต์ไม่สำเร็จ");
       if (j.status === "pending") setNotice("✅ ส่งโพสต์แล้ว — รอแอดมินอนุมัติก่อนแสดงให้คนอื่นเห็น");
-      setText(""); setFiles([]); setPreviews(p => { p.forEach(u => URL.revokeObjectURL(u)); return []; }); setProdId(""); setAnnounce(false);
+      setText(""); setFiles([]); setPreviews(p => { p.forEach(u => URL.revokeObjectURL(u)); return []; }); setProdId(""); setAnnounce(false); removeVideo();
       onPosted();
     } catch (e) { setErr(e.message || String(e)); }
     setBusy(false);
@@ -98,8 +126,21 @@ function Composer({ user, myProducts, onPosted }) {
           {files.length > 0 && <span style={{ position: "absolute", top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 999, background: C.brand, color: "#fff", fontSize: 10, fontWeight: 800, display: "grid", placeItems: "center", padding: "0 3px" }}>{files.length}</span>}
           <input type="file" accept="image/*" multiple hidden onChange={pickImgs} />
         </label>
+        <label title="แนบคลิป (สูงสุด 60 วิ)" style={{ width: 42, height: 42, borderRadius: 999, border: `1px solid ${video || videoBusy ? C.brand : C.line}`, background: video || videoBusy ? C.brandTint : "#fff", display: "grid", placeItems: "center", cursor: videoBusy ? "default" : "pointer", color: video || videoBusy ? C.brand : C.muted }}>
+          <Video size={18} />
+          <input type="file" accept="video/mp4,video/quicktime,video/webm" hidden disabled={videoBusy || !!video} onChange={pickVideo} />
+        </label>
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
+        {videoPreview && (
+          <div style={{ position: "relative" }}>
+            <video src={videoPreview} muted style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 10, border: `1px solid ${C.line}`, display: "block", background: "#000" }} />
+            {videoBusy && <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,.4)", borderRadius: 10, color: "#fff", fontSize: 10, fontWeight: 700 }}>กำลังตัดเสียง...</div>}
+            {!videoBusy && <button type="button" onClick={removeVideo} aria-label="ลบคลิปนี้"
+              style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", border: "none", background: C.danger, color: "#fff", fontSize: 11, fontWeight: 800, cursor: "pointer", lineHeight: 1 }}>✕</button>}
+          </div>
+        )}
+        {videoErr && <div style={{ fontSize: 11.5, color: C.danger, width: "100%" }}>{videoErr}</div>}
         {previews.length > 0 && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", width: "100%" }}>
             {previews.map((src, i) => (
@@ -387,6 +428,12 @@ function PostCard({ p, user, liked0, following0, onNeedLogin, blocks, onBlock })
           </div>
         );
       })()}
+      {p.video_url && ( // V3-FEED-VIDEO
+        <video controls playsInline preload="none" poster={p.video_thumb_url || undefined}
+          style={{ width: "100%", maxHeight: 480, borderRadius: 12, border: `1px solid ${C.line}`, display: "block", marginTop: 10, background: "#000" }}>
+          <source src={p.video_url} type="video/mp4" />
+        </video>
+      )}
 
       {p.products && (
         <Link href={productPath(p.products)} style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10, background: "#FAFAF8", border: `1px solid ${C.line}`, borderRadius: 12, padding: 10, textDecoration: "none" }}>
